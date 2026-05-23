@@ -1,0 +1,34 @@
+# Workspace-wide ignores for both backend and frontend apps
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+
+# Backend (Laravel)
+backend_api/.env
+backend_api/.env.*
+!backend_api/.env.example
+backend_api/.phpunit.result.cache
+backend_api/auth.json
+backend_api/node_modules/
+backend_api/vendor/
+backend_api/public/build/
+backend_api/public/hot
+backend_api/public/storage/
+backend_api/storage/*.key
+backend_api/storage/logs/*.log
+
+# Frontend (Vite/React)
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+frontend/*.local
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
+/mobile_app
+/frontend
