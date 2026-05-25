@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   BadgeCheck,
   Briefcase,
@@ -19,8 +19,7 @@ import {
 
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
-
-const categoryOptions = ['Painters', 'Interior Designers'];
+import { apiRequest } from '../../lib/api';
 
 const workers = [
   {
@@ -202,6 +201,7 @@ function FilterPanel({
   updateFilter,
   selectCategory,
   clearFilters,
+  categoriesList = [],
   mobile = false,
   onClose,
 }) {
@@ -321,24 +321,25 @@ function FilterPanel({
           </h3>
 
           <div className="space-y-2">
-            {categoryOptions.map((category) => {
+            {categoriesList.map((category) => {
+              const categoryName = category.name || category;
               const isSelected =
-                filters.category === category ||
+                filters.category.toLowerCase() === categoryName.toLowerCase() ||
                 filters.serviceQuery.trim().toLowerCase() ===
-                  category.toLowerCase();
+                  categoryName.toLowerCase();
 
               return (
                 <button
-                  key={category}
+                  key={category.id || categoryName}
                   type="button"
-                  onClick={() => selectCategory(category)}
+                  onClick={() => selectCategory(categoryName)}
                   className={`w-full rounded px-3 py-2 text-left text-sm transition ${
                     isSelected
                       ? 'bg-emerald-50 font-semibold text-emerald-700'
                       : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                   }`}
                 >
-                  {category}
+                  {categoryName}
                 </button>
               );
             })}
@@ -382,14 +383,18 @@ function WorkerCard({ worker }) {
       <div className="flex flex-col gap-6 p-6 sm:p-7 md:flex-row md:items-start md:justify-between">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
           <div
-            className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-full text-2xl font-bold ${worker.avatarClass}`}
+            onClick={() => navigate(`/worker/${worker.id}`)}
+            className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-full text-2xl font-bold cursor-pointer hover:opacity-90 transition ${worker.avatarClass}`}
           >
             {worker.avatar}
           </div>
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-2xl font-bold text-slate-950 sm:text-xl">
+              <h3 
+                onClick={() => navigate(`/worker/${worker.id}`)}
+                className="text-2xl font-bold text-slate-950 sm:text-xl cursor-pointer hover:text-emerald-750 transition"
+              >
                 {worker.name}
               </h3>
 
@@ -454,7 +459,12 @@ function WorkerCard({ worker }) {
           <div className="mt-4 grid gap-2">
             <button
               type="button"
-              onClick={() => navigate('/chat')}
+              onClick={() => navigate('/chat', {
+                state: {
+                  workerId: worker.id,
+                  workerName: worker.name,
+                }
+              })}
               className="h-10 rounded-lg border border-emerald-700 bg-white px-5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
             >
               Chat first
@@ -462,7 +472,15 @@ function WorkerCard({ worker }) {
 
             <button
               type="button"
-              onClick={() => navigate('/book/details')}
+              onClick={() => navigate('/book/details', {
+                state: {
+                  workerId: worker.id,
+                  servicePackageId: worker.servicePackageId,
+                  workerName: worker.name,
+                  serviceTitle: worker.role,
+                  priceLabel: `LKR ${worker.price.toLocaleString()} / task`,
+                }
+              })}
               className="h-10 rounded-lg bg-emerald-700 px-5 text-sm font-semibold text-white transition hover:bg-emerald-800"
             >
               Book now
@@ -486,9 +504,110 @@ function WorkerCard({ worker }) {
 }
 
 export default function SearchPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [filters, setFilters] = useState(initialFilters);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const [workersList, setWorkersList] = useState([]);
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch categories from database on mount
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const res = await apiRequest('/categories');
+        const data = res.data || res || [];
+        setCategoriesList(data);
+      } catch (err) {
+        setCategoriesList([
+          { id: 1, name: 'Painting', slug: 'painting' },
+          { id: 2, name: 'Electrical', slug: 'electrical' },
+          { id: 3, name: 'Plumbing', slug: 'plumbing' },
+          { id: 4, name: 'Carpentry', slug: 'carpentry' },
+          { id: 5, name: 'AC Repair', slug: 'ac-repair' },
+          { id: 6, name: 'Cleaning', slug: 'cleaning' },
+          { id: 7, name: 'Masonry', slug: 'masonry' },
+        ]);
+      }
+    }
+    fetchCategories();
+  }, []);
+
+  // Parse URL search parameters on load/change
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const categoryParam = params.get('category') || '';
+    const searchParam = params.get('search') || '';
+    const locationParam = params.get('location') || '';
+
+    setFilters((prev) => ({
+      ...prev,
+      category: categoryParam,
+      serviceQuery: searchParam || categoryParam,
+      locationQuery: locationParam,
+    }));
+    setCurrentPage(1);
+  }, [location.search]);
+
+  useEffect(() => {
+    async function loadWorkers() {
+      try {
+        setLoading(true);
+        let catQuery = '';
+        if (filters.category) {
+          const matched = categoriesList.find(
+            (c) => (c.name || c).toLowerCase() === filters.category.toLowerCase()
+          );
+          catQuery = matched ? matched.slug : filters.category.toLowerCase().replace(/\s+/g, '-');
+        }
+
+        let path = '/services';
+        const params = [];
+        if (catQuery) params.push(`category=${catQuery}`);
+        if (filters.serviceQuery) params.push(`search=${filters.serviceQuery}`);
+        if (params.length > 0) path += `?${params.join('&')}`;
+
+        const res = await apiRequest(path);
+        const data = res.data?.data || res.data || [];
+
+        const mappedWorkers = data.map((service) => {
+          const workerName = service.worker?.name || 'Verified Pro';
+          return {
+            id: service.worker?.id || '1',
+            servicePackageId: service.id,
+            name: workerName,
+            avatar: workerName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2),
+            role: service.title || 'Service Pro',
+            category: service.category?.name || 'All',
+            location: 'Colombo',
+            experience: '6 years exp.',
+            experienceYears: 6,
+            rating: 4.8,
+            reviews: 120,
+            price: parseFloat(service.price) || 0,
+            unit: '/ task',
+            distance: 4,
+            verified: true,
+            featured: service.is_active,
+            pro: true,
+            avatarClass: 'bg-emerald-700 text-white',
+          };
+        });
+
+        setWorkersList(mappedWorkers);
+        setLoading(false);
+      } catch (err) {
+        setWorkersList(workers.map(w => ({ ...w, servicePackageId: w.id })));
+        setLoading(false);
+      }
+    }
+
+    loadWorkers();
+  }, [filters.category, filters.serviceQuery, categoriesList]);
 
   const updateFilter = (key, value) => {
     setFilters((prev) => ({
@@ -500,14 +619,14 @@ export default function SearchPage() {
   };
 
   const updateServiceSearch = (value) => {
-    const matchingCategory = categoryOptions.find(
-      (category) => category.toLowerCase() === value.trim().toLowerCase()
+    const matchingCategory = categoriesList.find(
+      (category) => (category.name || category).toLowerCase() === value.trim().toLowerCase()
     );
 
     setFilters((prev) => ({
       ...prev,
       serviceQuery: value,
-      category: matchingCategory || '',
+      category: matchingCategory ? (matchingCategory.name || matchingCategory) : '',
     }));
 
     setCurrentPage(1);
@@ -539,7 +658,7 @@ export default function SearchPage() {
   };
 
   const filteredWorkers = useMemo(() => {
-    let result = [...workers];
+    let result = [...workersList];
 
     const serviceQuery = filters.serviceQuery.trim().toLowerCase();
     const locationQuery = filters.locationQuery.trim().toLowerCase();
@@ -620,7 +739,7 @@ export default function SearchPage() {
     }
 
     return result;
-  }, [filters]);
+  }, [filters, workersList]);
 
   const totalPages = Math.max(
     1,
@@ -695,6 +814,7 @@ export default function SearchPage() {
           updateFilter={updateFilter}
           selectCategory={selectCategory}
           clearFilters={clearFilters}
+          categoriesList={categoriesList}
         />
 
         {mobileFiltersOpen && (
@@ -706,6 +826,7 @@ export default function SearchPage() {
                 updateFilter={updateFilter}
                 selectCategory={selectCategory}
                 clearFilters={clearFilters}
+                categoriesList={categoriesList}
                 onClose={() => setMobileFiltersOpen(false)}
               />
             </div>

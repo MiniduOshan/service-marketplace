@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
@@ -19,67 +19,7 @@ import {
 
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
-
-const bookings = [
-  {
-    id: 'BK-1041',
-    workerName: 'Kasun Silva',
-    workerInitials: 'KS',
-    category: 'Painter',
-    service: 'Room painting',
-    date: '28 April 2025',
-    time: '9:00 AM',
-    location: '45/2 Galle Road, Colombo 03',
-    price: 'LKR 5,000',
-    advance: 'Advance paid: LKR 2,500',
-    status: 'active',
-    progress: 'in-progress',
-  },
-  {
-    id: 'BK-1042',
-    workerName: 'Awaiting Worker',
-    category: 'Pending acceptance',
-    service: 'Electrical Repair',
-    date: '29 April 2025',
-    time: '2:00 PM',
-    price: 'LKR 3,500',
-    paymentNote: 'Payment on completion',
-    status: 'pending',
-    responseNote: 'Worker will respond within 1 hour',
-  },
-  {
-    id: 'BK-1043',
-    workerName: 'Saman Fernando',
-    category: 'Declined',
-    service: 'AC Repair',
-    date: '30 April 2025',
-    time: '10:30 AM',
-    price: 'LKR 4,000',
-    status: 'declined',
-    reason: 'Worker declined your booking request',
-    suggestion: 'You can find another available worker for this service.',
-  },
-  {
-    id: 'BK-0985',
-    workerName: 'Nuwan Perera',
-    category: 'Completed',
-    service: 'Kitchen Sink Repair',
-    date: '15 April 2025',
-    status: 'completed',
-    rating: 5,
-    avatar:
-      'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&q=80&w=300',
-  },
-  {
-    id: 'BK-0842',
-    workerName: 'Garden Maintenance',
-    category: 'Cancelled',
-    service: 'Garden Maintenance',
-    cancelledDate: 'Cancelled on 10 April 2025',
-    status: 'cancelled',
-    refundNote: 'Refund processed',
-  },
-];
+import { apiRequest } from '../../lib/api';
 
 const tabs = [
   { label: 'All', value: 'all' },
@@ -500,12 +440,67 @@ function BookingCard({ booking }) {
 }
 
 export default function CustomerBookings() {
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadBookings() {
+      try {
+        setLoading(true);
+        const res = await apiRequest('/auth/bookings');
+        const list = res.data?.data || res.data || [];
+        if (isMounted) {
+          const mapped = list.map((b) => {
+            const workerName = b.worker?.name || 'Verified Pro';
+            const initials = workerName
+              .split(' ')
+              .map((n) => n[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2);
+            return {
+              id: b.id.toString(),
+              workerName,
+              workerInitials: initials,
+              category: b.service_package?.category?.name || 'Service Pro',
+              service: b.service_package?.title || 'Professional Service',
+              date: new Date(b.scheduled_at).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }),
+              time: new Date(b.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              location: b.address,
+              price: `LKR ${parseFloat(b.total_price).toLocaleString()}`,
+              advance: `LKR ${(parseFloat(b.total_price) / 2).toLocaleString()} advance paid`,
+              status: b.status,
+              progress: b.status === 'completed' ? 'done' : b.status,
+              rawBooking: b
+            };
+          });
+          setBookings(mapped);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setBookings([]);
+          setLoading(false);
+        }
+      }
+    }
+    loadBookings();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredBookings = useMemo(() => {
     if (activeTab === 'all') return bookings;
-    return bookings.filter((booking) => booking.status === activeTab);
-  }, [activeTab]);
+    return bookings.filter((booking) => {
+      if (activeTab === 'active') {
+        return ['confirmed', 'assigned', 'in_progress', 'in-progress', 'active'].includes(booking.status.toLowerCase());
+      }
+      return booking.status.toLowerCase() === activeTab;
+    });
+  }, [bookings, activeTab]);
 
   const shouldScroll = filteredBookings.length > 3;
 
@@ -546,29 +541,33 @@ export default function CustomerBookings() {
         </div>
 
         <section className="mt-10 min-h-[520px] flex-1">
-          <div
-            className={`space-y-6 pb-4 ${
-              shouldScroll
-                ? 'max-h-[620px] overflow-y-auto pr-2'
-                : 'overflow-visible'
-            }`}
-          >
-            {filteredBookings.length > 0 ? (
-              filteredBookings.map((booking) => (
-                <BookingCard key={booking.id} booking={booking} />
-              ))
-            ) : (
-              <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
-                <UserRound size={40} className="mx-auto text-slate-300" />
-                <h2 className="mt-4 text-xl font-semibold text-slate-800">
-                  No bookings found
-                </h2>
-                <p className="mt-2 text-slate-500">
-                  There are no bookings in this category yet.
-                </p>
-              </div>
-            )}
-          </div>
+          {loading ? (
+            <div className="text-center text-slate-500 py-10">Loading bookings...</div>
+          ) : (
+            <div
+              className={`space-y-6 pb-4 ${
+                shouldScroll
+                  ? 'max-h-[620px] overflow-y-auto pr-2'
+                  : 'overflow-visible'
+              }`}
+            >
+              {filteredBookings.length > 0 ? (
+                filteredBookings.map((booking) => (
+                  <BookingCard key={booking.id} booking={booking} />
+                ))
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
+                  <UserRound size={40} className="mx-auto text-slate-300" />
+                  <h2 className="mt-4 text-xl font-semibold text-slate-800">
+                    No bookings found
+                  </h2>
+                  <p className="mt-2 text-slate-500">
+                    There are no bookings in this category yet.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </section>
       </main>
 

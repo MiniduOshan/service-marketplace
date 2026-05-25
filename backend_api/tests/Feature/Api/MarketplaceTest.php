@@ -24,6 +24,8 @@ class MarketplaceTest extends TestCase
 
         $worker = User::factory()->create([
             'role' => 'worker',
+            'phone' => '94771234567',
+            'phone_verified_at' => now(),
         ]);
 
         ServicePackage::create([
@@ -58,6 +60,8 @@ class MarketplaceTest extends TestCase
 
         $worker = User::factory()->create([
             'role' => 'worker',
+            'phone' => '94771234567',
+            'phone_verified_at' => now(),
         ]);
 
         $token = $worker->issueApiToken();
@@ -86,6 +90,8 @@ class MarketplaceTest extends TestCase
 
         $worker = User::factory()->create([
             'role' => 'worker',
+            'phone' => '94771234567',
+            'phone_verified_at' => now(),
         ]);
 
         $servicePackage = ServicePackage::create([
@@ -102,6 +108,8 @@ class MarketplaceTest extends TestCase
 
         $customer = User::factory()->create([
             'role' => 'customer',
+            'phone' => '94777654321',
+            'phone_verified_at' => now(),
         ]);
 
         $token = $customer->issueApiToken();

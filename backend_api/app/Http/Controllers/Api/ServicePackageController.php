@@ -23,6 +23,10 @@ class ServicePackageController extends Controller
             });
         }
 
+        if ($request->filled('worker_id')) {
+            $query->where('user_id', $request->input('worker_id'));
+        }
+
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
 
@@ -104,6 +108,21 @@ class ServicePackageController extends Controller
         return response()->json([
             'message' => 'Service package updated successfully.',
             'data' => $servicePackage->fresh()->load(['category', 'worker']),
+        ]);
+    }
+
+    public function workerServices(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        $services = ServicePackage::query()
+            ->with(['category'])
+            ->where('user_id', $user->id)
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'data' => $services,
         ]);
     }
 }

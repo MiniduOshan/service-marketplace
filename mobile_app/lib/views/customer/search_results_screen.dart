@@ -20,34 +20,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
-  final List<Worker> _fallbackWorkers = [
-    Worker(
-      id: "1", name: "Kamal Ariyaratne", specialty: "Painting", location: "Colombo 5",
-      rating: 4.9, reviewCount: 127, experience: 8, distance: 2.1,
-      startingPrice: "5,000", priceUnit: "room", initial: "KA",
-      isFeatured: true, isPro: true,
-    ),
-    Worker(
-      id: "2", name: "Nuwan Mahesh", specialty: "Painting", location: "Colombo 3",
-      rating: 4.8, reviewCount: 94, experience: 12, distance: 3.5,
-      startingPrice: "4,500", priceUnit: "room", initial: "NM",
-    ),
-    Worker(
-      id: "3", name: "Saman De Silva", specialty: "Electrical", location: "Dehiwala",
-      rating: 4.7, reviewCount: 42, experience: 5, distance: 5.2,
-      startingPrice: "6,200", priceUnit: "room", initial: "SD",
-    ),
-    Worker(
-      id: "4", name: "Janaka Perera", specialty: "Plumbing", location: "Nugegoda",
-      rating: 4.6, reviewCount: 55, experience: 7, distance: 4.8,
-      startingPrice: "3,800", priceUnit: "task", initial: "JP",
-    ),
-    Worker(
-      id: "5", name: "Roshan Silva", specialty: "Carpentry", location: "Kottawa",
-      rating: 4.9, reviewCount: 110, experience: 10, distance: 6.1,
-      startingPrice: "7,500", priceUnit: "day", initial: "RS", isPro: true,
-    ),
-  ];
+  final List<Worker> _fallbackWorkers = [];
 
   late List<Worker> allWorkers;
 
@@ -78,7 +51,11 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
 
   Future<void> _loadWorkers() async {
     try {
-      final services = await ApiClient.instance.getServices();
+      setState(() {
+        _isLoading = true;
+      });
+      final categoryFilter = (activeCategory == "All" || activeCategory == "More") ? null : activeCategory.toLowerCase();
+      final services = await ApiClient.instance.getServices(category: categoryFilter);
       if (!mounted) return;
 
       setState(() {
@@ -89,9 +66,13 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           final workerName = service['worker'] is Map<String, dynamic>
               ? service['worker']['name']?.toString() ?? 'Verified Pro'
               : 'Verified Pro';
+          final workerId = service['worker'] is Map<String, dynamic>
+              ? service['worker']['id']?.toString() ?? service['user_id']?.toString() ?? '1'
+              : service['user_id']?.toString() ?? '1';
 
           return Worker(
-            id: service['id'].toString(),
+            id: workerId,
+            servicePackageId: service['id'].toString(),
             name: workerName,
             specialty: service['title']?.toString() ?? 'Service',
             category: categoryName,
@@ -101,7 +82,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
             experience: 6,
             distance: 4.0,
             startingPrice: service['price']?.toString() ?? '0',
-            priceUnit: '/ service',
+            priceUnit: 'service',
             initial: workerName.isNotEmpty ? workerName[0].toUpperCase() : 'S',
             isVerified: true,
             isPro: true,
@@ -378,7 +359,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
 
   Widget _buildWorkerCard(Worker worker) {
     return InkWell(
-      onTap: () => Navigator.pushNamed(context, '/worker-profile-public'),
+      onTap: () => Navigator.pushNamed(context, '/worker-profile-public', arguments: worker),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
@@ -439,7 +420,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => BookingStepsScreen(
-                                    servicePackageId: worker.id,
+                                    servicePackageId: worker.servicePackageId,
                                     workerName: worker.name,
                                     serviceTitle: worker.specialty,
                                     priceLabel: 'LKR ${worker.startingPrice} / ${worker.priceUnit}',

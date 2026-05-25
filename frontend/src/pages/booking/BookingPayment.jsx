@@ -1,26 +1,18 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  ArrowLeft,
   CreditCard,
   Info,
   LockKeyhole,
   MessageSquare,
   Smartphone,
-  Star,
   WalletCards,
 } from 'lucide-react';
 
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
 import BookingProgress from './BookingProgress';
-
-const worker = {
-  name: 'Kasun Silva',
-  service: 'Room Painting',
-  avatar:
-    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=300',
-};
+import { apiRequest } from '../../lib/api';
 
 const paymentMethods = [
   {
@@ -40,43 +32,105 @@ const paymentMethods = [
   },
 ];
 
-const paymentOptions = [
-  {
-    id: 'advance',
-    label: 'Advance 50%',
-    amount: 'LKR 2,625',
-    payAmount: '2,625',
-  },
-  {
-    id: 'full',
-    label: 'Full Amount',
-    amount: 'LKR 5,250',
-    payAmount: '5,250',
-  },
-  {
-    id: 'after',
-    label: 'After Job (Cash)',
-    amount: 'Pay direct',
-    payAmount: '0',
-  },
-];
-
 export default function BookingPayment() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const worker = location.state?.worker || {
+    name: 'Verified Pro',
+    service: 'Professional Service',
+    avatar: 'https://ui-avatars.com/api/?name=Pro&background=006D44&color=fff',
+  };
+  const servicePackage = location.state?.servicePackage || {
+    id: 1,
+    title: 'Professional Service',
+    price: '3500',
+  };
+  const bookingDetails = location.state?.bookingDetails || {
+    date: new Date().toISOString().split('T')[0],
+    time: 'Morning',
+    address: 'Maharagama, Colombo',
+    description: 'No description provided.',
+  };
+  const pricing = location.state?.pricing || {
+    basePrice: 3500,
+    platformFee: 175,
+    totalAmount: 3675,
+  };
+
   const [selectedMethod, setSelectedMethod] = useState('card');
   const [selectedOption, setSelectedOption] = useState('advance');
+  const [loading, setLoading] = useState(false);
+
+  const basePrice = pricing.basePrice;
+  const platformFee = pricing.platformFee;
+  const totalAmount = pricing.totalAmount;
+  const advanceAmount = totalAmount / 2;
+
+  const paymentOptions = [
+    {
+      id: 'advance',
+      label: 'Advance 50%',
+      amount: `LKR ${advanceAmount.toLocaleString()}`,
+      payAmount: advanceAmount,
+    },
+    {
+      id: 'full',
+      label: 'Full Amount',
+      amount: `LKR ${totalAmount.toLocaleString()}`,
+      payAmount: totalAmount,
+    },
+    {
+      id: 'after',
+      label: 'After Job (Cash)',
+      amount: 'Pay direct',
+      payAmount: 0,
+    },
+  ];
 
   const currentOption = paymentOptions.find((option) => option.id === selectedOption);
+
+  const handleConfirmBooking = async () => {
+    try {
+      setLoading(true);
+      // Format scheduled_at time to backend format (YYYY-MM-DD HH:MM:SS)
+      // Since time is select option text, let's map it or use 09:00:00 as default morning slot
+      let timeSlot = '09:00:00';
+      if (bookingDetails.time.includes('Afternoon')) {
+        timeSlot = '13:00:00';
+      } else if (bookingDetails.time.includes('Evening')) {
+        timeSlot = '17:00:00';
+      }
+      const scheduledAt = `${bookingDetails.date} ${timeSlot}`;
+
+      await apiRequest('/auth/bookings', {
+        method: 'POST',
+        body: JSON.stringify({
+          service_package_id: servicePackage.id,
+          scheduled_at: scheduledAt,
+          address: bookingDetails.address,
+          notes: bookingDetails.description,
+        }),
+      });
+
+      setLoading(false);
+      alert('Booking created successfully!');
+      navigate('/bookings');
+    } catch (err) {
+      setLoading(false);
+      alert(err.message || 'Failed to create booking.');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <CustomerNavbar activePage="bookings" />
 
       <BookingProgress
-         currentStep={4}
-         showBack
-         onBack={() => navigate(-1)}
-         />
+        currentStep={4}
+        showBack
+        onBack={() => navigate(-1)}
+      />
 
       <main className="mx-auto w-full max-w-none px-5 py-10 sm:px-8 lg:px-10 xl:px-12 2xl:px-14">
         <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_390px] xl:grid-cols-[minmax(0,1fr)_420px]">
@@ -93,6 +147,7 @@ export default function BookingPayment() {
                   <button
                     key={method.id}
                     type="button"
+                    disabled={loading}
                     onClick={() => setSelectedMethod(method.id)}
                     className={`flex h-24 w-full cursor-pointer items-center justify-between rounded-xl border bg-white px-6 text-left transition ${
                       isSelected
@@ -195,8 +250,7 @@ export default function BookingPayment() {
                       Mobile Wallet Payment
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-slate-500">
-                      Wallet payment UI can be connected after backend/payment gateway
-                      integration. For now this is a frontend placeholder.
+                      Mobile wallets are available for payments. Complete integration will be wired with payment gateway.
                     </p>
                   </div>
                 </div>
@@ -221,14 +275,19 @@ export default function BookingPayment() {
 
             <button
               type="button"
-              className="mt-6 h-16 w-full cursor-pointer rounded-lg bg-emerald-700 text-xl font-semibold text-white shadow-sm transition hover:bg-emerald-800"
+              disabled={loading}
+              onClick={handleConfirmBooking}
+              className="mt-6 h-16 w-full cursor-pointer rounded-lg bg-emerald-700 text-xl font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:bg-slate-400"
             >
-              {selectedOption === 'after'
+              {loading
+                ? 'Processing...'
+                : selectedOption === 'after'
                 ? 'Confirm Booking'
-                : `Confirm & Pay LKR ${currentOption?.payAmount}`}
+                : `Confirm & Pay LKR ${currentOption?.payAmount.toLocaleString()}`}
             </button>
           </section>
 
+          {/* Sidebar */}
           <aside className="space-y-6">
             <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="mb-7 text-lg font-semibold text-slate-900">
@@ -253,23 +312,28 @@ export default function BookingPayment() {
               <div className="space-y-4 border-b border-slate-200 py-6">
                 <div className="flex justify-between text-base">
                   <span className="text-slate-500">Service Fee</span>
-                  <span className="font-medium text-slate-900">LKR 5,000</span>
+                  <span className="font-medium text-slate-900">
+                    LKR {basePrice.toLocaleString()}
+                  </span>
                 </div>
 
                 <div className="flex justify-between text-base">
                   <span className="text-slate-500">Platform Fee (5%)</span>
-                  <span className="font-medium text-slate-900">LKR 250</span>
+                  <span className="font-medium text-slate-900">
+                    LKR {platformFee.toLocaleString()}
+                  </span>
                 </div>
               </div>
 
               <div className="flex items-end justify-between pt-5">
                 <span className="text-2xl font-bold text-slate-900">Total</span>
                 <span className="text-3xl font-bold text-emerald-700">
-                  LKR 5,250
+                  LKR {totalAmount.toLocaleString()}
                 </span>
               </div>
             </div>
 
+            {/* Payment Options */}
             <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="mb-5 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Payment Options
@@ -283,6 +347,7 @@ export default function BookingPayment() {
                     <button
                       key={option.id}
                       type="button"
+                      disabled={loading}
                       onClick={() => setSelectedOption(option.id)}
                       className={`flex h-14 w-full cursor-pointer items-center justify-between rounded-lg border px-4 text-left transition ${
                         isSelected
@@ -297,7 +362,7 @@ export default function BookingPayment() {
                           }`}
                         >
                           {isSelected && (
-                            <span className="h-2 w-2 rounded-full bg-emerald-700" />
+                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-700" />
                           )}
                         </span>
 

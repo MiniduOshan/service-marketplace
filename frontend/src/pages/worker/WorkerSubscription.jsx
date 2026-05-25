@@ -7,6 +7,12 @@ import {
 } from 'lucide-react';
 import WorkerLayout from '../../components/layout/WorkerLayout';
 
+const getRenewalDate = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 30);
+  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+};
+
 const proBenefits = [
   'Unlimited skill badge certifications',
   '0% Commission on first 5 monthly jobs',
@@ -134,7 +140,7 @@ function ProPlanHero({ onManageBilling, onCancelPlan }) {
 
           <p className="mt-2 flex items-center gap-2 text-sm text-emerald-50">
             <CircleDollarSign size={16} />
-            Next renewal: 15 May 2025
+            Next renewal: {getRenewalDate()}
           </p>
         </div>
 
@@ -403,9 +409,9 @@ function BillingModal({ onClose, onCancelPlan }) {
 
         <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
           <p className="text-sm text-slate-500">Current card</p>
-          <p className="mt-1 font-bold text-slate-950">Visa ending in 8902</p>
+          <p className="mt-1 font-bold text-slate-950">Visa ending in ****</p>
           <p className="mt-1 text-sm text-slate-500">
-            Next charge: LKR 2,500 on 15 May 2025
+            Next charge: LKR 2,500 on {getRenewalDate()}
           </p>
         </div>
 

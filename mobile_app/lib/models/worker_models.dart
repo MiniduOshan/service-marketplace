@@ -9,6 +9,7 @@ class Category {
 
 class Worker {
   final String id;
+  final String servicePackageId;
   final String name;
   final String specialty;
   final String category;
@@ -27,6 +28,7 @@ class Worker {
 
   Worker({
     required this.id,
+    this.servicePackageId = '',
     required this.name,
     required this.specialty,
     this.category = '',

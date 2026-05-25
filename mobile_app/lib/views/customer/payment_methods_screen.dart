@@ -1,10 +1,106 @@
 import 'package:flutter/material.dart';
 import '../../controllers/auth_controller.dart';
 
-class PaymentMethodsScreen extends StatelessWidget {
+class PaymentMethodsScreen extends StatefulWidget {
   const PaymentMethodsScreen({super.key});
 
+  @override
+  State<PaymentMethodsScreen> createState() => _PaymentMethodsScreenState();
+}
+
+class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   static const Color primaryGreen = Color(0xFF006D44);
+
+  final List<Map<String, String>> savedCards = [];
+
+  void _showAddCardDialog(BuildContext context) {
+    String cardType = 'Visa';
+    final numberController = TextEditingController();
+    final expiryController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text("Add New Card", style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      initialValue: cardType,
+                      decoration: const InputDecoration(labelText: 'Card Type'),
+                      items: ['Visa', 'Mastercard', 'Amex']
+                          .map((type) => DropdownMenuItem(value: type, child: Text(type)))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDialogState(() => cardType = val);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 15),
+                    TextField(
+                      controller: numberController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Card Number',
+                        hintText: '1234 5678 1234 5678',
+                      ),
+                      maxLength: 19,
+                    ),
+                    const SizedBox(height: 15),
+                    TextField(
+                      controller: expiryController,
+                      keyboardType: TextInputType.datetime,
+                      decoration: const InputDecoration(
+                        labelText: 'Expiry Date',
+                        hintText: 'MM/YY',
+                      ),
+                      maxLength: 5,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: primaryGreen),
+                  onPressed: () {
+                    final num = numberController.text.trim();
+                    final exp = expiryController.text.trim();
+                    if (num.isEmpty || exp.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Please fill all fields")),
+                      );
+                      return;
+                    }
+                    Navigator.pop(context, {
+                      'type': cardType,
+                      'number': num,
+                      'expiry': exp,
+                    });
+                  },
+                  child: const Text("Add", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((result) {
+      if (result != null && result is Map<String, String>) {
+        setState(() {
+          savedCards.add(result);
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,19 +125,56 @@ class PaymentMethodsScreen extends StatelessWidget {
             const Text("Your Saved Cards", 
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
             const SizedBox(height: 15),
-            _buildCreditCard(
-              "Visa", 
-              "•••• •••• •••• 1234", 
-              "08/26", 
-              [const Color(0xFF1E293B), const Color(0xFF334155)]
-            ),
-            const SizedBox(height: 15),
-            _buildCreditCard(
-              "Mastercard", 
-              "•••• •••• •••• 5678", 
-              "11/25", 
-              [const Color(0xFF006D44), const Color(0xFF008955)]
-            ),
+            if (savedCards.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: Column(
+                    children: [
+                      Icon(Icons.credit_card_off_outlined, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        "No saved cards",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        "Add a credit or debit card for seamless checkout.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 13, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ...savedCards.map((card) {
+                final colors = card['type'] == 'Mastercard'
+                    ? [const Color(0xFF006D44), const Color(0xFF008955)]
+                    : card['type'] == 'Amex'
+                        ? [const Color(0xFF1E3A8A), const Color(0xFF3B82F6)]
+                        : [const Color(0xFF1E293B), const Color(0xFF334155)];
+                final lastFour = card['number']!.replaceAll(RegExp(r'\s+'), '');
+                final displayNum = "•••• •••• •••• ${lastFour.length >= 4 ? lastFour.substring(lastFour.length - 4) : lastFour}";
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 15),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildCreditCard(card['type']!, displayNum, card['expiry']!, colors),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        onPressed: () {
+                          setState(() {
+                            savedCards.remove(card);
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              }),
             const SizedBox(height: 30),
             _buildAddMethodButton(context),
             const SizedBox(height: 40),
@@ -113,9 +246,7 @@ class PaymentMethodsScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         side: const BorderSide(color: primaryGreen, width: 1.5),
       ),
-      onPressed: () {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Add card functionality coming soon!")));
-      },
+      onPressed: () => _showAddCardDialog(context),
       icon: const Icon(Icons.add, color: primaryGreen),
       label: const Text("Add New Card", style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold)),
     );

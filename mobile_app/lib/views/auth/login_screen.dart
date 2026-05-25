@@ -150,7 +150,10 @@ class _LoginScreenState extends State<LoginScreen> {
               height: 48,
               child: OutlinedButton(
                 onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PhoneLoginScreen()));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PhoneLoginScreen(role: UserRole.customer)),
+                  );
                 },
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Color(0xFF006D44)),
@@ -166,7 +169,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Text("New here? "),
                 TextButton(
                   onPressed: () {
-                    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SignupScreen()));
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SignupScreen(role: UserRole.customer)),
+                      );
                   },
                   child: const Text("Create an account", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF006D44))),
                 ),

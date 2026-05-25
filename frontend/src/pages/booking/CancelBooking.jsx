@@ -1,30 +1,16 @@
-import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowLeft,
   CalendarDays,
   CheckCircle2,
-  CircleHelp,
   CreditCard,
 } from 'lucide-react';
 
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
-
-const booking = {
-  id: 'BK-1041',
-  workerName: 'Kasun Silva',
-  service: 'Room painting',
-  date: '28 April 2025',
-  time: '9:00 AM onwards',
-  total: 'LKR 5,000',
-  advance: 'LKR 2,500 advance paid',
-  refundAmount: 'LKR 2,500',
-  status: 'CONFIRMED',
-  image:
-    'https://images.unsplash.com/photo-1560448075-bb485b067938?auto=format&fit=crop&q=80&w=300',
-};
+import { apiRequest } from '../../lib/api';
 
 const policyRows = [
   {
@@ -59,15 +45,110 @@ const reasons = [
 export default function CancelBooking() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const location = useLocation();
 
+  const [booking, setBooking] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [selectedReason, setSelectedReason] = useState(
     'Change of mind / Personal reasons'
   );
   const [notes, setNotes] = useState('');
 
-  const handleConfirmCancellation = () => {
-    navigate('/bookings');
+  useEffect(() => {
+    let isMounted = true;
+    async function loadBooking() {
+      // Check if details were passed in route state
+      if (location.state?.booking) {
+        setBooking(location.state.booking);
+        setLoading(false);
+        return;
+      }
+
+      // Otherwise fetch all bookings and find the matching ID
+      try {
+        setLoading(true);
+        const res = await apiRequest('/auth/bookings');
+        const list = res.data?.data || res.data || [];
+        const found = list.find((b) => b.id.toString() === id);
+        if (isMounted) {
+          if (found) {
+            const workerName = found.worker?.name || 'Verified Pro';
+            setBooking({
+              id: found.id.toString(),
+              workerName,
+              service: found.service_package?.title || 'Professional Service',
+              date: new Date(found.scheduled_at).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }),
+              time: new Date(found.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              total: `LKR ${parseFloat(found.total_price).toLocaleString()}`,
+              advance: `LKR ${(parseFloat(found.total_price) / 2).toLocaleString()} advance paid`,
+              refundAmount: `LKR ${(parseFloat(found.total_price) / 2).toLocaleString()}`,
+              status: found.status.toUpperCase(),
+              image: 'https://ui-avatars.com/api/?name=Pro&background=006D44&color=fff',
+            });
+          }
+          setLoading(false);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+    loadBooking();
+    return () => {
+      isMounted = false;
+    };
+  }, [id, location.state]);
+
+  const handleConfirmCancellation = async () => {
+    try {
+      setLoading(true);
+      await apiRequest(`/auth/bookings/${id}/cancel`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          reason: selectedReason,
+          notes,
+        }),
+      });
+      setLoading(false);
+      alert('Booking cancelled successfully.');
+      navigate('/bookings');
+    } catch (err) {
+      setLoading(false);
+      alert(err.message || 'Failed to cancel booking.');
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-white text-slate-900">
+        <CustomerNavbar activePage="bookings" />
+        <main className="flex-1 flex items-center justify-center">
+          <p className="text-slate-500 text-lg">Loading booking details...</p>
+        </main>
+        <CustomerFooter />
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div className="flex min-h-screen flex-col bg-white text-slate-900">
+        <CustomerNavbar activePage="bookings" />
+        <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <h2 className="text-2xl font-bold text-red-500">Booking not found</h2>
+          <p className="text-slate-500 mt-2">Could not load the requested booking details.</p>
+          <button
+            onClick={() => navigate('/bookings')}
+            className="mt-6 px-6 py-3 bg-emerald-700 text-white rounded-lg font-semibold hover:bg-emerald-800"
+          >
+            Go to My Bookings
+          </button>
+        </main>
+        <CustomerFooter />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-slate-900">
@@ -92,8 +173,7 @@ export default function CancelBooking() {
               </h1>
 
               <p className="mt-3 text-base text-slate-500 xl:text-lg">
-                We&apos;re sorry to see you go. Please review the cancellation
-                terms below.
+                We&apos;re sorry to see you go. Please review the cancellation terms below.
               </p>
             </div>
 
@@ -119,8 +199,8 @@ export default function CancelBooking() {
                         row.type === 'success'
                           ? 'text-emerald-700'
                           : row.type === 'danger'
-                            ? 'text-red-500'
-                            : 'text-slate-600'
+                          ? 'text-red-500'
+                          : 'text-slate-600'
                       }`}
                     >
                       {row.value}
@@ -253,7 +333,7 @@ export default function CancelBooking() {
                 </h2>
 
                 <span className="shrink-0 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-                  #{id || booking.id}
+                  #{booking.id}
                 </span>
               </div>
 
@@ -311,29 +391,6 @@ export default function CancelBooking() {
                   <span className="h-2 w-2 rounded-full bg-emerald-700" />
                   {booking.status}
                 </span>
-              </div>
-            </section>
-
-            <section className="rounded-xl bg-blue-50 p-5 sm:p-6 xl:p-7">
-              <div className="flex gap-3">
-                <CircleHelp size={22} className="mt-0.5 shrink-0 text-emerald-700" />
-
-                <div>
-                  <h3 className="font-bold text-slate-900">Need help?</h3>
-
-                  <p className="mt-3 text-sm leading-6 text-slate-500">
-                    If you&apos;re having trouble with your service provider or
-                    want to reschedule instead of cancelling, our support team is
-                    here 24/7.
-                  </p>
-
-                  <button
-                    type="button"
-                    className="mt-4 cursor-pointer font-bold text-emerald-700 transition hover:text-emerald-800"
-                  >
-                    Contact Support
-                  </button>
-                </div>
               </div>
             </section>
           </aside>

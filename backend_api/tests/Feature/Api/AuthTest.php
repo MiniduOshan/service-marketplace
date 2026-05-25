@@ -35,6 +35,32 @@ class AuthTest extends TestCase
         ]);
     }
 
+    public function test_worker_can_register_and_receive_token(): void
+    {
+        $response = $this->postJson('/api/auth/register-worker', [
+            'name' => 'Worker User',
+            'email' => 'worker@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.user.email', 'worker@example.com')
+            ->assertJsonPath('data.user.role', 'worker')
+            ->assertJsonStructure([
+                'message',
+                'data' => [
+                    'user' => ['id', 'name', 'email', 'role'],
+                    'token',
+                ],
+            ]);
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'worker@example.com',
+            'role' => 'worker',
+        ]);
+    }
+
     public function test_user_can_login_and_access_profile(): void
     {
         $user = User::factory()->create([
@@ -145,5 +171,36 @@ class AuthTest extends TestCase
 
         $signinResponse->assertOk()
             ->assertJsonPath('data.user.email', 'google.user@example.com');
+    }
+
+    public function test_user_can_update_profile_details(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Original Name',
+            'phone' => '94771111111',
+            'phone_verified_at' => now(),
+        ]);
+        $token = $user->issueApiToken();
+
+        // 1. Update only name
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/auth/profile', [
+                'name' => 'Updated Name',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.user.name', 'Updated Name')
+            ->assertJsonPath('data.user.phone', '94771111111');
+        $this->assertNotNull($user->fresh()->phone_verified_at);
+
+        // 2. Update phone (resets verification)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/auth/profile', [
+                'phone' => '+94 77 222 2222',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.user.phone', '94772222222');
+        $this->assertNull($user->fresh()->phone_verified_at);
     }
 }

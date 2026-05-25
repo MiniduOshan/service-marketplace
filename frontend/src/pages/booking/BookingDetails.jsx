@@ -1,7 +1,6 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  ArrowLeft,
   ArrowRight,
   CalendarDays,
   FileText,
@@ -16,28 +15,67 @@ import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
 import BookingProgress from './BookingProgress';
 
-const worker = {
-  name: 'Kasun Silva',
-  service: 'Room Painting',
-  rating: '4.9',
-  reviews: '124 reviews',
-  price: 'LKR 5,000',
-  avatar:
-    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=300',
-};
-
 export default function BookingDetails() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Load from location state, fallback if page is refreshed or visited directly
+  const worker = location.state?.worker || {
+    name: 'Verified Pro',
+    rating: '4.8',
+    reviews: '24 reviews',
+    avatar: 'https://ui-avatars.com/api/?name=Pro&background=006D44&color=fff',
+  };
+  const servicePackage = location.state?.servicePackage || {
+    id: 1,
+    title: 'Professional Service',
+    price: '3500',
+  };
+
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('Morning (08:00 AM - 12:00 PM)');
+  const [streetAddress, setStreetAddress] = useState('');
+  const [city, setCity] = useState('Colombo');
+  const [landmark, setLandmark] = useState('');
+  const [description, setDescription] = useState('');
+
+  const handleContinue = () => {
+    if (!date) {
+      alert('Please select a preferred date.');
+      return;
+    }
+    if (!streetAddress) {
+      alert('Please enter your street address.');
+      return;
+    }
+
+    const fullAddress = `${streetAddress}, ${city}${landmark ? ` (near ${landmark})` : ''}`;
+
+    navigate('/book/review', {
+      state: {
+        worker,
+        servicePackage,
+        bookingDetails: {
+          date,
+          time,
+          address: fullAddress,
+          description: description || 'No description provided.',
+        },
+      },
+    });
+  };
+
+  const displayPrice = `LKR ${parseFloat(servicePackage.price || 0).toLocaleString()}`;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <CustomerNavbar activePage="bookings" />
 
       <BookingProgress
-         currentStep={2}
-         showBack
-         onBack={() => navigate(-1)}
-         />
+        currentStep={2}
+        showBack
+        onBack={() => navigate(-1)}
+      />
 
       <main className="mx-auto w-full max-w-none px-5 py-10 sm:px-8 lg:px-10 xl:px-12 2xl:px-14">
         <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_390px]">
@@ -47,6 +85,7 @@ export default function BookingDetails() {
             </h1>
 
             <div className="space-y-8">
+              {/* Preferred Date & Time */}
               <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
                 <div className="mb-6 flex items-center gap-3">
                   <CalendarDays size={23} className="text-emerald-700" />
@@ -62,6 +101,8 @@ export default function BookingDetails() {
                     </label>
                     <input
                       type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
                       className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-emerald-600"
                     />
                   </div>
@@ -70,7 +111,11 @@ export default function BookingDetails() {
                     <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Preferred Time
                     </label>
-                    <select className="h-12 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-emerald-600">
+                    <select
+                      value={time}
+                      onChange={(e) => setTime(e.target.value)}
+                      className="h-12 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-emerald-600"
+                    >
                       <option>Morning (08:00 AM - 12:00 PM)</option>
                       <option>Afternoon (12:00 PM - 04:00 PM)</option>
                       <option>Evening (04:00 PM - 08:00 PM)</option>
@@ -79,6 +124,7 @@ export default function BookingDetails() {
                 </div>
               </div>
 
+              {/* Location */}
               <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
                 <div className="mb-6 flex items-center gap-3">
                   <MapPin size={23} className="text-emerald-700" />
@@ -95,6 +141,8 @@ export default function BookingDetails() {
                     <input
                       type="text"
                       placeholder="House No, Street Name"
+                      value={streetAddress}
+                      onChange={(e) => setStreetAddress(e.target.value)}
                       className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-600"
                     />
                   </div>
@@ -106,7 +154,8 @@ export default function BookingDetails() {
                       </label>
                       <input
                         type="text"
-                        defaultValue="Colombo"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
                         className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-emerald-600"
                       />
                     </div>
@@ -118,6 +167,8 @@ export default function BookingDetails() {
                       <input
                         type="text"
                         placeholder="Near Petrol Shed"
+                        value={landmark}
+                        onChange={(e) => setLandmark(e.target.value)}
                         className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-600"
                       />
                     </div>
@@ -125,6 +176,7 @@ export default function BookingDetails() {
                 </div>
               </div>
 
+              {/* Job Description */}
               <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
                 <div className="mb-6 flex items-center gap-3">
                   <FileText size={23} className="text-emerald-700" />
@@ -138,11 +190,14 @@ export default function BookingDetails() {
                 </label>
                 <textarea
                   rows={5}
-                  placeholder="Please provide specific details about the painting job, such as room dimensions, current wall condition, and if you have the paint already."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Please provide specific details about the service required (e.g. scope of work, dimensions, material preferences)."
                   className="w-full resize-none rounded-lg border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-600"
                 />
               </div>
 
+              {/* Photos */}
               <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
                 <div className="mb-6 flex items-center gap-3">
                   <UploadCloud size={23} className="text-emerald-700" />
@@ -165,10 +220,11 @@ export default function BookingDetails() {
                 </button>
               </div>
 
+              {/* Submit Action */}
               <div className="flex justify-end pt-2">
                 <button
                   type="button"
-                  onClick={() => navigate('/book/review')}
+                  onClick={handleContinue}
                   className="inline-flex h-14 min-w-72 cursor-pointer items-center justify-center gap-2 rounded-lg bg-emerald-700 px-8 text-lg font-semibold text-white shadow-sm transition hover:bg-emerald-800"
                 >
                   Continue to Review
@@ -178,6 +234,7 @@ export default function BookingDetails() {
             </div>
           </section>
 
+          {/* Sidebar */}
           <aside className="space-y-6">
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-100 p-6">
@@ -209,14 +266,14 @@ export default function BookingDetails() {
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Service</span>
                     <span className="font-semibold text-slate-900">
-                      {worker.service}
+                      {servicePackage.title}
                     </span>
                   </div>
 
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Est. Base Price</span>
                     <span className="font-semibold text-slate-900">
-                      {worker.price}
+                      {displayPrice}
                     </span>
                   </div>
                 </div>
@@ -227,27 +284,6 @@ export default function BookingDetails() {
                     Final price will be confirmed after worker reviews your job
                     description.
                   </p>
-                </div>
-
-                <div className="mt-7">
-                  <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Service Includes
-                  </h4>
-
-                  <ul className="space-y-2 text-sm text-slate-700">
-                    <li className="flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-700" />
-                      Wall cleaning & prepping
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-700" />
-                      Two coats of paint
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-700" />
-                      Basic cleanup afterwards
-                    </li>
-                  </ul>
                 </div>
               </div>
             </div>

@@ -11,9 +11,9 @@ class BookingStepsScreen extends StatefulWidget {
   const BookingStepsScreen({
     super.key,
     this.servicePackageId,
-    this.workerName = 'Kasun Silva',
-    this.serviceTitle = 'Room painting',
-    this.priceLabel = 'LKR 5,000',
+    this.workerName = 'Professional',
+    this.serviceTitle = 'Service Booking',
+    this.priceLabel = 'LKR 0',
   });
 
   @override
@@ -34,8 +34,14 @@ class _BookingStepsScreenState extends State<BookingStepsScreen> {
   @override
   void initState() {
     super.initState();
-    _dateController = TextEditingController(text: '28 April 2025');
-    _addressController = TextEditingController(text: '123 Temple Road, Maharagama');
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    final dateStr = "${tomorrow.day} ${months[tomorrow.month - 1]} ${tomorrow.year}";
+    _dateController = TextEditingController(text: dateStr);
+    _addressController = TextEditingController(text: '');
     _notesController = TextEditingController();
     _servicePackageId = widget.servicePackageId;
     _resolveDefaultService();
@@ -284,18 +290,23 @@ class _BookingStepsScreenState extends State<BookingStepsScreen> {
   }
 
   Widget _buildPriceSummary() {
+    final cleanPrice = widget.priceLabel.replaceAll(RegExp(r'[^\d]'), '');
+    final double serviceFee = double.tryParse(cleanPrice) ?? 0.0;
+    final double platformFee = serviceFee > 0 ? 250.0 : 0.0;
+    final double totalAmount = serviceFee + platformFee;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: const Color(0xFFE9F1EE), borderRadius: BorderRadius.circular(12)),
-      child: const Column(
+      child: Column(
         children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("Service fee"), Text("LKR 5,000")]),
-          SizedBox(height: 8),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("Platform fee"), Text("LKR 250")]),
-          Divider(height: 32),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("Service fee"), Text("LKR ${serviceFee.toStringAsFixed(0)}")]),
+          const SizedBox(height: 8),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("Platform fee"), Text("LKR ${platformFee.toStringAsFixed(0)}")]),
+          const Divider(height: 32),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text("Total Amount", style: TextStyle(fontWeight: FontWeight.bold)),
-            Text("LKR 5,250", style: TextStyle(fontWeight: FontWeight.bold, color: primaryGreen, fontSize: 18)),
+            const Text("Total Amount", style: TextStyle(fontWeight: FontWeight.bold)),
+            Text("LKR ${totalAmount.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.bold, color: primaryGreen, fontSize: 18)),
           ]),
         ],
       ),
@@ -303,14 +314,19 @@ class _BookingStepsScreenState extends State<BookingStepsScreen> {
   }
 
   Widget _buildPriceSummaryBox() {
+    final cleanPrice = widget.priceLabel.replaceAll(RegExp(r'[^\d]'), '');
+    final double serviceFee = double.tryParse(cleanPrice) ?? 0.0;
+    final double platformFee = serviceFee > 0 ? 250.0 : 0.0;
+    final double totalAmount = serviceFee + platformFee;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: const Color(0xFFE9F1EE), borderRadius: BorderRadius.circular(12)),
-      child: const Row(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text("Total Amount", style: TextStyle(fontWeight: FontWeight.bold)),
-          Text("LKR 5,250", style: TextStyle(fontWeight: FontWeight.bold, color: primaryGreen, fontSize: 18)),
+          const Text("Total Amount", style: TextStyle(fontWeight: FontWeight.bold)),
+          Text("LKR ${totalAmount.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.bold, color: primaryGreen, fontSize: 18)),
         ],
       ),
     );

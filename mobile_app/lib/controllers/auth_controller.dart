@@ -268,6 +268,35 @@ class AuthController {
     return true;
   }
 
+  Future<bool> updateProfile({String? name, String? phone}) async {
+    final response = await ApiClient.instance.updateProfile(
+      name: name,
+      phone: phone,
+      token: _sessionToken,
+    );
+    final data = response['data'] as Map<String, dynamic>;
+    final user = data['user'] as Map<String, dynamic>;
+    final role = user['role']?.toString() == 'worker' ? UserRole.worker : UserRole.customer;
+
+    _setSession(
+      AppUser(
+        id: user['id'].toString(),
+        name: user['name']?.toString(),
+        email: user['email']?.toString(),
+        phone: user['phone']?.toString(),
+        token: _sessionToken,
+        role: role,
+        isRegistrationComplete: _authStateNotifier.value?.isRegistrationComplete ?? (role != UserRole.worker),
+        phoneVerifiedAt: user['phone_verified_at'] != null
+            ? DateTime.tryParse(user['phone_verified_at'].toString())
+            : null,
+      ),
+      token: _sessionToken,
+    );
+
+    return true;
+  }
+
   void logOut() {
     _currentUserRole = null;
     _sessionToken = null;

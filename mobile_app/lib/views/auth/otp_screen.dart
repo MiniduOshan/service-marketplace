@@ -9,7 +9,13 @@ import '../worker/worker_registration_screen.dart';
 class OTPVerificationScreen extends StatefulWidget {
   final String verificationTarget;
   final String phoneNumber;
-  const OTPVerificationScreen({super.key, required this.verificationTarget, required this.phoneNumber});
+  final bool isFromProfile;
+  const OTPVerificationScreen({
+    super.key,
+    required this.verificationTarget,
+    required this.phoneNumber,
+    this.isFromProfile = false,
+  });
 
   @override
   State<OTPVerificationScreen> createState() => _OTPVerificationScreenState();
@@ -101,6 +107,11 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   try {
                     await authController.verifyPhoneOtp(widget.phoneNumber, _otpController.text.trim());
                     if (!context.mounted) return;
+
+                    if (widget.isFromProfile) {
+                      Navigator.of(context).pop(true);
+                      return;
+                    }
 
                     final nextScreen = authController.currentUserRole == UserRole.worker
                       ? const WorkerRegistrationScreen()

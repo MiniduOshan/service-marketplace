@@ -30,46 +30,9 @@ import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
 import { apiRequest, getStoredSessionUser, storeSession } from '../../lib/api';
 
-const stats = [
-  { label: 'Total Bookings', value: '12', icon: CalendarDays },
-  { label: 'Completed', value: '08', icon: CheckCircle2 },
-  { label: 'Reviews Given', value: '06', icon: Star },
-  { label: 'Messages', value: '18', icon: MessageSquare },
-];
+const initialAddresses = [];
 
-const initialAddresses = [
-  {
-    id: 1,
-    label: 'Home',
-    address: '45/2 Galle Road, Colombo 03',
-    note: 'Default service location',
-    default: true,
-  },
-  {
-    id: 2,
-    label: 'Office',
-    address: 'No. 18, High Level Road, Nugegoda',
-    note: 'Available weekdays',
-    default: false,
-  },
-];
-
-const initialPaymentMethods = [
-  {
-    id: 1,
-    type: 'Visa Card',
-    number: '•••• •••• •••• 4242',
-    expiry: 'Expires 08/27',
-    default: true,
-  },
-  {
-    id: 2,
-    type: 'Mastercard',
-    number: '•••• •••• •••• 8891',
-    expiry: 'Expires 11/26',
-    default: false,
-  },
-];
+const initialPaymentMethods = [];
 
 const emptyAddressForm = {
   label: '',
@@ -199,21 +162,51 @@ function PasswordInput({
 
 export default function CustomerProfile() {
   const [sessionUser, setSessionUser] = useState(() => getStoredSessionUser());
+  const [statsData, setStatsData] = useState({
+    total_bookings: 0,
+    completed_bookings: 0,
+    reviews_given: 0,
+    messages: 0,
+  });
+
   const isPhoneVerified = Boolean(
     sessionUser?.phone_verified_at || sessionUser?.phoneVerifiedAt,
   );
+
+  const joinedDate = useMemo(() => {
+    if (!sessionUser?.created_at) return 'Joined April 2025';
+    try {
+      const date = new Date(sessionUser.created_at);
+      const monthName = date.toLocaleString('en-US', { month: 'long' });
+      const year = date.getFullYear();
+      return `Joined ${monthName} ${year}`;
+    } catch {
+      return 'Joined April 2025';
+    }
+  }, [sessionUser?.created_at]);
+
   const customer = useMemo(
     () => ({
       name: sessionUser?.name?.trim() || 'Profile',
       email: sessionUser?.email?.trim() || 'Signed in user',
       phone: sessionUser?.phone?.trim() || '',
-      location: 'Maharagama, Colombo',
-      joinedDate: 'Joined April 2025',
-      avatar:
-        'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=300',
+      location: sessionUser?.location?.trim() || '',
+      joinedDate: joinedDate,
     }),
-    [sessionUser],
+    [sessionUser, joinedDate],
   );
+
+  const displayInitials = useMemo(() => {
+    const name = customer.name || 'Customer';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  }, [customer.name]);
+
+  const stats = useMemo(() => [
+    { label: 'Total Bookings', value: String(statsData.total_bookings), icon: CalendarDays },
+    { label: 'Completed', value: String(statsData.completed_bookings), icon: CheckCircle2 },
+    { label: 'Reviews Given', value: String(statsData.reviews_given), icon: Star },
+    { label: 'Messages', value: String(statsData.messages), icon: MessageSquare },
+  ], [statsData]);
 
   const [activeSection, setActiveSection] = useState('account');
   const [isEditing, setIsEditing] = useState(false);
@@ -233,6 +226,51 @@ export default function CustomerProfile() {
     phone: customer.phone,
     location: customer.location,
   });
+
+  useEffect(() => {
+    async function loadProfileData() {
+      try {
+        const meRes = await apiRequest('/auth/me');
+        const latestUser = meRes.data?.user || meRes.data || meRes;
+        if (latestUser) {
+          setSessionUser(latestUser);
+          storeSession(localStorage.getItem('skilledlk_token'), latestUser);
+        }
+      } catch (err) {
+        console.error('Failed to load user info:', err);
+      }
+
+      try {
+        const statsRes = await apiRequest('/auth/customer/stats');
+        const sData = statsRes.data || statsRes;
+        if (sData) {
+          setStatsData({
+            total_bookings: sData.total_bookings || 0,
+            completed_bookings: sData.completed_bookings || 0,
+            reviews_given: sData.reviews_given || 0,
+            messages: sData.messages || 0,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load customer stats:', err);
+      }
+    }
+
+    loadProfileData();
+  }, []);
+
+  useEffect(() => {
+    if (sessionUser) {
+      const freshForm = {
+        name: sessionUser.name?.trim() || '',
+        email: sessionUser.email?.trim() || '',
+        phone: sessionUser.phone?.trim() || '',
+        location: sessionUser.location?.trim() || '',
+      };
+      setProfileForm(freshForm);
+      setSavedProfileForm(freshForm);
+    }
+  }, [sessionUser]);
 
   const [addresses, setAddresses] = useState(initialAddresses);
   const [savedAddresses, setSavedAddresses] = useState(initialAddresses);
@@ -350,7 +388,7 @@ export default function CustomerProfile() {
     setIsEditing(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (
       passwordForm.newPassword ||
       passwordForm.currentPassword ||
@@ -369,7 +407,34 @@ export default function CustomerProfile() {
       }
     }
 
-    setSavedProfileForm(profileForm);
+    try {
+      const response = await apiRequest('/auth/profile', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: profileForm.name,
+          phone: profileForm.phone,
+        }),
+      });
+
+      const updatedUser = response?.data?.user || response?.data || response;
+      if (updatedUser) {
+        setSessionUser(updatedUser);
+        storeSession(localStorage.getItem('skilledlk_token'), updatedUser);
+
+        const freshForm = {
+          name: updatedUser.name?.trim() || '',
+          email: updatedUser.email?.trim() || '',
+          phone: updatedUser.phone?.trim() || '',
+          location: updatedUser.location?.trim() || '',
+        };
+        setSavedProfileForm(freshForm);
+        setProfileForm(freshForm);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to update profile details.');
+      return;
+    }
+
     setSavedAddresses(addresses);
     setSavedPaymentMethods(paymentMethods);
     setSavedPasswordForm(emptyPasswordForm);
@@ -1262,11 +1327,9 @@ export default function CustomerProfile() {
             <aside className="space-y-7">
               <section className="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
                 <div className="relative mx-auto h-28 w-28">
-                  <img
-                    src={customer.avatar}
-                    alt={customer.name}
-                    className="h-28 w-28 rounded-full object-cover"
-                  />
+                  <div className="flex h-28 w-28 items-center justify-center rounded-full bg-emerald-700 text-3xl font-bold text-white shadow-sm">
+                    {displayInitials}
+                  </div>
 
                   {isEditing && (
                     <button

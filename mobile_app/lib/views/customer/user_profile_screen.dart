@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../controllers/auth_controller.dart'; // To handle logout
+import '../../models/app_user.dart';
 import '../auth/otp_screen.dart';
 
 class UserProfileScreen extends StatelessWidget {
@@ -23,9 +24,10 @@ class UserProfileScreen extends StatelessWidget {
     if (phone.isEmpty) {
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('Add your phone number before verification.'),
+          content: Text('Please add your phone number first.'),
         ),
       );
+      _showEditProfileBottomSheet(context);
       return;
     }
 
@@ -47,6 +49,7 @@ class UserProfileScreen extends StatelessWidget {
           builder: (_) => OTPVerificationScreen(
             verificationTarget: verificationPhone,
             phoneNumber: verificationPhone,
+            isFromProfile: true,
           ),
         ),
       );
@@ -59,43 +62,260 @@ class UserProfileScreen extends StatelessWidget {
     }
   }
 
+  void _showEditProfileBottomSheet(BuildContext context) {
+    final currentUser = authController.currentUser;
+    final nameController = TextEditingController(text: currentUser?.name ?? '');
+    final phoneController = TextEditingController(text: currentUser?.phone ?? '');
+    final formKey = GlobalKey<FormState>();
+    bool isLoading = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 45,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    "Edit Profile Details",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: primaryGreen,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    "Update your personal information below.",
+                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                  ),
+                  const SizedBox(height: 24),
+                  TextFormField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      labelText: "Full Name",
+                      prefixIcon: const Icon(Icons.person_outline, color: primaryGreen),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: primaryGreen, width: 2),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter your name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: "Phone Number",
+                      prefixIcon: const Icon(Icons.phone_outlined, color: primaryGreen),
+                      hintText: "+94771234567",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: primaryGreen, width: 2),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter your phone number';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  StatefulBuilder(
+                    builder: (modalContext, setModalState) {
+                      return SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryGreen,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: isLoading
+                              ? null
+                              : () async {
+                                  if (formKey.currentState!.validate()) {
+                                    setModalState(() => isLoading = true);
+                                    try {
+                                      final newPhone = phoneController.text.trim();
+                                      final oldPhone = currentUser?.phone?.trim() ?? '';
+                                      final isPhoneVerificationNeeded = newPhone.isNotEmpty &&
+                                          (newPhone != oldPhone || !(currentUser?.isPhoneVerified ?? false));
+
+                                      await authController.updateProfile(
+                                        name: nameController.text.trim(),
+                                        phone: newPhone,
+                                      );
+
+                                      if (context.mounted) {
+                                        if (isPhoneVerificationNeeded) {
+                                          final updatedUser = authController.currentUser;
+                                          if (updatedUser != null) {
+                                            final response = await authController.requestPhoneOtp(
+                                              (updatedUser.name ?? 'Customer').trim().isNotEmpty
+                                                  ? updatedUser.name!.trim()
+                                                  : 'Customer',
+                                              updatedUser.phone!,
+                                              updatedUser.role,
+                                            );
+                                            final verificationPhone = response['data']?['phone']?.toString() ?? updatedUser.phone!;
+                                            
+                                            if (context.mounted) {
+                                              final navigator = Navigator.of(context);
+                                              navigator.pop(); // Close bottom sheet
+                                              navigator.push(
+                                                MaterialPageRoute(
+                                                  builder: (_) => OTPVerificationScreen(
+                                                    verificationTarget: verificationPhone,
+                                                    phoneNumber: verificationPhone,
+                                                    isFromProfile: true,
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        } else {
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                "Profile updated successfully!",
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              e.toString().replaceFirst(
+                                                    'Exception: ',
+                                                    '',
+                                                  ),
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    } finally {
+                                      setModalState(() => isLoading = false);
+                                    }
+                                  }
+                                },
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : const Text(
+                                  "Save Changes",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF6F8F9),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: primaryGreen),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Profile",
-          style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            _buildProfileHeader(context),
-            const SizedBox(height: 30),
-            _buildSettingsList(context),
-            const SizedBox(height: 20),
-            _buildSupportSection(context),
-            const SizedBox(height: 30),
-            _buildLogoutButton(context),
-            const SizedBox(height: 20),
-            const Text(
-              "Version 2.4.1 • SkilledLK Platform",
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+    return ValueListenableBuilder<AppUser?>(
+      valueListenable: authController.authStateNotifier,
+      builder: (context, currentUser, child) {
+        return Scaffold(
+          backgroundColor: const Color(0xFFF6F8F9),
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: primaryGreen),
+              onPressed: () => Navigator.pop(context),
             ),
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
+            title: const Text(
+              "Profile",
+              style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold),
+            ),
+            centerTitle: true,
+          ),
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                _buildProfileHeader(context),
+                const SizedBox(height: 30),
+                _buildSettingsList(context),
+                const SizedBox(height: 20),
+                _buildSupportSection(context),
+                const SizedBox(height: 30),
+                _buildLogoutButton(context),
+                const SizedBox(height: 20),
+                const Text(
+                  "Version 2.4.1 • SkilledLK Platform",
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+                const SizedBox(height: 30),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -121,13 +341,7 @@ class UserProfileScreen extends StatelessWidget {
               bottom: 0,
               right: 0,
               child: GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Profile editing coming soon!"),
-                    ),
-                  );
-                },
+                onTap: () => _showEditProfileBottomSheet(context),
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: const BoxDecoration(
@@ -220,7 +434,7 @@ class UserProfileScreen extends StatelessWidget {
             "Payment Methods",
             Colors.teal.shade50,
             Colors.teal,
-            subtitle: "Visa •••• 1234",
+            subtitle: "Manage saved cards",
             onTap: () => Navigator.pushNamed(context, '/payment-methods'),
           ),
           _settingTile(

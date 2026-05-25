@@ -1,126 +1,20 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   CheckCircle2,
   Info,
   Menu,
   MoreVertical,
   Paperclip,
-  Phone,
   Send,
   Smile,
-  Video,
   X,
   SquarePen,
+  MessageSquare,
 } from 'lucide-react';
 
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
-
-const conversations = [
-  {
-    id: 1,
-    name: 'Kasun Silva',
-    role: 'Painter',
-    avatar:
-      'https://images.unsplash.com/photo-1600486913747-55e5470d6f40?auto=format&fit=crop&q=80&w=300',
-    lastMessage: "I'll be there at 9 AM. My number is...",
-    time: '10:25 AM',
-    unread: true,
-    online: true,
-    starred: false,
-  },
-  {
-    id: 2,
-    name: 'Sunil Perera',
-    role: 'Electrician',
-    avatar:
-      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=300',
-    lastMessage: 'The wiring fix is completed. Thank you!',
-    time: 'Yesterday',
-    unread: false,
-    online: false,
-    starred: false,
-  },
-  {
-    id: 3,
-    name: 'Amali de Silva',
-    role: 'Interior Designer',
-    avatar:
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=300',
-    lastMessage: 'I’ve sent the updated floor plan for the...',
-    time: '25 Apr',
-    unread: false,
-    online: false,
-    starred: true,
-  },
-  {
-    id: 4,
-    name: 'Nuwan Perera',
-    role: 'Plumber',
-    avatar:
-      'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=300',
-    lastMessage: 'I can visit tomorrow morning.',
-    time: '24 Apr',
-    unread: false,
-    online: false,
-    starred: false,
-  },
-  {
-    id: 5,
-    name: 'Saman Fernando',
-    role: 'AC Technician',
-    avatar:
-      'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=300',
-    lastMessage: 'Sorry, I am unavailable for that time slot.',
-    time: '22 Apr',
-    unread: false,
-    online: false,
-    starred: false,
-  },
-];
-
-const messages = [
-  {
-    id: 1,
-    type: 'system',
-    text: 'Booking #BK-1041 created · 28 April 2025',
-  },
-  {
-    id: 2,
-    sender: 'worker',
-    text: 'Hello! I saw your room painting request. Could you share more details about the room size?',
-    time: '10:22 AM',
-  },
-  {
-    id: 3,
-    sender: 'customer',
-    text: 'Hi Kasun! It’s a 12×14 ft bedroom. Currently light yellow walls.',
-    time: '10:24 AM',
-  },
-  {
-    id: 4,
-    sender: 'worker',
-    text: 'Perfect. I can do it for LKR 5,000 including primer and 2 coats. Are you OK with 28th April?',
-    time: '10:25 AM',
-  },
-  {
-    id: 5,
-    sender: 'customer',
-    text: 'Yes that works! Please confirm the booking.',
-    time: '10:26 AM',
-  },
-  {
-    id: 6,
-    type: 'confirmation',
-    text: 'Booking confirmed · Worker contact shared',
-  },
-  {
-    id: 7,
-    sender: 'worker',
-    text: "Great! I'll be there at 9 AM. My number is 077-XXXXXXX",
-    time: 'Just now',
-  },
-];
 
 const filters = ['All Chats', 'Unread', 'Starring'];
 
@@ -245,17 +139,69 @@ function ChatBubble({ message, workerAvatar }) {
 }
 
 export default function ChatPage() {
-  const [activeConversationId, setActiveConversationId] = useState(1);
+  const location = useLocation();
+  const [conversations, setConversations] = useState([]);
+  const [activeConversationId, setActiveConversationId] = useState(null);
+  const [conversationMessages, setConversationMessages] = useState({});
   const [activeFilter, setActiveFilter] = useState('All Chats');
   const [messageInput, setMessageInput] = useState('');
   const [mobileListOpen, setMobileListOpen] = useState(false);
+
+  useEffect(() => {
+    if (location.state && location.state.workerId) {
+      const { workerId, workerName, workerRole } = location.state;
+
+      setConversations((prevConvs) => {
+        const exists = prevConvs.some((c) => c.id === workerId);
+        if (exists) {
+          setActiveConversationId(workerId);
+          return prevConvs;
+        }
+
+        const newConv = {
+          id: workerId,
+          name: workerName,
+          role: workerRole || 'Verified Pro',
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(workerName)}&background=006D44&color=fff`,
+          lastMessage: 'Start of conversation',
+          time: 'Just now',
+          unread: false,
+          online: true,
+          starred: false,
+        };
+
+        setActiveConversationId(workerId);
+        return [newConv, ...prevConvs];
+      });
+
+      setConversationMessages((prevMsgs) => {
+        if (prevMsgs[workerId]) return prevMsgs;
+        return {
+          ...prevMsgs,
+          [workerId]: [
+            {
+              id: 'system-1',
+              type: 'system',
+              text: 'Conversation started',
+            },
+          ],
+        };
+      });
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    if (!activeConversationId && conversations.length > 0) {
+      setActiveConversationId(conversations[0].id);
+    }
+  }, [conversations, activeConversationId]);
 
   const activeConversation = useMemo(
     () =>
       conversations.find(
         (conversation) => conversation.id === activeConversationId
-      ) || conversations[0],
-    [activeConversationId]
+      ) || null,
+    [conversations, activeConversationId]
   );
 
   const filteredConversations = useMemo(() => {
@@ -268,18 +214,58 @@ export default function ChatPage() {
     }
 
     return conversations;
-  }, [activeFilter]);
+  }, [conversations, activeFilter]);
+
+  const activeMessages = useMemo(
+    () => (activeConversationId ? conversationMessages[activeConversationId] || [] : []),
+    [conversationMessages, activeConversationId]
+  );
 
   const handleSelectConversation = (id) => {
     setActiveConversationId(id);
     setMobileListOpen(false);
   };
 
+  const handleSendMessage = () => {
+    const text = messageInput.trim();
+    if (!text || !activeConversationId) return;
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const msgId = Date.now();
+
+    const newMsg = {
+      id: msgId,
+      sender: 'customer',
+      text,
+      time: timeStr,
+    };
+
+    setConversationMessages((prev) => ({
+      ...prev,
+      [activeConversationId]: [...(prev[activeConversationId] || []), newMsg],
+    }));
+
+    setConversations((prevConvs) =>
+      prevConvs.map((c) =>
+        c.id === activeConversationId
+          ? {
+              ...c,
+              lastMessage: text,
+              time: timeStr,
+            }
+          : c
+      )
+    );
+
+    setMessageInput('');
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <CustomerNavbar activePage="" />
 
-      {/* Chat viewport area. The footer is below this area and can be reached by scrolling down. */}
+      {/* Chat viewport area */}
       <main className="flex h-[calc(100vh-80px)] overflow-hidden border-b border-slate-200 bg-slate-50">
         {/* Sidebar / Profiles Area */}
         <aside
@@ -338,14 +324,20 @@ export default function ChatPage() {
 
             {/* Profiles area scrolls only when content overflows */}
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {filteredConversations.map((conversation) => (
-                <ConversationItem
-                  key={conversation.id}
-                  conversation={conversation}
-                  active={conversation.id === activeConversationId}
-                  onClick={() => handleSelectConversation(conversation.id)}
-                />
-              ))}
+              {filteredConversations.length === 0 ? (
+                <div className="p-8 text-center text-slate-500">
+                  No messages yet.
+                </div>
+              ) : (
+                filteredConversations.map((conversation) => (
+                  <ConversationItem
+                    key={conversation.id}
+                    conversation={conversation}
+                    active={conversation.id === activeConversationId}
+                    onClick={() => handleSelectConversation(conversation.id)}
+                  />
+                ))
+              )}
             </div>
           </div>
         </aside>
@@ -360,133 +352,143 @@ export default function ChatPage() {
         )}
 
         {/* Chat Area */}
-        <section className="flex min-w-0 flex-1 flex-col bg-slate-50">
-          {/* Chat Header */}
-          <header className="flex min-h-[72px] shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
-            <div className="flex min-w-0 items-center gap-3">
+        {conversations.length === 0 ? (
+          <section className="flex min-w-0 flex-1 flex-col items-center justify-center bg-slate-50 p-8 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+              <MessageSquare size={38} />
+            </div>
+            <h2 className="mt-6 text-xl font-bold text-slate-900">Your Inbox is Empty</h2>
+            <p className="mt-2 max-w-sm text-sm text-slate-500">
+              Choose a professional from the search or home page and click 'Chat' to start a conversation.
+            </p>
+          </section>
+        ) : !activeConversation ? (
+          <section className="flex min-w-0 flex-1 flex-col items-center justify-center bg-slate-50 p-8 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+              <MessageSquare size={38} />
+            </div>
+            <h2 className="mt-6 text-xl font-bold text-slate-900">Select a Conversation</h2>
+            <p className="mt-2 max-w-sm text-sm text-slate-500">
+              Select a chat from the sidebar to view the conversation history and start messaging.
+            </p>
+          </section>
+        ) : (
+          <section className="flex min-w-0 flex-1 flex-col bg-slate-50">
+            {/* Chat Header */}
+            <header className="flex min-h-[72px] shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
+              <div className="flex min-w-0 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setMobileListOpen(true)}
+                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-slate-200 text-slate-600 lg:hidden"
+                  aria-label="Open conversations"
+                >
+                  <Menu size={22} />
+                </button>
+
+                <ConversationAvatar conversation={activeConversation} />
+
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="truncate text-lg font-bold text-slate-900">
+                      {activeConversation.name}
+                    </h2>
+                    <span className="text-sm text-slate-400">•</span>
+                    <span className="text-sm text-slate-500">
+                      {activeConversation.role}
+                    </span>
+                  </div>
+
+                  <p className="mt-0.5 flex items-center gap-2 text-sm text-emerald-700">
+                    <span className="h-2 w-2 rounded-full bg-emerald-600" />
+                    Online now
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-3 text-slate-600">
+                <button
+                  type="button"
+                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg transition hover:bg-slate-100 hover:text-emerald-700"
+                  aria-label="More"
+                >
+                  <MoreVertical size={22} />
+                </button>
+              </div>
+            </header>
+
+            {/* Alert */}
+            <div className="flex shrink-0 items-center justify-between gap-4 border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm">
+              <div className="flex min-w-0 items-center gap-3 text-orange-700">
+                <Info size={18} className="shrink-0" />
+                <p className="truncate">
+                  Worker’s phone number will be shared after booking is confirmed.
+                </p>
+              </div>
+
               <button
                 type="button"
-                onClick={() => setMobileListOpen(true)}
-                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-slate-200 text-slate-600 lg:hidden"
-                aria-label="Open conversations"
+                className="shrink-0 cursor-pointer font-bold text-emerald-700 hover:text-emerald-800"
               >
-                <Menu size={22} />
+                Book now
               </button>
+            </div>
 
-              <ConversationAvatar conversation={activeConversation} />
-
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="truncate text-lg font-bold text-slate-900">
-                    {activeConversation.name}
-                  </h2>
-                  <span className="text-sm text-slate-400">•</span>
-                  <span className="text-sm text-slate-500">
-                    {activeConversation.role}
-                  </span>
-                </div>
-
-                <p className="mt-0.5 flex items-center gap-2 text-sm text-emerald-700">
-                  <span className="h-2 w-2 rounded-full bg-emerald-600" />
-                  Online now
-                </p>
+            {/* Messages area scrolls */}
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8 lg:px-16">
+              <div className="mx-auto flex max-w-5xl flex-col gap-7">
+                {activeMessages.map((message) => (
+                  <ChatBubble
+                    key={message.id}
+                    message={message}
+                    workerAvatar={activeConversation.avatar}
+                  />
+                ))}
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center gap-3 text-slate-600">
-              {/* <button
-                type="button"
-                className="hidden h-10 w-10 cursor-pointer items-center justify-center rounded-lg transition hover:bg-slate-100 hover:text-emerald-700 sm:flex"
-                aria-label="Call"
-              >
-                <Phone size={22} />
-              </button>
+            {/* Message typing box */}
+            <footer className="shrink-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
+              <div className="mx-auto flex max-w-6xl items-center gap-3 rounded-xl bg-slate-100 px-4 py-2">
+                <button
+                  type="button"
+                  className="cursor-pointer text-slate-500 transition hover:text-emerald-700"
+                  aria-label="Attach file"
+                >
+                  <Paperclip size={22} />
+                </button>
 
-              <button
-                type="button"
-                className="hidden h-10 w-10 cursor-pointer items-center justify-center rounded-lg transition hover:bg-slate-100 hover:text-emerald-700 sm:flex"
-                aria-label="Video call"
-              >
-                <Video size={22} />
-              </button> */}
-
-              <button
-                type="button"
-                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg transition hover:bg-slate-100 hover:text-emerald-700"
-                aria-label="More"
-              >
-                <MoreVertical size={22} />
-              </button>
-            </div>
-          </header>
-
-          {/* Alert */}
-          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm">
-            <div className="flex min-w-0 items-center gap-3 text-orange-700">
-              <Info size={18} className="shrink-0" />
-              <p className="truncate">
-                Worker’s phone number will be shared after booking is confirmed.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              className="shrink-0 cursor-pointer font-bold text-emerald-700 hover:text-emerald-800"
-            >
-              Book now
-            </button>
-          </div>
-
-          {/* Messages area scrolls while the message typing box stays at the viewport bottom */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8 lg:px-16">
-            <div className="mx-auto flex max-w-5xl flex-col gap-7">
-              {messages.map((message) => (
-                <ChatBubble
-                  key={message.id}
-                  message={message}
-                  workerAvatar={activeConversation.avatar}
+                <input
+                  type="text"
+                  value={messageInput}
+                  onChange={(event) => setMessageInput(event.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSendMessage();
+                  }}
+                  placeholder="Write a message..."
+                  className="h-10 min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
                 />
-              ))}
-            </div>
-          </div>
 
-          {/* Message typing box */}
-          <footer className="shrink-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
-            <div className="mx-auto flex max-w-6xl items-center gap-3 rounded-xl bg-slate-100 px-4 py-2">
-              <button
-                type="button"
-                className="cursor-pointer text-slate-500 transition hover:text-emerald-700"
-                aria-label="Attach file"
-              >
-                <Paperclip size={22} />
-              </button>
+                <button
+                  type="button"
+                  className="cursor-pointer text-slate-500 transition hover:text-emerald-700"
+                  aria-label="Emoji"
+                >
+                  <Smile size={22} />
+                </button>
 
-              <input
-                type="text"
-                value={messageInput}
-                onChange={(event) => setMessageInput(event.target.value)}
-                placeholder="Write a message..."
-                className="h-10 min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
-              />
-
-              <button
-                type="button"
-                className="cursor-pointer text-slate-500 transition hover:text-emerald-700"
-                aria-label="Emoji"
-              >
-                <Smile size={22} />
-              </button>
-
-              <button
-                type="button"
-                className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg bg-emerald-700 text-white transition hover:bg-emerald-800"
-                aria-label="Send message"
-              >
-                <Send size={24} fill="currentColor" />
-              </button>
-            </div>
-          </footer>
-        </section>
+                <button
+                  type="button"
+                  onClick={handleSendMessage}
+                  className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg bg-emerald-700 text-white transition hover:bg-emerald-800"
+                  aria-label="Send message"
+                >
+                  <Send size={24} fill="currentColor" />
+                </button>
+              </div>
+            </footer>
+          </section>
+        )}
       </main>
 
       <CustomerFooter />

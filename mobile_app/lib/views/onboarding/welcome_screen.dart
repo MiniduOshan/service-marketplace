@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../models/app_user.dart';
+import '../auth/signup_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -84,8 +86,10 @@ class WelcomeScreen extends StatelessWidget {
                   width: double.infinity, height: 56,
                   child: OutlinedButton(
                     onPressed: () {
-                      // Only Join as Workers need the specialized phone number flow (image_8.png)
-                      Navigator.pushNamed(context, '/phone-login');
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const SignupScreen(role: UserRole.worker)),
+                        );
                     },
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Colors.white, width: 2),

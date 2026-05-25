@@ -30,12 +30,16 @@ Route::prefix('auth')->group(function () {
     Route::middleware(AuthenticateApiToken::class)->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
+        Route::post('/profile', [AuthController::class, 'updateProfile']);
+        Route::get('/customer/stats', [AuthController::class, 'customerStats']);
 
         Route::get('/bookings', [BookingController::class, 'index']);
         Route::post('/bookings', [BookingController::class, 'store']);
         Route::patch('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
 
         Route::middleware(EnsureUserRole::class.':worker')->group(function () {
+            Route::get('/worker/services', [ServicePackageController::class, 'workerServices']);
+            Route::get('/worker/stats', [AuthController::class, 'workerStats']);
             Route::post('/worker/services', [ServicePackageController::class, 'store']);
             Route::patch('/worker/services/{servicePackage}', [ServicePackageController::class, 'update']);
         });

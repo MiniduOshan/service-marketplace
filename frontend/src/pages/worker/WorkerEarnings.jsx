@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   ArrowUpRight,
   BadgeDollarSign,
@@ -11,62 +11,9 @@ import {
   X,
 } from 'lucide-react';
 import WorkerLayout from '../../components/layout/WorkerLayout';
+import { apiRequest } from '../../lib/api';
 
-const transactions = [
-  {
-    id: 1,
-    date: 'Apr 22, 2026',
-    service: 'Plumbing',
-    customer: 'TechCorp Inc.',
-    amount: 'LKR 12,000',
-    status: 'Completed',
-  },
-  {
-    id: 2,
-    date: 'Apr 18, 2026',
-    service: 'Room Painting',
-    customer: 'Sara Jay',
-    amount: 'LKR 4,500',
-    status: 'Completed',
-  },
-  {
-    id: 3,
-    date: 'Apr 15, 2026',
-    service: 'AC Repair',
-    customer: 'DevStudio',
-    amount: 'LKR 8,000',
-    status: 'Canceled',
-  },
-  {
-    id: 4,
-    date: 'Apr 10, 2026',
-    service: 'Plumbing',
-    customer: 'Lanka Retail',
-    amount: 'LKR 17,500',
-    status: 'Completed',
-  },
-];
-
-const initialBankAccounts = [
-  {
-    id: 1,
-    bankName: 'Commercial Bank of Ceylon',
-    accountType: 'Savings Account',
-    accountHolder: 'Kasun Silva',
-    accountNumber: '45678908902',
-    branch: 'Maharagama',
-    isPrimary: true,
-  },
-  {
-    id: 2,
-    bankName: 'Bank of Ceylon',
-    accountType: 'Current Account',
-    accountHolder: 'Kasun Silva',
-    accountNumber: '78945612301',
-    branch: 'Colombo 07',
-    isPrimary: false,
-  },
-];
+const initialBankAccounts = [];
 
 function formatMaskedAccount(accountNumber) {
   if (!accountNumber) return '••••';
@@ -400,10 +347,53 @@ function ManageBankModal({
 
 export default function WorkerEarnings() {
   const [bankAccounts, setBankAccounts] = useState(initialBankAccounts);
-  const [selectedAccountId, setSelectedAccountId] = useState(1);
+  const [selectedAccountId, setSelectedAccountId] = useState(null);
   const [activeModal, setActiveModal] = useState(null);
   const [editingAccount, setEditingAccount] = useState(null);
   const [withdrawStatus, setWithdrawStatus] = useState('');
+  const [stats, setStats] = useState({
+    total_earnings: 0,
+    jobs_done: 0,
+    total_bookings: 0,
+    profile_views: 0,
+  });
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [statsRes, bookingsRes] = await Promise.all([
+        apiRequest('/auth/worker/stats'),
+        apiRequest('/auth/bookings'),
+      ]);
+      setStats(statsRes.data || {
+        total_earnings: 0,
+        jobs_done: 0,
+        total_bookings: 0,
+        profile_views: 0,
+      });
+      setBookings(bookingsRes.data?.data || bookingsRes.data || []);
+      setLoading(false);
+    } catch (err) {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const transactions = useMemo(() => {
+    return bookings.map((b, idx) => ({
+      id: b.id || idx,
+      date: new Date(b.scheduled_at).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }),
+      service: b.service_package?.title || 'Professional Service',
+      customer: b.customer?.name || 'Verified Customer',
+      amount: `LKR ${parseFloat(b.total_price).toLocaleString()}`,
+      status: b.status.charAt(0).toUpperCase() + b.status.slice(1),
+    }));
+  }, [bookings]);
 
   const selectedAccount = useMemo(
     () => bankAccounts.find((account) => account.id === selectedAccountId),
@@ -419,11 +409,13 @@ export default function WorkerEarnings() {
     const newAccount = {
       id: Date.now(),
       ...accountData,
-      isPrimary: false,
+      isPrimary: bankAccounts.length === 0,
     };
 
     setBankAccounts((current) => [...current, newAccount]);
-    setSelectedAccountId(newAccount.id);
+    if (bankAccounts.length === 0) {
+      setSelectedAccountId(newAccount.id);
+    }
     closeModal();
   }
 
@@ -449,8 +441,6 @@ export default function WorkerEarnings() {
 
   function handleRemoveAccount(accountId) {
     setBankAccounts((current) => {
-      if (current.length <= 1) return current;
-
       const filteredAccounts = current.filter((account) => account.id !== accountId);
 
       if (selectedAccountId === accountId && filteredAccounts.length > 0) {
@@ -466,9 +456,13 @@ export default function WorkerEarnings() {
   }
 
   function handleWithdrawFunds() {
+    if (!selectedAccount) {
+      alert('Please add and select a bank account first.');
+      return;
+    }
     setWithdrawStatus(
-      `Withdrawal request created for LKR 42,000 to ${
-        selectedAccount?.bankName || 'your bank account'
+      `Withdrawal request created for LKR ${stats.total_earnings.toLocaleString()} to ${
+        selectedAccount.bankName
       }.`
     );
 
@@ -496,11 +490,15 @@ export default function WorkerEarnings() {
     const temporaryLink = document.createElement('a');
 
     temporaryLink.href = url;
-    temporaryLink.download = 'skilledlk-earnings-april-2025.csv';
+    temporaryLink.download = 'skilledlk-earnings.csv';
     temporaryLink.click();
 
     URL.revokeObjectURL(url);
   }
+
+  const commission = stats.total_earnings * 0.05;
+  const leadFees = stats.jobs_done * 20;
+  const netEarnings = stats.total_earnings - commission - leadFees;
 
   return (
     <WorkerLayout>
@@ -515,23 +513,18 @@ export default function WorkerEarnings() {
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-medium uppercase tracking-wide text-emerald-100">
-                Total Earned - April 2025
+                Total Earned
               </p>
 
               <h1 className="mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
-                LKR 42,000
+                LKR {stats.total_earnings.toLocaleString()}
               </h1>
-
-              <p className="mt-4 flex items-center gap-2 text-emerald-100">
-                <ArrowUpRight size={17} />
-                +14% from last month
-              </p>
             </div>
 
             <button
               type="button"
               onClick={handleWithdrawFunds}
-              className="rounded-lg bg-white px-8 py-4 text-base font-bold text-emerald-700 shadow-lg transition hover:bg-emerald-50"
+              className="rounded-lg bg-white px-8 py-4 text-base font-bold text-emerald-700 shadow-lg transition hover:bg-emerald-50 cursor-pointer"
             >
               Withdraw Funds
             </button>
@@ -549,151 +542,173 @@ export default function WorkerEarnings() {
             icon={CheckCircle2}
             iconClassName="bg-emerald-200 text-emerald-700"
             label="Jobs Done"
-            value="12"
+            value={stats.jobs_done.toString()}
           />
 
           <StatCard
             icon={BadgeDollarSign}
             iconClassName="bg-red-100 text-red-600"
             label="Fees Paid"
-            value="LKR 2,500"
+            value={`LKR ${(commission + leadFees).toLocaleString()}`}
           />
 
           <StatCard
             icon={WalletCards}
             iconClassName="bg-emerald-700 text-white"
             label="Net Received"
-            value="LKR 39,500"
+            value={`LKR ${netEarnings.toLocaleString()}`}
           />
         </section>
 
-        <section className="mt-7 grid gap-7 lg:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_370px]">
-          <div className="space-y-7">
-            <div className="overflow-hidden rounded-xl border border-emerald-900/20 bg-white shadow-sm">
-              <div className="flex flex-col gap-3 border-b border-slate-200 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-lg font-semibold text-slate-950">
-                  Transaction History
-                </h2>
-
-                <button
-                  type="button"
-                  onClick={downloadCSV}
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:underline"
-                >
-                  <Download size={16} />
-                  Download CSV
-                </button>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[680px] text-left">
-                  <thead className="bg-slate-100 text-sm uppercase text-slate-500">
-                    <tr>
-                      <th className="px-6 py-4 font-bold">Date</th>
-                      <th className="px-6 py-4 font-bold">Service</th>
-                      <th className="px-6 py-4 font-bold">Customer</th>
-                      <th className="px-6 py-4 font-bold">Amount</th>
-                      <th className="px-6 py-4 font-bold">Status</th>
-                    </tr>
-                  </thead>
-
-                  <tbody className="divide-y divide-slate-200">
-                    {transactions.map((transaction) => (
-                      <tr key={transaction.id} className="text-sm">
-                        <td className="px-6 py-5 font-medium text-slate-700">
-                          {transaction.date}
-                        </td>
-                        <td className="px-6 py-5 font-bold text-slate-950">
-                          {transaction.service}
-                        </td>
-                        <td className="px-6 py-5 text-slate-600">
-                          {transaction.customer}
-                        </td>
-                        <td className="px-6 py-5 font-medium text-slate-800">
-                          {transaction.amount}
-                        </td>
-                        <td className="px-6 py-5">
-                          <StatusBadge status={transaction.status} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-emerald-900/20 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-950">
-                Bank Account
-              </h2>
-
-              <div className="mt-5 rounded-xl border border-dashed border-slate-400 bg-slate-50 p-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="grid h-12 w-14 place-items-center rounded border border-slate-300 bg-white text-emerald-700">
-                      <ShieldCheck size={26} />
-                    </div>
-
-                    <div>
-                      <h3 className="font-semibold text-slate-950">
-                        {selectedAccount?.bankName}
-                      </h3>
-
-                      <p className="mt-1 text-sm text-slate-500">
-                        {selectedAccount?.accountType} •{' '}
-                        {formatMaskedAccount(selectedAccount?.accountNumber)}
-                      </p>
-                    </div>
-                  </div>
+        {loading ? (
+          <div className="text-center text-slate-500 py-10 mt-10">Loading earnings...</div>
+        ) : (
+          <section className="mt-7 grid gap-7 lg:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_370px]">
+            <div className="space-y-7">
+              <div className="overflow-hidden rounded-xl border border-emerald-900/20 bg-white shadow-sm">
+                <div className="flex flex-col gap-3 border-b border-slate-200 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                  <h2 className="text-lg font-semibold text-slate-950">
+                    Transaction History
+                  </h2>
 
                   <button
                     type="button"
-                    onClick={() => setActiveModal('manage')}
-                    className="rounded-lg bg-emerald-700 px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+                    onClick={downloadCSV}
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:underline cursor-pointer"
                   >
-                    Manage
+                    <Download size={16} />
+                    Download CSV
                   </button>
                 </div>
+
+                <div className="overflow-x-auto">
+                  {transactions.length > 0 ? (
+                    <table className="w-full min-w-[680px] text-left">
+                      <thead className="bg-slate-100 text-sm uppercase text-slate-500">
+                        <tr>
+                          <th className="px-6 py-4 font-bold">Date</th>
+                          <th className="px-6 py-4 font-bold">Service</th>
+                          <th className="px-6 py-4 font-bold">Customer</th>
+                          <th className="px-6 py-4 font-bold">Amount</th>
+                          <th className="px-6 py-4 font-bold">Status</th>
+                        </tr>
+                      </thead>
+
+                      <tbody className="divide-y divide-slate-200">
+                        {transactions.map((transaction) => (
+                          <tr key={transaction.id} className="text-sm">
+                            <td className="px-6 py-5 font-medium text-slate-700">
+                              {transaction.date}
+                            </td>
+                            <td className="px-6 py-5 font-bold text-slate-950">
+                              {transaction.service}
+                            </td>
+                            <td className="px-6 py-5 text-slate-600">
+                              {transaction.customer}
+                            </td>
+                            <td className="px-6 py-5 font-medium text-slate-800">
+                              {transaction.amount}
+                            </td>
+                            <td className="px-6 py-5">
+                              <StatusBadge status={transaction.status} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="p-8 text-center text-slate-500 bg-white">
+                      No transaction history found.
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
 
-          <aside className="space-y-7">
-            <div className="rounded-xl border border-emerald-900/20 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-950">
-                Financial Summary
-              </h2>
+              <div className="rounded-xl border border-emerald-900/20 bg-white p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-950">
+                  Bank Account
+                </h2>
 
-              <div className="mt-4 border-t border-slate-300 pt-4">
-                <div className="space-y-4 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Gross Revenue</span>
-                    <span className="font-medium text-slate-950">
-                      LKR 44,500
-                    </span>
-                  </div>
+                <div className="mt-5 rounded-xl border border-dashed border-slate-400 bg-slate-50 p-4">
+                  {selectedAccount ? (
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="grid h-12 w-14 place-items-center rounded border border-slate-300 bg-white text-emerald-700">
+                          <ShieldCheck size={26} />
+                        </div>
 
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Commission (5%)</span>
-                    <span className="font-medium text-red-600">
-                      - LKR 2,225
-                    </span>
-                  </div>
+                        <div>
+                          <h3 className="font-semibold text-slate-950">
+                            {selectedAccount.bankName}
+                          </h3>
 
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Lead Fees</span>
-                    <span className="font-medium text-red-600">- LKR 275</span>
-                  </div>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {selectedAccount.accountType} •{' '}
+                            {formatMaskedAccount(selectedAccount.accountNumber)}
+                          </p>
+                        </div>
+                      </div>
 
-                  <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-                    <span className="font-bold text-slate-950">Net Earnings</span>
-                    <span className="font-bold text-emerald-700">
-                      LKR 42,000
-                    </span>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveModal('manage')}
+                        className="rounded-lg bg-emerald-700 px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-800 cursor-pointer"
+                      >
+                        Manage
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <p className="text-sm text-slate-500 font-medium">No bank account linked yet.</p>
+                      <button
+                        type="button"
+                        onClick={() => setActiveModal('manage')}
+                        className="rounded-lg bg-emerald-700 px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-800 cursor-pointer"
+                      >
+                        Add Bank Account
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
+
+            <aside className="space-y-7">
+              <div className="rounded-xl border border-emerald-900/20 bg-white p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-950">
+                  Financial Summary
+                </h2>
+
+                <div className="mt-4 border-t border-slate-300 pt-4">
+                  <div className="space-y-4 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600">Gross Revenue</span>
+                      <span className="font-medium text-slate-950">
+                        LKR {stats.total_earnings.toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600">Commission (5%)</span>
+                      <span className="font-medium text-red-600">
+                        - LKR {commission.toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600">Lead Fees</span>
+                      <span className="font-medium text-red-600">- LKR {leadFees.toLocaleString()}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-slate-200 pt-4">
+                      <span className="font-bold text-slate-950">Net Earnings</span>
+                      <span className="font-bold text-emerald-700">
+                        LKR {netEarnings.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
             <div className="rounded-xl border border-emerald-900/20 bg-white p-6 shadow-sm">
               <div className="flex items-center justify-between">
@@ -742,6 +757,7 @@ export default function WorkerEarnings() {
             </div>
           </aside>
         </section>
+        )}
       </div>
 
       {activeModal === 'manage' && (

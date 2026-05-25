@@ -7,6 +7,13 @@ class WorkerSubscriptionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final renewalDate = DateTime.now().add(const Duration(days: 30));
+    final months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    final renewalStr = "Renews ${renewalDate.day} ${months[renewalDate.month - 1]} ${renewalDate.year}";
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -21,7 +28,7 @@ class WorkerSubscriptionScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildActivePlanHeader(context),
+            _buildActivePlanHeader(context, renewalStr),
             const SizedBox(height: 30),
             const Text("What Pro gives you", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
@@ -49,7 +56,7 @@ class WorkerSubscriptionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActivePlanHeader(BuildContext context) {
+  Widget _buildActivePlanHeader(BuildContext context, String renewalStr) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -68,7 +75,7 @@ class WorkerSubscriptionScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          const Text("Renews 15 May 2025 · LKR 2,500/month", style: TextStyle(color: Colors.white70)),
+          Text("$renewalStr · LKR 2,500/month", style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -173,14 +180,14 @@ class WorkerSubscriptionScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text("Your priority score", style: TextStyle(color: Colors.grey)),
-              Text("87 /100", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryGreen)),
+              Text("100 /100", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryGreen)),
             ],
           ),
           const SizedBox(height: 16),
           _scoreBreakdownRow("Distance (Live)", "+20"),
-          _scoreBreakdownRow("Rating 4.9", "+25"),
+          _scoreBreakdownRow("Rating 0.0", "+25"),
           _scoreBreakdownRow("Pro Subscription", "+25", isHighlight: true),
-          _scoreBreakdownRow("Activity Level", "+12"),
+          _scoreBreakdownRow("Activity Level", "+25"),
           _scoreBreakdownRow("Response Rate", "+5"),
         ],
       ),

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Search,
   MapPin,
@@ -186,7 +186,13 @@ function RatingStars() {
 
 export default function LandingPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [serviceCategories, setServiceCategories] = useState(defaultServiceCategories);
+  const [searchVal, setSearchVal] = useState('');
+  const [locationVal, setLocationVal] = useState('');
+  const [professionalsList, setProfessionalsList] = useState([]);
+  const [loadingPros, setLoadingPros] = useState(true);
+
   const authConfigByPath = {
     '/login': { initialView: 'login', entryMode: 'signin' },
     '/signup': { initialView: 'role-selection', entryMode: 'signup' },
@@ -237,6 +243,60 @@ export default function LandingPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadPros() {
+      try {
+        setLoadingPros(true);
+        const res = await apiRequest('/services');
+        const services = res.data?.data || res.data || [];
+        if (isMounted) {
+          const mapped = services.slice(0, 3).map((service, idx) => {
+            const workerName = service.worker?.name || 'Verified Pro';
+            const defaultImages = [
+              'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=800&q=80',
+              'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=800&q=80',
+              'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80'
+            ];
+            return {
+              id: service.worker?.id || '1',
+              name: workerName,
+              role: service.title || 'Service Expert',
+              rating: '4.9',
+              jobs: '120+ Jobs',
+              badge: 'Verified ID',
+              image: defaultImages[idx % defaultImages.length],
+              label: service.is_active ? 'ELITE' : null,
+            };
+          });
+
+          setProfessionalsList(mapped);
+          setLoadingPros(false);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setProfessionalsList([]);
+          setLoadingPros(false);
+        }
+      }
+    }
+
+    loadPros();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleSearchSubmit = () => {
+    const params = [];
+    if (searchVal.trim()) params.push(`search=${encodeURIComponent(searchVal.trim())}`);
+    if (locationVal.trim()) params.push(`location=${encodeURIComponent(locationVal.trim())}`);
+    const queryStr = params.length > 0 ? `?${params.join('&')}` : '';
+    navigate(`/search${queryStr}`);
+  };
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f8f7fb] text-slate-900">
       <Navbar />
@@ -268,6 +328,9 @@ export default function LandingPage() {
                     <Search size={20} className="shrink-0 text-slate-400" />
                     <input
                       type="text"
+                      value={searchVal}
+                      onChange={(e) => setSearchVal(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
                       placeholder="What service?"
                       className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
                     />
@@ -279,12 +342,18 @@ export default function LandingPage() {
                     <MapPin size={20} className="shrink-0 text-slate-400" />
                     <input
                       type="text"
+                      value={locationVal}
+                      onChange={(e) => setLocationVal(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
                       placeholder="Colombo"
                       className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
                     />
                   </div>
 
-                  <button className="btn-press cursor-pointer rounded-xl bg-[#05735f] px-8 py-3 text-sm font-bold text-white transition hover:bg-[#046553] sm:shrink-0">
+                  <button
+                    onClick={handleSearchSubmit}
+                    className="btn-press cursor-pointer rounded-xl bg-[#05735f] px-8 py-3 text-sm font-bold text-white transition hover:bg-[#046553] sm:shrink-0"
+                  >
                     Search
                   </button>
                 </div>
@@ -422,6 +491,13 @@ export default function LandingPage() {
               return (
                 <div
                   key={category.name}
+                  onClick={() => {
+                    if (category.name === '+More') {
+                      navigate('/search');
+                    } else {
+                      navigate(`/search?category=${encodeURIComponent(category.name)}`);
+                    }
+                  }}
                   className="lp-fade-up lp-category-hover cursor-pointer flex flex-col items-center gap-4 text-center"
                 >
                   <div
@@ -504,65 +580,83 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <button className="btn-press w-fit border-b-2 border-[#05735f] text-sm font-semibold text-[#05735f]">
+            <button
+              onClick={() => navigate('/search')}
+              className="btn-press w-fit border-b-2 border-[#05735f] text-sm font-semibold text-[#05735f]"
+            >
               View all workers
             </button>
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8">
-            {professionals.map((pro) => (
-              <div
-                key={pro.name}
-                className="lp-fade-up lp-card-hover overflow-hidden rounded-2xl bg-white shadow-md shadow-slate-200 ring-1 ring-slate-100"
-              >
-                <div className="relative h-48 overflow-hidden sm:h-52 md:h-44 lg:h-52">
-                  <img
-                    src={pro.image}
-                    alt={pro.name}
-                    className="h-full w-full object-cover"
-                  />
-
-                  {pro.label && (
-                    <span className="absolute left-4 top-4 rounded bg-yellow-500 px-2 py-1 text-[10px] font-bold text-white">
-                      {pro.label}
-                    </span>
-                  )}
-                </div>
-
-                <div className="p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">
-                        {pro.name}
-                      </h3>
-
-                      <p className="mt-1 text-xs text-slate-500">
-                        {pro.role}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-1 text-sm font-bold text-yellow-500">
-                      <Star size={13} fill="currentColor" />
-                      {pro.rating}
-                    </div>
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap gap-3 text-xs text-slate-500">
-                    <span className="rounded-full bg-slate-50 px-3 py-1">
-                      {pro.jobs}
-                    </span>
-
-                    <span className="rounded-full bg-slate-50 px-3 py-1">
-                      {pro.badge}
-                    </span>
-                  </div>
-
-                  <button className="btn-press cursor-pointer mt-6 w-full rounded-lg py-2.5 text-sm font-semibold text-[#05735f] hover:bg-emerald-50">
-                    View profile
-                  </button>
-                </div>
+            {professionalsList.length === 0 ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-12 text-slate-400">
+                <span className="text-4xl">👥</span>
+                <p className="mt-4 text-lg font-medium text-slate-700">No verified professionals listed yet</p>
+                <p className="mt-1 text-sm text-slate-500">Real professionals will appear here once they register and add service packages.</p>
               </div>
-            ))}
+            ) : (
+              professionalsList.map((pro) => (
+                <div
+                  key={pro.id || pro.name}
+                  className="lp-fade-up lp-card-hover overflow-hidden rounded-2xl bg-white shadow-md shadow-slate-200 ring-1 ring-slate-100"
+                >
+                  <div className="relative h-48 overflow-hidden sm:h-52 md:h-44 lg:h-52">
+                    <img
+                      src={pro.image}
+                      alt={pro.name}
+                      className="h-full w-full object-cover cursor-pointer hover:scale-105 transition duration-300"
+                      onClick={() => navigate(`/worker/${pro.id}`)}
+                    />
+
+                    {pro.label && (
+                      <span className="absolute left-4 top-4 rounded bg-yellow-500 px-2 py-1 text-[10px] font-bold text-white">
+                        {pro.label}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3
+                          onClick={() => navigate(`/worker/${pro.id}`)}
+                          className="text-sm font-bold text-slate-900 cursor-pointer hover:text-[#05735f] transition"
+                        >
+                          {pro.name}
+                        </h3>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          {pro.role}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-1 text-sm font-bold text-yellow-500">
+                        <Star size={13} fill="currentColor" />
+                        {pro.rating}
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap gap-3 text-xs text-slate-500">
+                      <span className="rounded-full bg-slate-50 px-3 py-1">
+                        {pro.jobs}
+                      </span>
+
+                      <span className="rounded-full bg-slate-50 px-3 py-1">
+                        {pro.badge}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => navigate(`/worker/${pro.id}`)}
+                      className="btn-press cursor-pointer mt-6 w-full rounded-lg py-2.5 text-sm font-semibold text-[#05735f] hover:bg-emerald-50"
+                    >
+                      View profile
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </section>
 

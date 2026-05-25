@@ -7,7 +7,8 @@ import '../worker/worker_registration_screen.dart';
 import 'otp_screen.dart';
 
 class PhoneLoginScreen extends StatefulWidget {
-  const PhoneLoginScreen({super.key});
+  final UserRole role;
+  const PhoneLoginScreen({super.key, this.role = UserRole.customer});
 
   @override
   State<PhoneLoginScreen> createState() => _PhoneLoginScreenState();
@@ -16,7 +17,6 @@ class PhoneLoginScreen extends StatefulWidget {
 class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  UserRole _selectedRole = UserRole.customer;
   bool _isLoading = false;
 
   @override
@@ -43,7 +43,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await authController.requestPhoneOtp(name, phone, _selectedRole);
+      final response = await authController.requestPhoneOtp(name, phone, widget.role);
 
       final verificationPhone = response['data']?['phone']?.toString() ?? phone;
       navigator.push(
@@ -137,28 +137,6 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text('Account type', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: ChoiceChip(
-                    label: const Text('Customer'),
-                    selected: _selectedRole == UserRole.customer,
-                    onSelected: (_) => setState(() => _selectedRole = UserRole.customer),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ChoiceChip(
-                    label: const Text('Worker'),
-                    selected: _selectedRole == UserRole.worker,
-                    onSelected: (_) => setState(() => _selectedRole = UserRole.worker),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -173,7 +151,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
 
                         try {
                           final success = await authController.loginWithGoogle(
-                            role: _selectedRole,
+                            role: widget.role,
                             signupFlow: true,
                           );
 

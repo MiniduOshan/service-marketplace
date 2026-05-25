@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Booking;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -226,12 +227,105 @@ class AuthController extends Controller
         ]);
     }
 
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:30', 'unique:users,phone,' . $user->id],
+        ]);
+
+        $updates = [];
+        if ($request->has('name')) {
+            $updates['name'] = $validated['name'];
+        }
+
+        if ($request->has('phone')) {
+            if ($validated['phone'] === null || trim($validated['phone']) === '') {
+                $updates['phone'] = null;
+                $updates['phone_verified_at'] = null;
+                $updates['phone_otp_hash'] = null;
+                $updates['phone_otp_expires_at'] = null;
+            } else {
+                $phone = User::normalizePhone($validated['phone']);
+
+                if (! $phone) {
+                    return response()->json([
+                        'message' => 'Enter a valid phone number.',
+                    ], 422);
+                }
+
+                if ($phone !== $user->phone) {
+                    $updates['phone'] = $phone;
+                    $updates['phone_verified_at'] = null;
+                    $updates['phone_otp_hash'] = null;
+                    $updates['phone_otp_expires_at'] = null;
+                }
+            }
+        }
+
+        if (! empty($updates)) {
+            $user->forceFill($updates)->save();
+        }
+
+        return response()->json([
+            'message' => 'Profile updated successfully.',
+            'data' => [
+                'user' => $user->fresh(),
+            ],
+        ]);
+    }
+
     public function logout(Request $request): JsonResponse
     {
         $request->user()?->revokeApiToken();
 
         return response()->json([
             'message' => 'Logged out successfully.',
+        ]);
+    }
+
+    public function workerStats(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        $completedBookings = Booking::where('worker_id', $user->id)
+            ->where('status', 'completed')
+            ->get();
+            
+        $totalEarnings = $completedBookings->sum('total_price');
+        $jobsDone = $completedBookings->count();
+        
+        $totalBookings = Booking::where('worker_id', $user->id)
+            ->where('status', '!=', 'cancelled')
+            ->count();
+
+        return response()->json([
+            'data' => [
+                'total_earnings' => (double) $totalEarnings,
+                'jobs_done' => (int) $jobsDone,
+                'total_bookings' => (int) $totalBookings,
+                'profile_views' => 0,
+            ],
+        ]);
+    }
+
+    public function customerStats(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        $totalBookings = Booking::where('customer_id', $user->id)->count();
+        $completedBookings = Booking::where('customer_id', $user->id)
+            ->where('status', 'completed')
+            ->count();
+
+        return response()->json([
+            'data' => [
+                'total_bookings' => (int) $totalBookings,
+                'completed_bookings' => (int) $completedBookings,
+                'reviews_given' => 0,
+                'messages' => 0,
+            ],
         ]);
     }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/worker_models.dart';
 import '../../services/api_client.dart';
+import 'booking_steps_screen.dart';
 import 'search_results_screen.dart'; 
 
 class HomeScreen extends StatefulWidget {
@@ -29,31 +30,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   late List<Category> categories = List.of(_fallbackCategories);
 
-  final List<Worker> topRatedWorkers = [
-    Worker(
-      id: "1", name: "Aruna Kumara", specialty: "Electrician", location: "Maharagama",
-      rating: 4.9, reviewCount: 120, experience: 8, distance: 2.1,
-      startingPrice: "5,000", priceUnit: "day", initial: "AK",
-    ),
-    Worker(
-      id: "2", name: "Sunil Perera", specialty: "Plumber", location: "Pannipitiya",
-      rating: 4.8, reviewCount: 95, experience: 6, distance: 1.8,
-      startingPrice: "4,500", priceUnit: "day", initial: "SP",
-    ),
-  ];
-
-  final List<Worker> featuredWorkers = [
-    Worker(
-      id: "3", name: "Nimal Bandara", specialty: "Master Painter", location: "Colombo 07",
-      rating: 4.9, reviewCount: 210, experience: 12, distance: 0.8,
-      startingPrice: "3,500", priceUnit: "day", initial: "NB", isFeatured: true,
-    ),
-    Worker(
-      id: "4", name: "Kasun Rajapaksha", specialty: "AC Technician", location: "Nugegoda",
-      rating: 4.7, reviewCount: 88, experience: 5, distance: 1.5,
-      startingPrice: "2,500", priceUnit: "service", initial: "KR", isPro: true,
-    ),
-  ];
+  late List<Worker> topRatedWorkers = [];
+  late List<Worker> featuredWorkers = [];
+  bool isLoadingWorkers = true;
 
   static const Color primaryGreen = Color(0xFF006D44);
   static const Color placeholderBg = Color(0xFFF1F4F9);
@@ -62,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadCategories();
+    _loadWorkers();
   }
 
   Future<void> _loadCategories() async {
@@ -92,6 +72,57 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } catch (_) {
       // Keep fallback categories if the backend is unavailable.
+    }
+  }
+
+  Future<void> _loadWorkers() async {
+    try {
+      final services = await ApiClient.instance.getServices();
+      if (!mounted) return;
+
+      final loadedWorkers = services.map((service) {
+        final categoryName = service['category'] is Map<String, dynamic>
+            ? service['category']['name']?.toString() ?? 'All'
+            : 'All';
+        final workerName = service['worker'] is Map<String, dynamic>
+            ? service['worker']['name']?.toString() ?? 'Verified Pro'
+            : 'Verified Pro';
+        final workerId = service['worker'] is Map<String, dynamic>
+            ? service['worker']['id']?.toString() ?? service['user_id']?.toString() ?? '1'
+            : service['user_id']?.toString() ?? '1';
+
+        return Worker(
+          id: workerId,
+          servicePackageId: service['id'].toString(),
+          name: workerName,
+          specialty: service['title']?.toString() ?? 'Service',
+          category: categoryName,
+          location: 'Colombo',
+          rating: 4.8,
+          reviewCount: 120,
+          experience: 6,
+          distance: 4.0,
+          startingPrice: service['price']?.toString() ?? '0',
+          priceUnit: 'service',
+          initial: workerName.isNotEmpty ? workerName[0].toUpperCase() : 'S',
+          isVerified: true,
+          isPro: true,
+        );
+      }).toList();
+
+      setState(() {
+        topRatedWorkers = loadedWorkers.take(3).toList();
+        featuredWorkers = loadedWorkers.skip(3).take(3).toList();
+        isLoadingWorkers = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          topRatedWorkers = [];
+          featuredWorkers = [];
+          isLoadingWorkers = false;
+        });
+      }
     }
   }
 
@@ -262,13 +293,24 @@ class _HomeScreenState extends State<HomeScreen> {
         _buildSectionHeader(title),
         SizedBox(
           height: 240,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            scrollDirection: Axis.horizontal,
-            itemCount: workers.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 16),
-            itemBuilder: (context, index) => _buildTopRatedCard(workers[index]),
-          ),
+          child: workers.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.people_outline, size: 48, color: Colors.grey),
+                      SizedBox(height: 8),
+                      Text("No professionals near you", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                    ],
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: workers.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 16),
+                  itemBuilder: (context, index) => _buildTopRatedCard(workers[index]),
+                ),
         ),
       ],
     );
@@ -276,7 +318,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTopRatedCard(Worker worker) {
     return InkWell(
-      onTap: () => Navigator.pushNamed(context, '/worker-profile-public'),
+      onTap: () => Navigator.pushNamed(context, '/worker-profile-public', arguments: worker),
       child: Container(
         width: 170,
         padding: const EdgeInsets.all(16),
@@ -312,7 +354,17 @@ class _HomeScreenState extends State<HomeScreen> {
             SizedBox(
               width: double.infinity, height: 32,
               child: ElevatedButton(
-                onPressed: () => Navigator.pushNamed(context, '/booking-steps'),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BookingStepsScreen(
+                      servicePackageId: worker.servicePackageId.isNotEmpty ? worker.servicePackageId : null,
+                      workerName: worker.name,
+                      serviceTitle: worker.specialty,
+                      priceLabel: 'LKR ${worker.startingPrice} / ${worker.priceUnit}',
+                    ),
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(backgroundColor: primaryGreen, shape: const StadiumBorder()),
                 child: const Text("Book", style: TextStyle(color: Colors.white, fontSize: 12)),
               ),
@@ -328,21 +380,34 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       children: [
         _buildSectionHeader("Featured Workers"),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          itemCount: featuredWorkers.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 16),
-          itemBuilder: (context, index) => _buildFeaturedTile(featuredWorkers[index]),
-        ),
+        featuredWorkers.isEmpty
+            ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Column(
+                    children: [
+                      Icon(Icons.engineering_outlined, size: 48, color: Colors.grey),
+                      SizedBox(height: 8),
+                      Text("No featured workers yet", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                    ],
+                  ),
+                ),
+              )
+            : ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                itemCount: featuredWorkers.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 16),
+                itemBuilder: (context, index) => _buildFeaturedTile(featuredWorkers[index]),
+              ),
       ],
     );
   }
 
   Widget _buildFeaturedTile(Worker worker) {
     return InkWell(
-      onTap: () => Navigator.pushNamed(context, '/worker-profile-public'),
+      onTap: () => Navigator.pushNamed(context, '/worker-profile-public', arguments: worker),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -373,7 +438,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(children: [const Icon(Icons.star, color: Colors.amber, size: 16), Text(" ${worker.rating}")]),
                 const SizedBox(height: 12),
                 OutlinedButton(
-                  onPressed: () => Navigator.pushNamed(context, '/worker-profile-public'),
+                  onPressed: () => Navigator.pushNamed(context, '/worker-profile-public', arguments: worker),
                   style: OutlinedButton.styleFrom(side: const BorderSide(color: primaryGreen), shape: const StadiumBorder()),
                   child: const Text("View", style: TextStyle(color: primaryGreen)),
                 )

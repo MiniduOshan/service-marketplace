@@ -14,13 +14,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
   
-  final List<Map<String, dynamic>> _allChats = [
-    {"name": "Kasun Silva", "tag": "PAINTER", "msg": "Great! I'll be there at 9 AM...", "time": "10:27 AM", "unread": 2},
-    {"name": "Amara Perera", "tag": "CLEANER", "msg": "Can we reschedule for tomorrow?", "time": "Yesterday", "unread": 0},
-    {"name": "Nuwan Bandara", "tag": "ELECTRICIAN", "msg": "I've fixed the wiring issues.", "time": "2 days ago", "unread": 0},
-    {"name": "Dilini Mendis", "tag": "PLUMBER", "msg": "The tap is working now.", "time": "Mon", "unread": 0},
-    {"name": "Saman Kumara", "tag": "CARPENTER", "msg": "Will send the quote by evening.", "time": "Sun", "unread": 1},
-  ];
+  final List<Map<String, dynamic>> _allChats = [];
 
   late List<Map<String, dynamic>> _filteredChats;
 
@@ -105,6 +99,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   Widget _buildRecentWorkers() {
+    if (_allChats.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(vertical: 20),
@@ -187,7 +184,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   Widget _chatTile(BuildContext context, String name, String tag, String msg, String time, {int unreadCount = 0}) {
     return ListTile(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatScreen())),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(
+        workerName: name,
+        workerTag: tag,
+      ))),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       tileColor: Colors.white,
       leading: const CircleAvatar(radius: 28, backgroundColor: Color(0xFFE2E8F0)),

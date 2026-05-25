@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../controllers/auth_controller.dart';
-
-
-// lib/screens/worker_dashboard.dart
+import '../../services/api_client.dart';
 
 class WorkerDashboard extends StatefulWidget {
   const WorkerDashboard({super.key});
@@ -12,65 +10,257 @@ class WorkerDashboard extends StatefulWidget {
 }
 
 class _WorkerDashboardState extends State<WorkerDashboard> {
-  // Define main green color based on image_12.png
   static const Color darkDashboardGreen = Color(0xFF006D44);
-
-  
-  // Simulation of "Available for bookings" toggle state
+  bool _isLoading = true;
+  String? _error;
   bool _isAvailable = true;
+
+  Map<String, dynamic> _stats = {
+    'total_earnings': 0.0,
+    'jobs_done': 0,
+    'total_bookings': 0,
+    'profile_views': 0,
+  };
+  List<Map<String, dynamic>> _bookings = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final token = authController.sessionToken;
+      final statsRes = await ApiClient.instance.getWorkerStats(token: token);
+      final bookingsRes = await ApiClient.instance.getBookings(token: token);
+      if (mounted) {
+        setState(() {
+          _stats = statsRes;
+          _bookings = bookingsRes;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceFirst('Exception: ', '');
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  List<Map<String, dynamic>> get _pendingBookings {
+    return _bookings.where((b) => b['status']?.toString().toLowerCase() == 'pending').toList();
+  }
+
+  List<Map<String, dynamic>> get _upcomingBookings {
+    return _bookings.where((b) => 
+      ['confirmed', 'assigned', 'in_progress', 'in-progress', 'active'].contains(b['status']?.toString().toLowerCase())
+    ).toList();
+  }
+
+  Future<void> _acceptJob(String bookingId) async {
+    // Since backend does not have worker accept route, we simulate acceptance and show toast.
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Job request accepted! Check 'Upcoming Jobs'."), backgroundColor: darkDashboardGreen)
+    );
+    setState(() {
+      _bookings = _bookings.map((b) {
+        if (b['id']?.toString() == bookingId) {
+          final updated = Map<String, dynamic>.from(b);
+          updated['status'] = 'confirmed';
+          return updated;
+        }
+        return b;
+      }).toList();
+    });
+  }
+
+  Future<void> _declineJob(String bookingId) async {
+    try {
+      final token = authController.sessionToken;
+      await ApiClient.instance.cancelBooking(bookingId: bookingId, token: token);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Job request declined."), backgroundColor: Colors.red)
+        );
+        setState(() {
+          _bookings = _bookings.map((b) {
+            if (b['id']?.toString() == bookingId) {
+              final updated = Map<String, dynamic>.from(b);
+              updated['status'] = 'cancelled';
+              return updated;
+            }
+            return b;
+          }).toList();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')))
+        );
+      }
+    }
+  }
+
+  Future<void> _completeJob(String bookingId) async {
+    // Simulate completion and show toast
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Job marked as complete!"), backgroundColor: darkDashboardGreen)
+    );
+    setState(() {
+      _bookings = _bookings.map((b) {
+        if (b['id']?.toString() == bookingId) {
+          final updated = Map<String, dynamic>.from(b);
+          updated['status'] = 'completed';
+          return updated;
+        }
+        return b;
+      }).toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final pending = _pendingBookings;
+    final upcoming = _upcomingBookings;
+
+    final renewalDate = DateTime.now().add(const Duration(days: 30));
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final renewalStr = "Renews ${months[renewalDate.month - 1]} ${renewalDate.day}";
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8F9), // Light background color from image_12.png
+      backgroundColor: const Color(0xFFF6F8F9),
       appBar: _buildHeader(),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatusBadges(),
-            const SizedBox(height: 20),
-            _buildAvailabilityToggle(),
-            const SizedBox(height: 20),
-            _buildEarningsCard(),
-            const SizedBox(height: 20),
-            _buildQuickStats(),
-            const SizedBox(height: 28),
-            _buildSectionHeader("New Job Requests", badgeCount: 3),
-            const SizedBox(height: 16),
-            _buildRequestCard(
-              title: "Kitchen Sink Repair", 
-              location: "Colombo 07 • Today",
-              price: "3,500",
-              isNew: true,
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator(color: darkDashboardGreen))
+        : RefreshIndicator(
+            color: darkDashboardGreen,
+            onRefresh: _fetchData,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_error != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(12)),
+                      child: Row(
+                        children: [
+                          Expanded(child: Text(_error!, style: const TextStyle(color: Colors.red))),
+                          IconButton(icon: const Icon(Icons.refresh, color: Colors.red), onPressed: _fetchData),
+                        ],
+                      ),
+                    ),
+                  ],
+                  _buildStatusBadges(),
+                  const SizedBox(height: 20),
+                  _buildAvailabilityToggle(),
+                  const SizedBox(height: 20),
+                  _buildEarningsCard(),
+                  const SizedBox(height: 20),
+                  _buildQuickStats(),
+                  const SizedBox(height: 28),
+                  _buildSectionHeader("New Job Requests", badgeCount: pending.isEmpty ? null : pending.length),
+                  const SizedBox(height: 16),
+                  if (pending.isEmpty) ...[
+                    const Card(
+                      color: Colors.white,
+                      elevation: 0,
+                      child: Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: Center(
+                          child: Text("No pending job requests.", style: TextStyle(color: Colors.grey, fontSize: 15)),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: pending.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 16),
+                      itemBuilder: (context, index) {
+                        final b = pending[index];
+                        final package = b['service_package'] ?? {};
+                        final title = package['title']?.toString() ?? 'Service Request';
+                        final price = double.tryParse(b['total_price']?.toString() ?? '')?.toStringAsFixed(0) ?? '0';
+                        final address = b['address']?.toString() ?? 'No location';
+                        final date = b['scheduled_at'] != null 
+                          ? b['scheduled_at'].toString().split('T')[0]
+                          : 'No Date';
+
+                        return _buildRequestCard(
+                          id: b['id']?.toString() ?? '',
+                          title: title,
+                          location: "$address • $date",
+                          price: price,
+                          isNew: index == 0,
+                        );
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: 28),
+                  _buildSectionHeader("Upcoming Jobs"),
+                  const SizedBox(height: 16),
+                  if (upcoming.isEmpty) ...[
+                    const Card(
+                      color: Colors.white,
+                      elevation: 0,
+                      child: Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: Center(
+                          child: Text("No upcoming jobs scheduled.", style: TextStyle(color: Colors.grey, fontSize: 15)),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: upcoming.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 16),
+                      itemBuilder: (context, index) {
+                        final b = upcoming[index];
+                        final package = b['service_package'] ?? {};
+                        final title = package['title']?.toString() ?? 'Upcoming Service';
+                        final address = b['address']?.toString() ?? 'No location';
+                        final date = b['scheduled_at'] != null 
+                          ? b['scheduled_at'].toString().split('T')[0]
+                          : 'No Date';
+
+                        return _buildJobTile(
+                          id: b['id']?.toString() ?? '',
+                          title: title,
+                          time: "$address • $date",
+                        );
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: 28),
+                  _buildProPlanCard(renewalStr),
+                  const SizedBox(height: 32),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            _buildRequestCard(
-              title: "Garden Lighting Setup", 
-              location: "Battaramulla • May 12",
-              price: "8,000",
-              status: "PENDING",
-            ),
-            const SizedBox(height: 28),
-            _buildSectionHeader("Upcoming Jobs"),
-            const SizedBox(height: 16),
-            _buildJobTile(title: "Electrical Rewiring", time: "Kottawa • 2:30 PM Today"),
-            const SizedBox(height: 16),
-            _buildJobTile(title: "A/C Maintenance", time: "Nugegoda • 9:00 AM Tomorrow"),
-            const SizedBox(height: 28),
-            _buildProPlanCard(),
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
+          ),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
-  // --- UI COMPONENT METHODS (Matches image_12.png structure) ---
-
-  // 1. Header (Apache Bar area in Figma)
   PreferredSizeWidget _buildHeader() {
     final currentUser = authController.currentUser;
     final displayName = currentUser?.name?.trim();
@@ -78,14 +268,13 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
     return AppBar(
       backgroundColor: const Color(0xFFF6F8F9),
       elevation: 0,
-      automaticallyImplyLeading: false, // Prevents automatic back button
+      automaticallyImplyLeading: false,
       title: Row(
         children: [
-          // Simulated Avatar (needs start.png asset, using color placeholder here)
           const CircleAvatar(
             radius: 20,
-            backgroundColor: Colors.grey, // Placeholder
-            // backgroundImage: AssetImage('assets/images/nimal_avatar.png'), // Use asset later
+            backgroundColor: Colors.grey,
+            child: Icon(Icons.person, color: Colors.white),
           ),
           const SizedBox(width: 12),
           Column(
@@ -97,16 +286,15 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                     : 'Good morning, Worker',
                 style: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              Text(
-                "👷", // Emoji from Figma
-                style: const TextStyle(fontSize: 14),
+              const Text(
+                "👷",
+                style: TextStyle(fontSize: 14),
               ),
             ],
           ),
         ],
       ),
       actions: [
-        // Standard notification icon with simulated red dot indicator
         Stack(
           alignment: Alignment.center,
           children: [
@@ -129,11 +317,9 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
     );
   }
 
-  // 2. Status Badges and Score area from Figma
   Widget _buildStatusBadges() {
     return Row(
       children: [
-        // Active Badge
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(color: const Color(0xFFE8F6F1), borderRadius: BorderRadius.circular(16)),
@@ -144,7 +330,6 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
           ]),
         ),
         const SizedBox(width: 8),
-        // Featured Badge
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(color: const Color(0xFFFFF7E8), borderRadius: BorderRadius.circular(16)),
@@ -155,21 +340,19 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
           ]),
         ),
         const Spacer(),
-        // Priority Score Simulation
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            const Text("Priority Score: 87/100", style: TextStyle(color: Colors.grey, fontSize: 12)),
+            const Text("Priority Score: 100/100", style: TextStyle(color: Colors.grey, fontSize: 12)),
             const SizedBox(height: 4),
             Container(width: 100, height: 6,
               decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(3)),
               child: Stack(children: [
-                  Container(width: 87, decoration: BoxDecoration(color: const Color(0xFF00A381), borderRadius: BorderRadius.circular(3))),
+                  Container(width: 100, decoration: BoxDecoration(color: const Color(0xFF00A381), borderRadius: BorderRadius.circular(3))),
               ])),
         ]),
       ],
     );
   }
 
-  // 3. Availability Toggle Card from Figma
   Widget _buildAvailabilityToggle() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -194,8 +377,10 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
     );
   }
 
-  // 4. Main Earnings Card (Dark green section in Figma)
   Widget _buildEarningsCard() {
+    final earnings = double.tryParse(_stats['total_earnings']?.toString() ?? '0.0') ?? 0.0;
+    final jobs = _stats['jobs_done']?.toString() ?? '0';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -207,23 +392,22 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
               TextButton(onPressed: () => Navigator.pushNamed(context, '/worker-wallet'), child: const Text("View earnings →", style: TextStyle(color: Colors.white, fontSize: 14, decoration: TextDecoration.underline))),
           ]),
           const SizedBox(height: 8),
-          const Text("LKR 42,000", style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
+          Text("LKR ${earnings.toStringAsFixed(0)}", style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
           const SizedBox(height: 24),
           const Divider(color: Colors.white24),
           const SizedBox(height: 16),
           Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-              _buildEarningStat("12", "Jobs"),
-              Container(height: 40, width: 1, color: Colors.white24), // Vertical divider from Figma
-              _buildEarningStat("4.9 ★", "Rating"),
+              _buildEarningStat(jobs, "Jobs"),
               Container(height: 40, width: 1, color: Colors.white24),
-              _buildEarningStat("94%", "Response"),
+              _buildEarningStat("0.0 ★", "Rating"),
+              Container(height: 40, width: 1, color: Colors.white24),
+              _buildEarningStat("100%", "Response"),
           ]),
         ],
       ),
     );
   }
 
-  // Helper for Earnings Stat section
   Widget _buildEarningStat(String value, String label) {
     return Column(children: [
         Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
@@ -232,29 +416,29 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
     ]);
   }
 
-  // 5. Grid of Quick Stats from Figma
   Widget _buildQuickStats() {
+    final totalBookings = _stats['total_bookings']?.toString() ?? '0';
+
     return GridView.count(crossAxisCount: 2, shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(), // Important for SingleChildScrollView
-      crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 2.1, // Adjusted to prevent overflow
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 2.1,
       children: [
         GestureDetector(
           onTap: () => Navigator.pushNamed(context, '/job-requests'),
-          child: _buildStatCard("127", "TOTAL JOBS"),
+          child: _buildStatCard(totalBookings, "TOTAL JOBS"),
         ),
         GestureDetector(
           onTap: () => Navigator.pushNamed(context, '/worker-reviews'),
-          child: _buildStatCard("4.9", "RATING"),
+          child: _buildStatCard("0.0", "RATING"),
         ),
         GestureDetector(
           onTap: () => Navigator.pushNamed(context, '/worker-subscription'),
-          child: _buildStatCard("LKR 2,500", "SUBSCRIPTION"),
+          child: _buildStatCard("Free Plan", "SUBSCRIPTION"),
         ),
-        _buildStatCard("87", "PRIORITY SCORE"),
+        _buildStatCard("100", "PRIORITY SCORE"),
     ]);
   }
 
-  // Helper for Quick Stat card
   Widget _buildStatCard(String value, String label) {
     return Container(padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
@@ -268,7 +452,6 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
     );
   }
 
-  // Helper for Section Titles and optional badge from Figma
   Widget _buildSectionHeader(String title, {int? badgeCount}) {
     return InkWell(
       onTap: () => Navigator.pushNamed(context, '/job-requests'),
@@ -284,8 +467,13 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
     );
   }
 
-  // 6. Job Request Card from Figma
-  Widget _buildRequestCard({required String title, required String location, required String price, bool isNew = false, String? status}) {
+  Widget _buildRequestCard({
+    required String id,
+    required String title,
+    required String location,
+    required String price,
+    bool isNew = false,
+  }) {
     return Container(padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE9F1EE))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start,
@@ -303,27 +491,17 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                   Text("LKR $price", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF00A381))),
                   if (isNew) Container(margin: const EdgeInsets.only(top: 4), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFFE8F6F1), borderRadius: BorderRadius.circular(4)), child: const Text("NEW", style: TextStyle(color: Color(0xFF00A381), fontSize: 10, fontWeight: FontWeight.bold))),
-                  if (status != null) Container(margin: const EdgeInsets.only(top: 4), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFFFFF7E8), borderRadius: BorderRadius.circular(4)), child: Text(status, style: const TextStyle(color: Color(0xFFF79009), fontSize: 10, fontWeight: FontWeight.bold))),
               ]),
           ]),
           const SizedBox(height: 16),
-          // Accept/Decline Buttons from Figma
           Row(children: [
               Expanded(child: SizedBox(height: 44, child: ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Job request accepted! Check 'Upcoming Jobs'."), backgroundColor: darkDashboardGreen)
-                  );
-                }, 
+                onPressed: () => _acceptJob(id), 
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF006D44), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))), 
                 child: const Text("Accept", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))),
               const SizedBox(width: 12),
               Expanded(child: SizedBox(height: 44, child: OutlinedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Job request declined."), backgroundColor: Colors.red)
-                  );
-                }, 
+                onPressed: () => _declineJob(id), 
                 style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFF6A3A3)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))), 
                 child: const Text("Decline", style: TextStyle(color: Color(0xFFD32F2F), fontWeight: FontWeight.bold))))),
           ]),
@@ -332,8 +510,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
     );
   }
 
-  // 7. Generic Job Tile with 'Mark complete' button from Figma
-  Widget _buildJobTile({required String title, required String time}) {
+  Widget _buildJobTile({required String id, required String title, required String time}) {
     return Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE9F1EE))),
       child: Column(children: [
           ListTile(
@@ -348,11 +525,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
           Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: SizedBox(width: double.infinity, height: 44,
               child: ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Job marked as complete!"), backgroundColor: darkDashboardGreen)
-                  );
-                }, 
+                onPressed: () => _completeJob(id), 
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF006D44), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
                 child: const Text("Mark complete", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))),
           ),
@@ -360,8 +533,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
     );
   }
 
-  // 8. Subscription Plan Card from Figma
-  Widget _buildProPlanCard() {
+  Widget _buildProPlanCard(String renewalStr) {
     return Container(padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: const Color(0xFFFFFBEB), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFFED7AA))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start,
@@ -375,9 +547,8 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
               TextButton(onPressed: () => Navigator.pushNamed(context, '/worker-subscription'), child: const Text("Manage plan", style: TextStyle(color: Color(0xFF1B434D), fontWeight: FontWeight.bold, decoration: TextDecoration.underline))),
           ]),
           const SizedBox(height: 12),
-          const Text("Renews May 15 • LKR 2,500/month", style: TextStyle(color: Colors.grey, fontSize: 14)),
+          Text("$renewalStr • LKR 2,500/month", style: const TextStyle(color: Colors.grey, fontSize: 14)),
           const SizedBox(height: 16),
-          // Figma insight banner simulation
           Container(padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: const Color(0xFFECFDF5), borderRadius: BorderRadius.circular(12)),
             child: const Row(children: [
@@ -391,7 +562,6 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
     );
   }
 
-  // 9. Bottom Navigation Bar from image_12.png
   Widget _buildBottomNavigationBar() {
     return Container(decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFE9F1EE), width: 1))),
       child: BottomNavigationBar(

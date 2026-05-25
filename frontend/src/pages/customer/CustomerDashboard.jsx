@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -21,7 +21,7 @@ import {
 
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
-import { getStoredSessionUser } from '../../lib/api';
+import { getStoredSessionUser, apiRequest } from '../../lib/api';
 
 const categories = [
   {
@@ -74,73 +74,6 @@ const categories = [
   },
 ];
 
-const topRatedProfessionals = [
-  {
-    initials: 'SK',
-    name: 'Saman Kumara',
-    role: 'Master Electrician',
-    rating: '4.9',
-    distance: '2.4 km',
-    price: 'LKR 5,000',
-    verified: true,
-    avatarBg: 'bg-emerald-300',
-  },
-  {
-    initials: 'NP',
-    name: 'Nimal Perera',
-    role: 'Expert Painter',
-    rating: '4.8',
-    distance: '5.1 km',
-    price: 'LKR 3,500',
-    verified: true,
-    avatarBg: 'bg-indigo-100',
-  },
-  {
-    initials: 'AD',
-    name: 'Anura Dharmasena',
-    role: 'Senior Plumber',
-    rating: '5.0',
-    distance: '1.8 km',
-    price: 'LKR 4,000',
-    verified: true,
-    avatarBg: 'bg-slate-200',
-  },
-  {
-    initials: 'RS',
-    name: 'Rohan Silva',
-    role: 'AC Specialist',
-    rating: '4.7',
-    distance: '3.9 km',
-    price: 'LKR 5,000',
-    verified: false,
-    avatarBg: 'bg-blue-100',
-  },
-];
-
-const featuredList = [
-  {
-    name: 'Kamal Perera',
-    role: 'Masonry Expert',
-    rating: '4.9',
-    reviews: '124 reviews',
-    image: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=160&q=80',
-  },
-  {
-    name: 'Shanti Abeysekera',
-    role: 'Interior Painter',
-    rating: '4.8',
-    reviews: '89 reviews',
-    image: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?auto=format&fit=crop&w=160&q=80',
-  },
-  {
-    name: 'Ruwan Gunatunga',
-    role: 'Plumbing Specialist',
-    rating: '5.0',
-    reviews: '56 reviews',
-    image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=160&q=80',
-  },
-];
-
 function CategoryCard({ item, onSelect }) {
   const Icon = item.icon;
 
@@ -161,8 +94,13 @@ function CategoryCard({ item, onSelect }) {
 }
 
 function ProfessionalCard({ professional }) {
+  const navigate = useNavigate();
+
   return (
-    <div className="rounded-xl border border-slate-300 bg-white p-7 transition hover:-translate-y-1 hover:border-emerald-600 hover:shadow-md">
+    <div
+      onClick={() => navigate(`/worker/${professional.id}`)}
+      className="cursor-pointer rounded-xl border border-slate-300 bg-white p-7 transition hover:-translate-y-1 hover:border-emerald-600 hover:shadow-md"
+    >
       <div className="flex items-start justify-between">
         <div
           className={`flex h-14 w-14 items-center justify-center rounded-full ${professional.avatarBg}`}
@@ -204,7 +142,13 @@ function ProfessionalCard({ professional }) {
         </div>
       </div>
 
-      <button className="mt-6 w-full rounded-md bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          navigate(`/worker/${professional.id}`);
+        }}
+        className="mt-6 w-full rounded-md bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+      >
         Book Now
       </button>
     </div>
@@ -212,8 +156,14 @@ function ProfessionalCard({ professional }) {
 }
 
 function FeaturedSmallCard({ person }) {
+  const navigate = useNavigate();
+
   return (
-    <button className="flex w-full items-center gap-5 rounded-xl border border-slate-300 bg-white p-6 text-left transition hover:-translate-y-1 hover:border-emerald-600 hover:shadow-md">
+    <button
+      type="button"
+      onClick={() => navigate(`/worker/${person.id}`)}
+      className="flex w-full items-center gap-5 rounded-xl border border-slate-300 bg-white p-6 text-left transition hover:-translate-y-1 hover:border-emerald-600 hover:shadow-md"
+    >
       <img
         src={person.image}
         alt={person.name}
@@ -241,6 +191,70 @@ export default function CustomerDashboard() {
   const currentUser = getStoredSessionUser();
   const customerName = currentUser?.name?.trim();
 
+  const [servicesList, setServicesList] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadServices() {
+      try {
+        setLoading(true);
+        const res = await apiRequest('/services');
+        const services = res.data?.data || res.data || [];
+        if (isMounted) {
+          const bgColors = [
+            'bg-emerald-300',
+            'bg-indigo-100',
+            'bg-slate-200',
+            'bg-blue-100',
+            'bg-amber-100',
+            'bg-rose-100',
+            'bg-teal-100',
+            'bg-purple-100',
+          ];
+          const mapped = services.map((service, idx) => {
+            const workerName = service.worker?.name || 'Verified Pro';
+            const initials = workerName
+              .split(' ')
+              .map((n) => n[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2);
+            const defaultImages = [
+              'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=800&q=80',
+              'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=800&q=80',
+              'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80',
+            ];
+            return {
+              id: service.worker?.id || '1',
+              initials,
+              name: workerName,
+              role: service.title || 'Service Expert',
+              rating: '4.8',
+              distance: `${(1.2 + idx * 0.7).toFixed(1)} km`,
+              price: `LKR ${parseFloat(service.price).toLocaleString()}`,
+              verified: true,
+              avatarBg: bgColors[idx % bgColors.length],
+              reviews: `${24 + idx * 7} reviews`,
+              image: defaultImages[idx % defaultImages.length],
+            };
+          });
+          setServicesList(mapped);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setServicesList([]);
+          setLoading(false);
+        }
+      }
+    }
+    loadServices();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleCategorySelect = (categoryName) => {
     const targetCategory = categoryName === 'More' ? '' : categoryName;
     const query = targetCategory
@@ -248,6 +262,10 @@ export default function CustomerDashboard() {
       : '';
     navigate(`/search${query}`);
   };
+
+  const topPick = servicesList.length > 0 ? servicesList[0] : null;
+  const topRated = servicesList.slice(0, 4);
+  const featuredList = servicesList.length > 4 ? servicesList.slice(4, 7) : servicesList.slice(1, 4);
 
   return (
     <div className="min-h-screen overflow-x-clip bg-slate-50 text-slate-950">
@@ -339,80 +357,88 @@ export default function CustomerDashboard() {
         <section className="dashboard-shell py-14 sm:py-16 md:py-20">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-slate-950">Top Rated Professionals</h2>
+          </div>
 
-            <div className="hidden items-center gap-3 sm:flex">
-              <button className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 transition hover:border-emerald-700 hover:text-emerald-700">
-                <ChevronLeft size={21} />
-              </button>
-              <button className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 transition hover:border-emerald-700 hover:text-emerald-700">
-                <ChevronRight size={21} />
-              </button>
+          {loading ? (
+            <div className="mt-10 text-center text-slate-500 py-10">Loading professionals...</div>
+          ) : servicesList.length === 0 ? (
+            <div className="mt-10 rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
+              <p className="text-base font-medium text-slate-600">No professionals available at the moment.</p>
             </div>
-          </div>
-
-          <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:gap-7 xl:grid-cols-4 2xl:gap-8">
-            {topRatedProfessionals.map((professional) => (
-              <ProfessionalCard key={professional.name} professional={professional} />
-            ))}
-          </div>
+          ) : (
+            <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:gap-7 xl:grid-cols-4 2xl:gap-8">
+              {topRated.map((professional) => (
+                <ProfessionalCard key={professional.id} professional={professional} />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Featured Professionals */}
-        <section className="dashboard-shell py-14 sm:py-16 md:py-20">
-          <h2 className="text-2xl font-bold text-slate-950">Featured Professionals</h2>
+        {!loading && servicesList.length > 0 && (
+          <section className="dashboard-shell py-14 sm:py-16 md:py-20">
+            <h2 className="text-2xl font-bold text-slate-950">Featured Professionals</h2>
 
-          <div className="mt-10 grid grid-cols-1 gap-7 lg:grid-cols-[1fr_430px] 2xl:grid-cols-[1fr_520px]">
-            {/* Main Featured Card */}
-            <div className="overflow-hidden rounded-xl border border-slate-300 bg-white">
-              <div className="grid grid-cols-1 md:grid-cols-[48%_52%]">
-                <div className="relative min-h-[320px] overflow-hidden">
-                  <img
-                    src="https://images.unsplash.com/photo-1601058268499-e52658b8bb88?auto=format&fit=crop&w=900&q=80"
-                    alt="Kasun Wijesinghe"
-                    className="h-full w-full object-cover"
-                  />
+            <div className="mt-10 grid grid-cols-1 gap-7 lg:grid-cols-[1fr_430px] 2xl:grid-cols-[1fr_520px]">
+              {/* Main Featured Card */}
+              {topPick && (
+                <div className="overflow-hidden rounded-xl border border-slate-300 bg-white">
+                  <div className="grid grid-cols-1 md:grid-cols-[48%_52%]">
+                    <div className="relative min-h-[320px] overflow-hidden">
+                      <img
+                        src={topPick.image}
+                        alt={topPick.name}
+                        className="h-full w-full object-cover"
+                      />
 
-                  <span className="absolute left-7 top-7 rounded-md bg-emerald-700 px-4 py-2 text-sm font-bold uppercase text-white">
-                    Top Pick
-                  </span>
-                </div>
+                      <span className="absolute left-7 top-7 rounded-md bg-emerald-700 px-4 py-2 text-sm font-bold uppercase text-white">
+                        Top Pick
+                      </span>
+                    </div>
 
-                <div className="flex flex-col justify-center p-8 sm:p-10 lg:p-12">
-                  <h3 className="text-3xl font-bold text-slate-950">
-                    Kasun Wijesinghe
-                  </h3>
+                    <div className="flex flex-col justify-center p-8 sm:p-10 lg:p-12">
+                      <h3 className="text-3xl font-bold text-slate-950">
+                        {topPick.name}
+                      </h3>
 
-                  <p className="mt-2 text-sm font-bold text-emerald-700">
-                    Master Carpenter • 15 Years Experience
-                  </p>
+                      <p className="mt-2 text-sm font-bold text-emerald-700">
+                        {topPick.role} • Verified Pro
+                      </p>
 
-                  <p className="mt-7 max-w-xl text-lg leading-8 text-slate-600">
-                    Specializing in high-end teak furniture, modern interior wood accents,
-                    and heritage restoration. Known for precision and timely delivery
-                    across the Western Province.
-                  </p>
+                      <p className="mt-7 max-w-xl text-lg leading-8 text-slate-600">
+                        Specializing in high-quality professional {topPick.role.toLowerCase()} services.
+                        Known for precision, reliability, and timely delivery.
+                      </p>
 
-                  <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-                    <button className="rounded-md bg-emerald-700 px-10 py-4 text-sm font-bold text-white transition hover:bg-emerald-800">
-                      Book Now
-                    </button>
+                      <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+                        <button
+                          onClick={() => navigate(`/worker/${topPick.id}`)}
+                          className="rounded-md bg-emerald-700 px-10 py-4 text-sm font-bold text-white transition hover:bg-emerald-800"
+                        >
+                          Book Now
+                        </button>
 
-                    <button className="rounded-md border border-emerald-700 px-10 py-4 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50">
-                      View Profile
-                    </button>
+                        <button
+                          onClick={() => navigate(`/worker/${topPick.id}`)}
+                          className="rounded-md border border-emerald-700 px-10 py-4 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
+                        >
+                          View Profile
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
+              )}
+
+              {/* Featured List */}
+              <div className="grid gap-6">
+                {featuredList.map((person) => (
+                  <FeaturedSmallCard key={person.id} person={person} />
+                ))}
               </div>
             </div>
-
-            {/* Featured List */}
-            <div className="grid gap-6">
-              {featuredList.map((person) => (
-                <FeaturedSmallCard key={person.name} person={person} />
-              ))}
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
       </main>
 
       <CustomerFooter />

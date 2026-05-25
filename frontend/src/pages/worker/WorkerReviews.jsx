@@ -12,90 +12,17 @@ import {
 } from 'lucide-react';
 import WorkerLayout from '../../components/layout/WorkerLayout';
 
-const initialReviews = [
-  {
-    id: 1,
-    author: 'Samantha Perera',
-    avatar: 'https://i.pravatar.cc/120?img=47',
-    category: 'Painter',
-    rating: 5,
-    date: '2 days ago',
-    content:
-      'Aruna did an absolutely fantastic job painting our guest bedroom. He was punctual, meticulous about covering the furniture, and the finish is flawless. Highly recommend him for any precise interior work!',
-    replied: false,
-    reply: null,
-  },
-  {
-    id: 2,
-    author: 'David Wilson',
-    avatar: 'https://i.pravatar.cc/120?img=12',
-    category: 'Wall Repair',
-    rating: 5,
-    date: '1 week ago',
-    content:
-      'Very professional and tidy. He fixed several cracks in my plaster walls that I thought were beyond repair. The pricing was transparent and fair.',
-    replied: true,
-    reply: {
-      author: 'Aruna K. (You)',
-      date: '5 days ago',
-      content:
-        'Thank you so much, David! It was a pleasure working on your beautiful home. Let me know if you need anything else.',
-    },
-  },
-  {
-    id: 3,
-    author: 'Kasun Abeysinghe',
-    avatar: 'https://i.pravatar.cc/120?img=33',
-    category: 'Exterior Trim',
-    rating: 4,
-    date: '2 weeks ago',
-    content:
-      'Good work overall. Arrived slightly later than expected but communicated well about the delay. The quality of work itself is excellent.',
-    replied: false,
-    reply: null,
-  },
-  {
-    id: 4,
-    author: 'Nethmi Fernando',
-    avatar: 'https://i.pravatar.cc/120?img=49',
-    category: 'Interior Painting',
-    rating: 5,
-    date: '3 weeks ago',
-    content:
-      'Excellent service from start to finish. The room looks fresh and clean, and the work was completed on time.',
-    replied: false,
-    reply: null,
-  },
-  {
-    id: 5,
-    author: 'Chamod Silva',
-    avatar: 'https://i.pravatar.cc/120?img=15',
-    category: 'Wall Repair',
-    rating: 3,
-    date: '1 month ago',
-    content:
-      'The repair quality was good, but the arrival time was later than expected. Communication could be improved.',
-    replied: false,
-    reply: null,
-  },
-];
+const initialReviews = [];
 
 const ratingBreakdown = [
-  { label: '5 Star', count: 115, percentage: 92 },
-  { label: '4 Star', count: 8, percentage: 8 },
-  { label: '3 Star', count: 2, percentage: 2 },
-  { label: '2 Star', count: 1, percentage: 1 },
-  { label: '1 Star', count: 1, percentage: 1 },
+  { label: '5 Star', count: 0, percentage: 0 },
+  { label: '4 Star', count: 0, percentage: 0 },
+  { label: '3 Star', count: 0, percentage: 0 },
+  { label: '2 Star', count: 0, percentage: 0 },
+  { label: '1 Star', count: 0, percentage: 0 },
 ];
 
-const feedbackHighlights = [
-  'Punctual',
-  'Expert',
-  'Clean',
-  'Polite',
-  'Fair Pricing',
-  'Detail Oriented',
-];
+const feedbackHighlights = [];
 
 function RatingStars({ rating }) {
   return (
@@ -280,7 +207,7 @@ export default function WorkerReviews() {
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                 Total Reviews
               </p>
-              <p className="mt-2 text-3xl font-bold text-emerald-600">127</p>
+              <p className="mt-2 text-3xl font-bold text-emerald-600">{reviews.length}</p>
             </div>
 
             <div className="md:pl-10">
@@ -288,7 +215,7 @@ export default function WorkerReviews() {
                 Average Rating
               </p>
               <p className="mt-2 text-3xl font-bold text-slate-950">
-                4.9{' '}
+                {reviews.length > 0 ? '5.0' : '0.0'}{' '}
                 <span className="text-base font-medium text-slate-400">/ 5</span>
               </p>
             </div>
@@ -297,7 +224,7 @@ export default function WorkerReviews() {
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                 Recommendation Rate
               </p>
-              <p className="mt-2 text-3xl font-bold text-slate-950">98%</p>
+              <p className="mt-2 text-3xl font-bold text-slate-950">{reviews.length > 0 ? '100%' : '0%'}</p>
             </div>
           </div>
         </section>
@@ -325,98 +252,80 @@ export default function WorkerReviews() {
 
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_380px] 2xl:grid-cols-[minmax(0,1fr)_420px]">
           <section className="space-y-6">
-            {visibleReviews.map((review) => (
-              <article
-                key={review.id}
-                className="rounded-xl border border-emerald-900/20 bg-white p-6 shadow-sm"
-              >
-                <div className="mb-5 flex items-start justify-between gap-4">
-                  <div className="flex min-w-0 items-start gap-4">
-                    <img
-                      src={review.avatar}
-                      alt={review.author}
-                      className="h-12 w-12 shrink-0 rounded-full border border-slate-200 object-cover"
-                    />
+            {visibleReviews.length > 0 ? (
+              visibleReviews.map((review) => (
+                <article
+                  key={review.id}
+                  className="rounded-xl border border-emerald-900/20 bg-white p-6 shadow-sm"
+                >
+                  <div className="mb-5 flex items-start justify-between gap-4">
+                    <div className="flex min-w-0 items-start gap-4">
+                      <img
+                        src={review.avatar}
+                        alt={review.author}
+                        className="h-12 w-12 shrink-0 rounded-full border border-slate-200 object-cover"
+                      />
 
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-slate-950">{review.author}</h3>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-slate-950">{review.author}</h3>
 
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <RatingStars rating={review.rating} />
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <RatingStars rating={review.rating} />
 
-                        <span className="text-xs font-medium text-slate-400">
-                          • {review.date}
-                        </span>
+                          <span className="text-xs font-medium text-slate-400">
+                            • {review.date}
+                          </span>
+                        </div>
                       </div>
                     </div>
+
+                    <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                      {review.category}
+                    </span>
                   </div>
 
-                  <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                    {review.category}
-                  </span>
-                </div>
+                  <p className="text-[15px] leading-relaxed text-slate-600">
+                    {review.content}
+                  </p>
 
-                <p className="text-[15px] leading-relaxed text-slate-600">
-                  {review.content}
-                </p>
+                  {review.replied && review.reply && (
+                    <div className="mt-5 rounded-lg border-l-4 border-emerald-600 bg-slate-50 p-5">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-bold text-emerald-700">
+                          {review.reply.author} Replied:
+                        </p>
 
-                {review.replied && review.reply && (
-                  <div className="mt-5 rounded-lg border-l-4 border-emerald-600 bg-slate-50 p-5">
-                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs font-bold text-emerald-700">
-                        {review.reply.author} Replied:
+                        <span className="text-xs text-slate-400">
+                          {review.reply.date}
+                        </span>
+                      </div>
+
+                      <p className="text-sm leading-relaxed text-slate-600">
+                        “{review.reply.content}”
                       </p>
-
-                      <span className="text-xs text-slate-400">
-                        {review.reply.date}
-                      </span>
                     </div>
+                  )}
+                </article>
+              ))
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
+                <p className="text-slate-500">No reviews found.</p>
+              </div>
+            )}
 
-                    <p className="text-sm leading-relaxed text-slate-600">
-                      “{review.reply.content}”
-                    </p>
-                  </div>
-                )}
+            {totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  disabled={currentPage === 1}
+                  className="grid h-9 w-9 place-items-center rounded-full text-slate-400 transition hover:bg-white hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={20} />
+                </button>
 
-                <div className="mt-5 flex items-center justify-between border-t border-slate-200 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => openReplyModal(review)}
-                    disabled={review.replied}
-                    className={`inline-flex items-center gap-2 text-sm font-bold transition ${
-                      review.replied
-                        ? 'cursor-not-allowed text-slate-400'
-                        : 'text-emerald-700 hover:text-emerald-800'
-                    }`}
-                  >
-                    <MessageCircle size={16} />
-                    {review.replied ? 'Replied' : 'Reply'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleReport(review)}
-                    className="inline-flex items-center gap-2 text-sm font-bold text-slate-400 transition hover:text-red-500"
-                  >
-                    <Flag size={16} />
-                    Report
-                  </button>
-                </div>
-              </article>
-            ))}
-
-            <div className="flex items-center justify-center gap-3 pt-4">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                disabled={currentPage === 1}
-                className="grid h-9 w-9 place-items-center rounded-full text-slate-400 transition hover:bg-white hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Previous page"
-              >
-                <ChevronLeft size={20} />
-              </button>
-
-              {Array.from({ length: totalPages }).map((_, index) => {
+                {Array.from({ length: totalPages }).map((_, index) => {
                 const page = index + 1;
                 const active = currentPage === page;
 
@@ -448,6 +357,7 @@ export default function WorkerReviews() {
                 <ChevronRight size={20} />
               </button>
             </div>
+          )}
           </section>
 
           <aside className="xl:sticky xl:top-28 xl:self-start">

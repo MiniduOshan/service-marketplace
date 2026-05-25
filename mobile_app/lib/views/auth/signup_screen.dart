@@ -8,7 +8,8 @@ import '../worker/worker_registration_screen.dart';
 
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+  final UserRole role;
+  const SignupScreen({super.key, this.role = UserRole.customer});
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
@@ -101,26 +102,46 @@ class _SignupScreenState extends State<SignupScreen> {
             SizedBox(
               width: double.infinity, height: 56,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : () async {
-                  setState(() => _isLoading = true);
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                        setState(() => _isLoading = true);
 
-                  final success = await authController.registerCustomer(
-                    _nameController.text,
-                    _emailController.text,
-                    _passwordController.text,
-                  );
+                        bool success = false;
 
-                  if (!context.mounted) return;
-                  setState(() => _isLoading = false);
+                        if (widget.role == UserRole.worker) {
+                          success = await authController.registerWorker(
+                            _nameController.text,
+                            _emailController.text,
+                            _passwordController.text,
+                          );
+                        } else {
+                          success = await authController.registerCustomer(
+                            _nameController.text,
+                            _emailController.text,
+                            _passwordController.text,
+                          );
+                        }
 
-                  if (success) {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (context) => const HomeScreen()),
-                      (route) => false,
-                    );
-                  }
-                },
+                        if (!context.mounted) return;
+                        setState(() => _isLoading = false);
+
+                        if (success) {
+                          if (widget.role == UserRole.worker) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (context) => const WorkerRegistrationScreen()),
+                              (route) => false,
+                            );
+                          } else {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (context) => const HomeScreen()),
+                              (route) => false,
+                            );
+                          }
+                        }
+                      },
                 style: ElevatedButton.styleFrom(backgroundColor: primaryGreen, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28))),
                 child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("Sign Up", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               ),
@@ -134,7 +155,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
               try {
                 final success = await authController.loginWithGoogle(
-                  role: UserRole.customer,
+                  role: widget.role,
                   signupFlow: true,
                 );
 
@@ -161,7 +182,10 @@ class _SignupScreenState extends State<SignupScreen> {
               height: 56,
               child: OutlinedButton(
                 onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PhoneLoginScreen()));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => PhoneLoginScreen(role: widget.role)),
+                  );
                 },
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Color(0xFF006D44)),

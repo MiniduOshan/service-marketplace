@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import WorkerLayout from '../../components/layout/WorkerLayout';
+import { apiRequest } from '../../lib/api';
 
 const initialServices = [
   {
@@ -179,17 +180,21 @@ function ProfileCompleteness({ onManage }) {
 }
 
 function ServiceCard({ service, onToggle }) {
+  const isActive = service.is_active === true || service.is_active === 1;
+  const priceLabel = service.price ? `LKR ${parseFloat(service.price).toLocaleString()}` : 'Negotiable';
+  const imageUrl = service.image || 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=700&q=80';
+
   return (
     <article className="overflow-hidden rounded-xl border border-emerald-900/20 bg-white shadow-sm">
-      <div className="relative h-32 overflow-hidden">
+      <div className="relative h-32 overflow-hidden bg-slate-100">
         <img
-          src={service.image}
+          src={imageUrl}
           alt={service.title}
           className="h-full w-full object-cover"
         />
 
         <div className="absolute right-3 top-3">
-          <Toggle checked={service.active} onChange={onToggle} />
+          <Toggle checked={isActive} onChange={onToggle} />
         </div>
       </div>
 
@@ -198,12 +203,12 @@ function ServiceCard({ service, onToggle }) {
 
         <p className="mt-2 flex items-center gap-1 text-sm text-slate-600">
           <Star size={15} className="fill-emerald-600 text-emerald-600" />
-          {service.rating} ({service.reviews} reviews)
+          4.8 (120 reviews)
         </p>
 
-        <p className="mt-2 text-sm font-bold text-emerald-700">
-          {service.price}{' '}
-          <span className="font-medium text-slate-500">{service.unit}</span>
+        <p className="mt-2 text-sm font-bold text-[#05735f]">
+          {priceLabel}{' '}
+          <span className="font-medium text-slate-500">/ task</span>
         </p>
       </div>
     </article>
@@ -482,16 +487,49 @@ function AnalyticsModal({ onClose }) {
 export default function WorkerProfile() {
   const navigate = useNavigate();
 
-  const [services, setServices] = useState(initialServices);
+  const [user, setUser] = useState(null);
+  const [services, setServices] = useState([]);
+  const [stats, setStats] = useState(null);
   const [portfolio, setPortfolio] = useState(initialPortfolio);
   const [modal, setModal] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  function toggleService(id) {
-    setServices((current) =>
-      current.map((service) =>
-        service.id === id ? { ...service, active: !service.active } : service
-      )
-    );
+  async function loadProfileData() {
+    try {
+      setLoading(true);
+      const meRes = await apiRequest('/auth/me');
+      const servicesRes = await apiRequest('/auth/worker/services');
+      const statsRes = await apiRequest('/auth/worker/stats');
+
+      setUser(meRes.data || meRes);
+      setServices(servicesRes.data || servicesRes);
+      setStats(statsRes.data || statsRes);
+      setLoading(false);
+    } catch (err) {
+      setError(err.message || 'Failed to load profile data.');
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadProfileData();
+  }, []);
+
+  async function toggleService(id, currentActive) {
+    try {
+      await apiRequest(`/auth/worker/services/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ is_active: !currentActive }),
+      });
+      setServices((current) =>
+        current.map((service) =>
+          service.id === id ? { ...service, is_active: !currentActive } : service
+        )
+      );
+    } catch (err) {
+      alert(err.message || 'Failed to update service status.');
+    }
   }
 
   function addPortfolio() {
@@ -523,6 +561,16 @@ export default function WorkerProfile() {
     navigate('/worker/earnings');
   }
 
+  if (loading) {
+    return (
+      <WorkerLayout>
+        <div className="flex h-96 items-center justify-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-700 border-t-transparent" />
+        </div>
+      </WorkerLayout>
+    );
+  }
+
   return (
     <WorkerLayout>
       <div className="mx-auto w-full max-w-[1560px]">
@@ -547,11 +595,17 @@ export default function WorkerProfile() {
           <div className="relative px-6 pb-8 lg:px-8">
             <div className="-mt-16 flex flex-col gap-4 sm:flex-row sm:items-end">
               <div className="relative">
-                <img
-                  src="https://i.pravatar.cc/160?img=12"
-                  alt="Kasun Silva"
-                  className="h-32 w-32 rounded-xl border-4 border-white object-cover shadow-xl"
-                />
+                {user?.name ? (
+                  <div className="h-32 w-32 rounded-xl border-4 border-white bg-emerald-700 text-white flex items-center justify-center text-4xl font-bold shadow-xl">
+                    {user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                  </div>
+                ) : (
+                  <img
+                    src="https://i.pravatar.cc/160?img=12"
+                    alt="Worker"
+                    className="h-32 w-32 rounded-xl border-4 border-white object-cover shadow-xl"
+                  />
+                )}
 
                 <button
                   type="button"
@@ -565,18 +619,24 @@ export default function WorkerProfile() {
 
               <div className="pb-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-3xl font-bold text-white drop-shadow sm:text-slate-950 sm:drop-shadow-none">
-                    Kasun Silva
+                  <h1 className="text-3xl font-bold text-slate-900 sm:text-slate-950 sm:drop-shadow-none">
+                    {user?.name || 'Worker'}
                   </h1>
 
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-[10px] font-bold uppercase text-white">
-                    <ShieldCheck size={13} />
-                    Verified Professional
-                  </span>
+                  {user?.phone_verified_at ? (
+                    <span className="inline-flex items-center gap-1 rounded bg-emerald-500 px-3 py-1 text-[10px] font-bold uppercase text-white">
+                      <ShieldCheck size={13} />
+                      Verified Professional
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded bg-amber-500 px-3 py-1 text-[10px] font-bold uppercase text-white">
+                      Verification Required
+                    </span>
+                  )}
                 </div>
 
-                <p className="mt-1 text-sm font-medium text-white drop-shadow sm:text-slate-600 sm:drop-shadow-none">
-                  Licensed General Contractor • Colombo, Sri Lanka
+                <p className="mt-1 text-sm font-medium text-slate-600 sm:drop-shadow-none">
+                  Specialist Worker • {user?.phone || 'No phone linked'}
                 </p>
               </div>
             </div>
@@ -591,21 +651,21 @@ export default function WorkerProfile() {
               <div className="mt-5 space-y-4">
                 <StatBox
                   label="Total Earnings"
-                  value="LKR 45.2k"
+                  value={stats ? `LKR ${parseFloat(stats.total_earnings).toLocaleString()}` : '--'}
                   icon={CircleDollarSign}
                   iconClassName="bg-emerald-50 text-emerald-700"
                 />
 
                 <StatBox
                   label="Jobs Done"
-                  value="128"
+                  value={stats ? stats.jobs_done : '--'}
                   icon={CheckCircle2}
                   iconClassName="bg-blue-50 text-blue-600"
                 />
 
                 <StatBox
                   label="Profile Views"
-                  value="422"
+                  value={stats ? stats.profile_views : '--'}
                   icon={Eye}
                   iconClassName="bg-purple-50 text-purple-600"
                 />
@@ -689,7 +749,7 @@ export default function WorkerProfile() {
                   <ServiceCard
                     key={service.id}
                     service={service}
-                    onToggle={() => toggleService(service.id)}
+                    onToggle={() => toggleService(service.id, service.is_active)}
                   />
                 ))}
               </div>

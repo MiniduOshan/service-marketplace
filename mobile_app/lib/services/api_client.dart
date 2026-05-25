@@ -10,7 +10,9 @@ class ApiClient {
 
   final String baseUrl = kIsWeb
       ? 'http://localhost:8000/api'
-      : 'http://10.0.2.2:8000/api';
+      : (defaultTargetPlatform == TargetPlatform.android
+          ? 'http://10.0.2.2:8000/api'
+          : 'http://localhost:8000/api');
 
   Future<Map<String, dynamic>> postJson(
     String path, {
@@ -18,6 +20,24 @@ class ApiClient {
     String? token,
   }) async {
     final response = await http.post(
+      Uri.parse('$baseUrl$path'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(body ?? const {}),
+    );
+
+    return _decodeResponse(response);
+  }
+
+  Future<Map<String, dynamic>> patchJson(
+    String path, {
+    Map<String, dynamic>? body,
+    String? token,
+  }) async {
+    final response = await http.patch(
       Uri.parse('$baseUrl$path'),
       headers: {
         'Accept': 'application/json',
@@ -133,8 +153,23 @@ class ApiClient {
     return List<Map<String, dynamic>>.from(payload['data'] as List<dynamic>);
   }
 
-  Future<List<Map<String, dynamic>>> getServices() async {
-    final payload = await getJson('/services');
+  Future<List<Map<String, dynamic>>> getServices({
+    String? category,
+    String? search,
+    String? workerId,
+  }) async {
+    final queryParams = <String>[];
+    if (category != null && category.isNotEmpty) {
+      queryParams.add('category=${Uri.encodeComponent(category)}');
+    }
+    if (search != null && search.isNotEmpty) {
+      queryParams.add('search=${Uri.encodeComponent(search)}');
+    }
+    if (workerId != null && workerId.isNotEmpty) {
+      queryParams.add('worker_id=${Uri.encodeComponent(workerId)}');
+    }
+    final queryString = queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
+    final payload = await getJson('/services$queryString');
     final data = payload['data'] as Map<String, dynamic>;
     return List<Map<String, dynamic>>.from(data['data'] as List<dynamic>);
   }
@@ -164,11 +199,21 @@ class ApiClient {
     return List<Map<String, dynamic>>.from(data['data'] as List<dynamic>);
   }
 
+  Future<List<Map<String, dynamic>>> getWorkerServices({String? token}) async {
+    final payload = await getJson('/auth/worker/services', token: token);
+    return List<Map<String, dynamic>>.from(payload['data'] as List<dynamic>);
+  }
+
+  Future<Map<String, dynamic>> getWorkerStats({String? token}) async {
+    final payload = await getJson('/auth/worker/stats', token: token);
+    return Map<String, dynamic>.from(payload['data'] as Map<String, dynamic>);
+  }
+
   Future<Map<String, dynamic>> cancelBooking({
     required String bookingId,
     String? token,
   }) {
-    return postJson('/auth/bookings/$bookingId/cancel', token: token);
+    return patchJson('/auth/bookings/$bookingId/cancel', token: token);
   }
 
   Future<Map<String, dynamic>> createWorkerServicePackage({
@@ -191,6 +236,35 @@ class ApiClient {
         'duration_minutes': durationMinutes,
         'location_type': locationType,
       },
+    );
+  }
+
+  Future<Map<String, dynamic>> updateWorkerServicePackage({
+    required String servicePackageId,
+    bool? isActive,
+    String? token,
+  }) {
+    final body = <String, dynamic>{};
+    if (isActive != null) body['is_active'] = isActive;
+    return patchJson(
+      '/auth/worker/services/$servicePackageId',
+      token: token,
+      body: body,
+    );
+  }
+
+  Future<Map<String, dynamic>> updateProfile({
+    String? name,
+    String? phone,
+    String? token,
+  }) {
+    final body = <String, dynamic>{};
+    if (name != null) body['name'] = name;
+    if (phone != null) body['phone'] = phone;
+    return postJson(
+      '/auth/profile',
+      token: token,
+      body: body,
     );
   }
 
