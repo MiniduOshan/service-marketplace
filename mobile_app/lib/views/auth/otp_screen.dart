@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import '../../controllers/auth_controller.dart';
+import '../../models/app_user.dart';
 import '../customer/home_screen.dart';
+import '../worker/worker_registration_screen.dart';
 
 
 class OTPVerificationScreen extends StatefulWidget {
   final String verificationTarget;
-  const OTPVerificationScreen({super.key, required this.verificationTarget});
+  final String phoneNumber;
+  const OTPVerificationScreen({super.key, required this.verificationTarget, required this.phoneNumber});
 
   @override
   State<OTPVerificationScreen> createState() => _OTPVerificationScreenState();
@@ -15,6 +18,8 @@ class OTPVerificationScreen extends StatefulWidget {
 class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   final _otpController = TextEditingController();
   late final PinInputController _pinInputController;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -66,6 +71,11 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               ),
             ),
 
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 16),
+              Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+            ],
+
             const Spacer(),
             SizedBox(
               width: double.infinity,
@@ -75,7 +85,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   backgroundColor: primaryGreen,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   if (_otpController.text.trim().length != 6) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Enter the 6-digit code to continue.')),
@@ -83,21 +93,41 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                     return;
                   }
 
-                  if (!authController.hasPendingLogin()) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('No pending sign-in session found.')),
+                  setState(() {
+                    _isLoading = true;
+                    _errorMessage = null;
+                  });
+
+                  try {
+                    await authController.verifyPhoneOtp(widget.phoneNumber, _otpController.text.trim());
+                    if (!context.mounted) return;
+
+                    final nextScreen = authController.currentUserRole == UserRole.worker
+                      ? const WorkerRegistrationScreen()
+                      : const HomeScreen();
+
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => nextScreen),
+                      (route) => false,
                     );
-                    return;
+                  } catch (error) {
+                    if (!context.mounted) return;
+                    setState(() {
+                      _errorMessage = error.toString().replaceFirst('Exception: ', '');
+                    });
+                  } finally {
+                    if (context.mounted) {
+                      setState(() => _isLoading = false);
+                    }
                   }
-
-                  authController.completePendingLogin();
-
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const HomeScreen()),
-                    (route) => false,
-                  );
                 },
-                child: const Text("Verify", style: TextStyle(color: Colors.white, fontSize: 18)),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.4),
+                      )
+                    : const Text("Verify", style: TextStyle(color: Colors.white, fontSize: 18)),
               ),
             ),
           ],

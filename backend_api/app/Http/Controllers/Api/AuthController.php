@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
@@ -26,12 +29,14 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'phone' => ['nullable', 'string', 'max:30', 'unique:users,phone'],
             'password' => ['required', 'string', 'confirmed', Password::min(8)],
         ]);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'phone' => User::normalizePhone($validated['phone'] ?? null),
             'password' => $validated['password'],
             'role' => $role,
         ]);
@@ -73,6 +78,145 @@ class AuthController extends Controller
         ]);
     }
 
+    public function google(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'credential' => ['required', 'string'],
+            'flow' => ['required', 'in:signin,signup'],
+            'role' => ['nullable', 'in:customer,worker'],
+        ]);
+
+        $googleProfile = $this->resolveGoogleProfile($validated['credential']);
+        $normalizedEmail = strtolower($googleProfile['email']);
+
+        $user = User::query()
+            ->where('google_id', $googleProfile['sub'])
+            ->orWhere('email', $normalizedEmail)
+            ->first();
+
+        if (! $user) {
+            if ($validated['flow'] === 'signin') {
+                return response()->json([
+                    'message' => 'No account found for this Google account. Please sign up first.',
+                ], 404);
+            }
+
+            $user = User::create([
+                'name' => $googleProfile['name'] ?: $this->fallbackGoogleName($normalizedEmail),
+                'email' => $normalizedEmail,
+                'google_id' => $googleProfile['sub'],
+                'password' => Str::random(40),
+                'role' => $validated['role'] ?? 'customer',
+                'email_verified_at' => $googleProfile['email_verified'] ? now() : null,
+            ]);
+        } else {
+            $updates = [
+                'google_id' => $user->google_id ?: $googleProfile['sub'],
+                'email_verified_at' => $user->email_verified_at ?? ($googleProfile['email_verified'] ? now() : null),
+            ];
+
+            if (! $user->name && $googleProfile['name']) {
+                $updates['name'] = $googleProfile['name'];
+            }
+
+            $user->forceFill(array_filter($updates, static fn ($value) => $value !== null))->save();
+        }
+
+        $token = $user->issueApiToken();
+
+        return response()->json([
+            'message' => 'Logged in with Google successfully.',
+            'data' => [
+                'user' => $user->fresh(),
+                'token' => $token,
+            ],
+        ]);
+    }
+
+    public function requestPhoneOtp(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'phone' => ['required', 'string', 'max:30'],
+            'name' => ['required', 'string', 'max:255'],
+            'role' => ['required', 'in:customer,worker'],
+        ]);
+
+        $phone = User::normalizePhone($validated['phone']);
+
+        if (! $phone) {
+            return response()->json([
+                'message' => 'Enter a valid phone number.',
+            ], 422);
+        }
+
+        $user = User::firstOrCreate(
+            ['phone' => $phone],
+            [
+                'name' => $validated['name'],
+                'email' => $this->buildPhoneEmail($phone, $validated['role']),
+                'password' => Str::random(40),
+                'role' => $validated['role'],
+            ]
+        );
+
+        if ($user->name !== $validated['name']) {
+            $user->forceFill(['name' => $validated['name']])->save();
+        }
+
+        $otp = $this->generatePhoneOtp();
+        $user->storePhoneOtp($otp);
+
+        return response()->json([
+            'message' => 'OTP sent successfully.',
+            'data' => [
+                'phone' => $phone,
+                'verification_target' => $phone,
+                'otp' => app()->isProduction() ? null : $otp,
+            ],
+        ]);
+    }
+
+    public function verifyPhoneOtp(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'phone' => ['required', 'string', 'max:30'],
+            'otp' => ['required', 'string', 'size:6'],
+        ]);
+
+        $phone = User::normalizePhone($validated['phone']);
+
+        if (! $phone) {
+            return response()->json([
+                'message' => 'Enter a valid phone number.',
+            ], 422);
+        }
+
+        $user = User::where('phone', $phone)->first();
+
+        if (! $user) {
+            return response()->json([
+                'message' => 'No account found for this phone number.',
+            ], 404);
+        }
+
+        if (! $user->verifyPhoneOtp($validated['otp'])) {
+            return response()->json([
+                'message' => 'Invalid or expired OTP.',
+            ], 422);
+        }
+
+        $user->markPhoneVerified();
+        $token = $user->issueApiToken();
+
+        return response()->json([
+            'message' => 'Phone number verified successfully.',
+            'data' => [
+                'user' => $user->fresh(),
+                'token' => $token,
+            ],
+        ]);
+    }
+
     public function me(Request $request): JsonResponse
     {
         return response()->json([
@@ -89,5 +233,66 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Logged out successfully.',
         ]);
+    }
+
+    private function generatePhoneOtp(): string
+    {
+        if (app()->environment('testing')) {
+            return '123456';
+        }
+
+        return (string) random_int(100000, 999999);
+    }
+
+    private function buildPhoneEmail(string $phone, string $role): string
+    {
+        return sprintf('%s.%s@phone.skilledlk.local', $role, $phone);
+    }
+
+    private function resolveGoogleProfile(string $credential): array
+    {
+        $response = Http::timeout(10)->get('https://oauth2.googleapis.com/tokeninfo', [
+            'id_token' => $credential,
+        ]);
+
+        if (! $response->successful()) {
+            $this->googleError('Unable to verify the Google credential.');
+        }
+
+        $profile = $response->json();
+        $clientIds = User::normalizeGoogleClientIds(config('services.google.client_ids', []));
+
+        if ($clientIds === []) {
+            $this->googleError('Google sign-in is not configured.', 500);
+        }
+
+        if (! in_array((string) ($profile['aud'] ?? ''), $clientIds, true)) {
+            $this->googleError('Google credential was issued for an unexpected client.');
+        }
+
+        if (! filter_var($profile['email_verified'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            $this->googleError('Google account email is not verified.');
+        }
+
+        return [
+            'sub' => (string) ($profile['sub'] ?? ''),
+            'email' => (string) ($profile['email'] ?? ''),
+            'name' => (string) ($profile['name'] ?? ''),
+            'email_verified' => true,
+        ];
+    }
+
+    private function fallbackGoogleName(string $email): string
+    {
+        $localPart = trim(explode('@', $email)[0] ?? '');
+
+        return $localPart !== '' ? str_replace(['.', '_', '-'], ' ', $localPart) : 'Google User';
+    }
+
+    private function googleError(string $message, int $status = 422): never
+    {
+        throw new HttpResponseException(response()->json([
+            'message' => $message,
+        ], $status));
     }
 }

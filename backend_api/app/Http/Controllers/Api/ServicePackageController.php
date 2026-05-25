@@ -49,6 +49,7 @@ class ServicePackageController extends Controller
         $user = $request->user();
 
         abort_unless($user?->isWorker(), 403, 'Only workers can create service packages.');
+        abort_unless($user->hasVerifiedPhone(), 403, 'Please verify your phone number before adding services.');
 
         $validated = $request->validate([
             'service_category_id' => ['required', 'exists:service_categories,id'],
@@ -82,6 +83,7 @@ class ServicePackageController extends Controller
         $user = $request->user();
 
         abort_unless($user?->id === $servicePackage->user_id, 403, 'You can only edit your own service packages.');
+        abort_unless($user->hasVerifiedPhone(), 403, 'Please verify your phone number before editing services.');
 
         $validated = $request->validate([
             'service_category_id' => ['sometimes', 'exists:service_categories,id'],

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { BadgeCheck, HardHat, UserRound } from 'lucide-react';
-import { FcGoogle } from 'react-icons/fc';
 import OnboardingLayout from './OnboardingLayout';
+import GoogleSignInButton from './GoogleSignInButton';
 
 export default function RoleSelection({
   onBack,
   onContinue,
+  onGoogleComplete,
   selectedRole: initialSelectedRole = 'customer',
 }) {
   const [selectedRole, setSelectedRole] = useState(initialSelectedRole);
@@ -99,13 +100,12 @@ export default function RoleSelection({
           <div className="h-px flex-1 bg-slate-200" />
         </div>
 
-        <button
-          type="button"
-          className="flex h-11 w-full cursor-pointer items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white text-[14px] font-extrabold text-slate-800 transition hover:bg-slate-50 2xl:h-12 2xl:text-[15px] min-[1920px]:h-14 min-[1920px]:text-base"
-        >
-          <FcGoogle size={20} className="2xl:h-6 2xl:w-6 min-[1920px]:h-7 min-[1920px]:w-7" />
-          Continue with Google
-        </button>
+        <GoogleSignInButton
+          flow="signup"
+          role={selectedRole}
+          onSuccess={onGoogleComplete}
+          className="mt-1"
+        />
 
         <div className="mt-5 rounded-xl bg-emerald-50 p-4 lg:hidden 2xl:mt-7 2xl:p-5 min-[1920px]:mt-8 min-[1920px]:p-6">
           <div className="space-y-2.5">

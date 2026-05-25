@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -62,6 +63,34 @@ class AuthTest extends TestCase
             ->assertJsonPath('data.user.email', $user->email);
     }
 
+    public function test_user_can_request_and_verify_phone_login(): void
+    {
+        $requestResponse = $this->postJson('/api/auth/phone/request-otp', [
+            'name' => 'Phone User',
+            'phone' => '+94 77 123 4567',
+            'role' => 'customer',
+        ]);
+
+        $requestResponse->assertOk()
+            ->assertJsonPath('data.phone', '94771234567')
+            ->assertJsonPath('data.otp', '123456');
+
+        $verifyResponse = $this->postJson('/api/auth/phone/verify-otp', [
+            'phone' => '+94 77 123 4567',
+            'otp' => '123456',
+        ]);
+
+        $verifyResponse->assertOk()
+            ->assertJsonStructure([
+                'message',
+                'data' => [
+                    'user' => ['id', 'name', 'email', 'phone', 'phone_verified_at'],
+                    'token',
+                ],
+            ])
+            ->assertJsonPath('data.user.phone', '94771234567');
+    }
+
     public function test_user_can_logout(): void
     {
         $user = User::factory()->create();
@@ -75,5 +104,46 @@ class AuthTest extends TestCase
             'id' => $user->id,
             'api_token_hash' => null,
         ]);
+    }
+
+    public function test_user_can_sign_up_with_google_and_sign_in_again(): void
+    {
+        config([
+            'services.google.client_ids' => ['web-client-id'],
+        ]);
+
+        Http::fake([
+            'https://oauth2.googleapis.com/tokeninfo*' => Http::response([
+                'aud' => 'web-client-id',
+                'sub' => 'google-sub-123',
+                'email' => 'google.user@example.com',
+                'name' => 'Google User',
+                'email_verified' => 'true',
+            ], 200),
+        ]);
+
+        $signupResponse = $this->postJson('/api/auth/google', [
+            'credential' => 'fake-google-token',
+            'flow' => 'signup',
+            'role' => 'worker',
+        ]);
+
+        $signupResponse->assertOk()
+            ->assertJsonPath('data.user.email', 'google.user@example.com')
+            ->assertJsonPath('data.user.role', 'worker');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'google.user@example.com',
+            'google_id' => 'google-sub-123',
+            'role' => 'worker',
+        ]);
+
+        $signinResponse = $this->postJson('/api/auth/google', [
+            'credential' => 'fake-google-token',
+            'flow' => 'signin',
+        ]);
+
+        $signinResponse->assertOk()
+            ->assertJsonPath('data.user.email', 'google.user@example.com');
     }
 }

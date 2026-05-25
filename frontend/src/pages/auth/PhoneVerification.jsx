@@ -1,13 +1,16 @@
 import React, { useRef, useState } from 'react';
 import OnboardingLayout from './OnboardingLayout';
+import { apiRequest, storeSession } from '../../lib/api';
 
 export default function PhoneVerification({
   onBack,
   onChangePhone,
-  onVerifyCode,
+  onVerified,
   phoneNumber = '+94 77 123 4567',
 }) {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRefs = useRef([]);
 
   const handleOtpChange = (index, value) => {
@@ -43,11 +46,30 @@ export default function PhoneVerification({
     inputRefs.current[Math.min(pasted.length, 5)]?.focus();
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (onVerifyCode) {
-      onVerifyCode(otp.join(''));
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const response = await apiRequest('/auth/phone/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({
+          phone: phoneNumber,
+          otp: otp.join(''),
+        }),
+      });
+
+      storeSession(response.data.token, response.data.user);
+
+      if (onVerified) {
+        onVerified(response.data.user);
+      }
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to verify the code.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -68,6 +90,12 @@ export default function PhoneVerification({
              &nbsp;&nbsp;Change?
           </button>
         </p>
+
+        {error ? (
+          <p className="mt-3 text-[13px] font-medium text-red-600 2xl:text-[15px] min-[1920px]:text-base">
+            {error}
+          </p>
+        ) : null}
 
         <form onSubmit={handleSubmit} className="mt-9 2xl:mt-11 min-[1920px]:mt-12">
           <div className="grid grid-cols-6 gap-2.5 2xl:gap-3 min-[1920px]:gap-4">
@@ -107,9 +135,10 @@ export default function PhoneVerification({
 
           <button
             type="submit"
+            disabled={isSubmitting}
             className="mt-10 h-11 w-full cursor-pointer rounded-lg bg-[#08785d] text-[14px] font-extrabold text-white shadow-lg shadow-emerald-900/20 transition hover:bg-[#066b53] 2xl:mt-12 2xl:h-12 2xl:text-[15px] min-[1920px]:mt-14 min-[1920px]:h-14 min-[1920px]:text-base"
           >
-            Verify Code
+            {isSubmitting ? 'Verifying...' : 'Verify Code'}
           </button>
         </form>
 

@@ -23,6 +23,9 @@ Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/register-worker', [AuthController::class, 'registerWorker']);
     Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/google', [AuthController::class, 'google']);
+    Route::post('/phone/request-otp', [AuthController::class, 'requestPhoneOtp']);
+    Route::post('/phone/verify-otp', [AuthController::class, 'verifyPhoneOtp']);
 
     Route::middleware(AuthenticateApiToken::class)->group(function () {
         Route::get('/me', [AuthController::class, 'me']);

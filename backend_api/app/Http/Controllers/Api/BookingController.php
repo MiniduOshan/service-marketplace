@@ -33,6 +33,7 @@ class BookingController extends Controller
         $user = $request->user();
 
         abort_unless($user?->isCustomer(), 403, 'Only customers can create bookings.');
+        abort_unless($user->hasVerifiedPhone(), 403, 'Please verify your phone number before booking.');
 
         $validated = $request->validate([
             'service_package_id' => ['required', 'exists:service_packages,id'],

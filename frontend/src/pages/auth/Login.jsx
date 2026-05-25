@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Eye, Lock, Mail } from 'lucide-react';
-import { FcGoogle } from 'react-icons/fc';
 import OnboardingLayout from './OnboardingLayout';
+import GoogleSignInButton from './GoogleSignInButton';
 import { apiRequest, storeSession } from '../../lib/api';
 
-export default function Login({ onBack, onCreateAccount, onLoginComplete }) {
+export default function Login({ onBack, onCreateAccount, onLoginComplete, onPhoneLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -122,12 +122,18 @@ export default function Login({ onBack, onCreateAccount, onLoginComplete }) {
           <div className="h-px flex-1 bg-slate-200" />
         </div>
 
+        <GoogleSignInButton
+          flow="signin"
+          onSuccess={onLoginComplete}
+          className="mt-1"
+        />
+
         <button
           type="button"
-          className="flex h-11 w-full cursor-pointer items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white text-[14px] font-extrabold text-slate-800 transition hover:bg-slate-50 2xl:h-12 2xl:text-[15px] min-[1920px]:h-14 min-[1920px]:text-base"
+          onClick={onPhoneLogin}
+          className="mt-3 flex h-11 w-full cursor-pointer items-center justify-center gap-3 rounded-lg border border-emerald-100 bg-emerald-50 text-[14px] font-extrabold text-[#08785d] transition hover:bg-emerald-100 2xl:mt-4 2xl:h-12 2xl:text-[15px] min-[1920px]:h-14 min-[1920px]:text-base"
         >
-          <FcGoogle size={20} className="2xl:h-6 2xl:w-6 min-[1920px]:h-7 min-[1920px]:w-7" />
-          Continue with Google
+          Continue with phone number
         </button>
 
         <p className="mt-5 text-center text-[13px] text-slate-500 2xl:mt-7 2xl:text-[15px] min-[1920px]:mt-8 min-[1920px]:text-base">

@@ -4,6 +4,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Login from './Login';
 import Signup from './Signup';
 import RoleSelection from './RoleSelection';
+import PhoneInput from './PhoneInput';
+import PhoneVerification from './PhoneVerification';
 
 export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }) {
   const navigate = useNavigate();
@@ -11,9 +13,11 @@ export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }
 
   const [step, setStep] = useState(initialView);
   const [selectedRole, setSelectedRole] = useState('customer');
+  const [phoneFlow, setPhoneFlow] = useState({ name: '', phone: '', role: 'customer' });
 
   const [roleBackStep, setRoleBackStep] = useState(null);
   const [loginBackStep, setLoginBackStep] = useState(null);
+  const [phoneBackStep, setPhoneBackStep] = useState(null);
   const [signupBackStep, setSignupBackStep] = useState('role-selection');
 
   useEffect(() => {
@@ -23,6 +27,7 @@ export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }
       setRoleBackStep(null);
       setSignupBackStep('role-selection');
       setLoginBackStep(null);
+      setPhoneBackStep(null);
       return;
     }
 
@@ -30,12 +35,14 @@ export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }
       setRoleBackStep(null);
       setSignupBackStep('role-selection');
       setLoginBackStep(null);
+      setPhoneBackStep(null);
       return;
     }
 
     setRoleBackStep(null);
     setSignupBackStep('role-selection');
     setLoginBackStep(null);
+    setPhoneBackStep(null);
   }, [initialView, entryMode, location.pathname]);
 
   const closeFlow = () => {
@@ -62,10 +69,30 @@ export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }
     goToStep('login');
   };
 
+  const handlePhoneLoginFromLogin = () => {
+    setPhoneBackStep('login');
+    goToStep('phone-login');
+  };
+
+  const handlePhoneLoginFromSignup = () => {
+    setPhoneBackStep('signup');
+    goToStep('phone-login');
+  };
+
   const handleLoginBack = () => {
     if (loginBackStep) {
       setLoginBackStep(null);
       goToStep(loginBackStep);
+      return;
+    }
+
+    closeFlow();
+  };
+
+  const handlePhoneBack = () => {
+    if (phoneBackStep) {
+      setPhoneBackStep(null);
+      goToStep(phoneBackStep);
       return;
     }
 
@@ -86,17 +113,29 @@ export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }
     goToStep(signupBackStep || 'role-selection');
   };
 
-  const handleLoginComplete = () => {
+  const handleLoginComplete = (user) => {
+    if (user?.role === 'worker') {
+      navigate('/worker/dashboard', { replace: true });
+      return;
+    }
+
     navigate('/customer/dashboard', { replace: true });
   };
 
-  const handleSignupComplete = () => {
-    if (selectedRole === 'worker') {
+  const handleSignupComplete = (user) => {
+    const nextRole = user?.role || selectedRole;
+
+    if (nextRole === 'worker') {
       navigate('/worker/register', { replace: true });
       return;
     }
 
     navigate('/customer/dashboard', { replace: true });
+  };
+
+  const handlePhoneOtpRequested = ({ name, phone, role }) => {
+    setPhoneFlow({ name, phone, role });
+    goToStep('phone-verify');
   };
 
   switch (step) {
@@ -106,6 +145,7 @@ export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }
           selectedRole={selectedRole}
           onBack={handleRoleBack}
           onContinue={handleContinueRole}
+          onGoogleComplete={handleSignupComplete}
         />
       );
 
@@ -115,6 +155,7 @@ export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }
           onBack={handleLoginBack}
           onCreateAccount={handleCreateAccount}
           onLoginComplete={handleLoginComplete}
+          onPhoneLogin={handlePhoneLoginFromLogin}
         />
       );
 
@@ -125,6 +166,26 @@ export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }
           onBack={handleSignupBack}
           onSignin={handleSignin}
           onSignupComplete={handleSignupComplete}
+          onPhoneLogin={handlePhoneLoginFromSignup}
+        />
+      );
+
+    case 'phone-login':
+      return (
+        <PhoneInput
+          onBack={handlePhoneBack}
+          onSendOtp={handlePhoneOtpRequested}
+          defaultRole={selectedRole}
+        />
+      );
+
+    case 'phone-verify':
+      return (
+        <PhoneVerification
+          onBack={handlePhoneBack}
+          onChangePhone={() => goToStep('phone-login')}
+          onVerified={handleSignupComplete}
+          phoneNumber={phoneFlow.phone}
         />
       );
 
@@ -134,6 +195,7 @@ export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }
           onBack={handleLoginBack}
           onCreateAccount={handleCreateAccount}
           onLoginComplete={handleLoginComplete}
+          onPhoneLogin={handlePhoneLoginFromLogin}
         />
       );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../controllers/auth_controller.dart';
 import 'worker_registration_screen.dart';
 import 'worker_service_packages_screen.dart';
 
@@ -52,6 +53,8 @@ class WorkerProfileScreen extends StatelessWidget {
   }
 
   Widget _buildProfileHeader() {
+    final isPhoneVerified = authController.currentUser?.isPhoneVerified ?? false;
+
     return Column(
       children: [
         Stack(
@@ -101,12 +104,12 @@ class WorkerProfileScreen extends StatelessWidget {
         const SizedBox(height: 6),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.verified, color: primaryGreen, size: 18),
-            SizedBox(width: 5),
+          children: [
+            const Icon(Icons.verified, color: primaryGreen, size: 18),
+            const SizedBox(width: 5),
             Text(
-              "VERIFIED PROFESSIONAL",
-              style: TextStyle(
+              isPhoneVerified ? "PHONE VERIFIED" : "PHONE VERIFICATION REQUIRED",
+              style: const TextStyle(
                 color: primaryGreen,
                 fontWeight: FontWeight.bold,
                 fontSize: 12,
@@ -191,7 +194,7 @@ class WorkerProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           _buildChecklistItem("ID Verification", true),
-          _buildChecklistItem("Phone Verified", true),
+          _buildChecklistItem("Phone Verified", authController.currentUser?.isPhoneVerified ?? false),
           _buildChecklistItem("Certificates", false, actionText: "UPLOAD"),
         ],
       ),

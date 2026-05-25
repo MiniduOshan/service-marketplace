@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
+import 'phone_login_screen.dart';
 import '../../controllers/auth_controller.dart';
+import '../../models/app_user.dart';
 import '../customer/home_screen.dart';
+import '../worker/worker_registration_screen.dart';
 
 
 class SignupScreen extends StatefulWidget {
@@ -126,17 +129,47 @@ class _SignupScreenState extends State<SignupScreen> {
             _buildOrSeparator(),
             const SizedBox(height: 24),
             _buildSocialButton(onPressed: () async {
-              bool success = await authController.registerCustomer("Google User", "google-signup@skilledlk.com", "google-token");
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
 
-              if (!context.mounted) return;
-              if (success) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomeScreen()),
+              try {
+                final success = await authController.loginWithGoogle(
+                  role: UserRole.customer,
+                  signupFlow: true,
+                );
+
+                if (!mounted || !success) return;
+
+                final nextScreen = authController.currentUserRole == UserRole.worker
+                    ? const WorkerRegistrationScreen()
+                    : const HomeScreen();
+
+                navigator.pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => nextScreen),
                   (route) => false,
+                );
+              } catch (error) {
+                messenger.showSnackBar(
+                  SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
                 );
               }
             }, imageAsset: 'assets/images/google_logo.png', label: "Sign up with Google"),
+
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PhoneLoginScreen()));
+                },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF006D44)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                ),
+                child: const Text("Sign up with phone number", style: TextStyle(color: Color(0xFF006D44), fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+            ),
 
             const SizedBox(height: 32),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
   MapPin,
@@ -140,11 +141,15 @@ const featuredList = [
   },
 ];
 
-function CategoryCard({ item }) {
+function CategoryCard({ item, onSelect }) {
   const Icon = item.icon;
 
   return (
-    <button className="group flex min-h-[132px] flex-col items-center justify-center rounded-xl border border-slate-300 bg-white p-4 transition hover:-translate-y-1 hover:border-emerald-600 hover:shadow-md">
+    <button
+      type="button"
+      onClick={() => onSelect(item.name)}
+      className="group flex min-h-[132px] flex-col items-center justify-center rounded-xl border border-slate-300 bg-white p-4 transition hover:-translate-y-1 hover:border-emerald-600 hover:shadow-md"
+    >
       <div className={`flex h-16 w-16 items-center justify-center rounded-full ${item.bg}`}>
         <Icon className={item.color} size={30} strokeWidth={2.4} />
       </div>
@@ -232,8 +237,17 @@ function FeaturedSmallCard({ person }) {
 }
 
 export default function CustomerDashboard() {
+  const navigate = useNavigate();
   const currentUser = getStoredSessionUser();
   const customerName = currentUser?.name?.trim();
+
+  const handleCategorySelect = (categoryName) => {
+    const targetCategory = categoryName === 'More' ? '' : categoryName;
+    const query = targetCategory
+      ? `?category=${encodeURIComponent(targetCategory)}`
+      : '';
+    navigate(`/search${query}`);
+  };
 
   return (
     <div className="min-h-screen overflow-x-clip bg-slate-50 text-slate-950">
@@ -303,7 +317,7 @@ export default function CustomerDashboard() {
             </div>
 
             <a
-              href="/categories"
+              href="/search"
               className="text-sm font-bold text-emerald-700 transition hover:text-emerald-800"
             >
               View All Categories
@@ -312,7 +326,11 @@ export default function CustomerDashboard() {
 
           <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 md:grid-cols-4 lg:grid-cols-8 2xl:gap-6">
             {categories.map((category) => (
-              <CategoryCard key={category.name} item={category} />
+              <CategoryCard
+                key={category.name}
+                item={category}
+                onSelect={handleCategorySelect}
+              />
             ))}
           </div>
         </section>

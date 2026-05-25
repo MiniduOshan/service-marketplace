@@ -53,6 +53,49 @@ class ApiClient {
     );
   }
 
+  Future<Map<String, dynamic>> googleAuth({
+    required String credential,
+    required String flow,
+    required String role,
+  }) {
+    return postJson(
+      '/auth/google',
+      body: {
+        'credential': credential,
+        'flow': flow,
+        'role': role,
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> requestPhoneOtp({
+    required String name,
+    required String phone,
+    required String role,
+  }) {
+    return postJson(
+      '/auth/phone/request-otp',
+      body: {
+        'name': name,
+        'phone': phone,
+        'role': role,
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> verifyPhoneOtp({
+    required String phone,
+    required String otp,
+  }) {
+    return postJson(
+      '/auth/phone/verify-otp',
+      body: {
+        'phone': phone,
+        'otp': otp,
+      },
+    );
+  }
+
   Future<Map<String, dynamic>> registerCustomer({
     required String name,
     required String email,

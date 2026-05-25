@@ -28,7 +28,7 @@ import {
 
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
-import { getStoredSessionUser } from '../../lib/api';
+import { apiRequest, getStoredSessionUser, storeSession } from '../../lib/api';
 
 const stats = [
   { label: 'Total Bookings', value: '12', icon: CalendarDays },
@@ -198,18 +198,21 @@ function PasswordInput({
 }
 
 export default function CustomerProfile() {
-  const currentUser = getStoredSessionUser();
+  const [sessionUser, setSessionUser] = useState(() => getStoredSessionUser());
+  const isPhoneVerified = Boolean(
+    sessionUser?.phone_verified_at || sessionUser?.phoneVerifiedAt,
+  );
   const customer = useMemo(
     () => ({
-      name: currentUser?.name?.trim() || 'Profile',
-      email: currentUser?.email?.trim() || 'Signed in user',
-      phone: '+94 77 123 4567',
+      name: sessionUser?.name?.trim() || 'Profile',
+      email: sessionUser?.email?.trim() || 'Signed in user',
+      phone: sessionUser?.phone?.trim() || '',
       location: 'Maharagama, Colombo',
       joinedDate: 'Joined April 2025',
       avatar:
         'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=300',
     }),
-    [currentUser],
+    [sessionUser],
   );
 
   const [activeSection, setActiveSection] = useState('account');
@@ -255,6 +258,12 @@ export default function CustomerProfile() {
     notificationsEnabled: true,
     language: 'English',
   });
+  const [verificationOtp, setVerificationOtp] = useState('');
+  const [hasOtpSent, setHasOtpSent] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [verificationError, setVerificationError] = useState('');
+  const [verificationNotice, setVerificationNotice] = useState('');
 
   const activeSectionMeta =
     profileSections.find((section) => section.id === activeSection) ||
@@ -384,6 +393,107 @@ export default function CustomerProfile() {
     window.location.href = '/';
   };
 
+  const handleRequestPhoneOtp = async () => {
+    const phone = profileForm.phone.trim();
+    const name = profileForm.name.trim();
+
+    setVerificationError('');
+    setVerificationNotice('');
+
+    if (!phone) {
+      setVerificationError('Please add your phone number before verification.');
+      setActiveSection('personal');
+      return;
+    }
+
+    if (!name) {
+      setVerificationError('Please add your name before verification.');
+      setActiveSection('personal');
+      return;
+    }
+
+    setIsSendingOtp(true);
+
+    try {
+      const response = await apiRequest('/auth/phone/request-otp', {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          phone,
+          role: sessionUser?.role || 'customer',
+        }),
+      });
+
+      const normalizedPhone = response?.data?.phone;
+      if (normalizedPhone) {
+        setProfileForm((prev) => ({ ...prev, phone: normalizedPhone }));
+      }
+
+      setHasOtpSent(true);
+      setVerificationNotice('OTP sent. Enter the 6-digit code to verify.');
+      setActiveSection('personal');
+    } catch (requestError) {
+      setVerificationError(requestError.message || 'Unable to send OTP.');
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async () => {
+    const phone = profileForm.phone.trim();
+    const otp = verificationOtp.trim();
+
+    setVerificationError('');
+    setVerificationNotice('');
+
+    if (!phone) {
+      setVerificationError('Phone number is required.');
+      return;
+    }
+
+    if (otp.length !== 6) {
+      setVerificationError('Enter the 6-digit OTP code.');
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+
+    try {
+      const response = await apiRequest('/auth/phone/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({
+          phone,
+          otp,
+        }),
+      });
+
+      const verifiedUser = response?.data?.user;
+      const token = response?.data?.token;
+
+      if (verifiedUser && token) {
+        storeSession(token, verifiedUser);
+        setSessionUser(verifiedUser);
+      }
+
+      setSavedProfileForm((prev) => ({
+        ...prev,
+        phone: verifiedUser?.phone || prev.phone,
+      }));
+      setProfileForm((prev) => ({
+        ...prev,
+        phone: verifiedUser?.phone || prev.phone,
+      }));
+
+      setVerificationOtp('');
+      setHasOtpSent(false);
+      setVerificationNotice('Phone number verified successfully.');
+    } catch (requestError) {
+      setVerificationError(requestError.message || 'Unable to verify OTP.');
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
   const handleAddAddress = () => {
     if (!addressForm.label.trim() || !addressForm.address.trim()) {
       alert('Please enter both address label and address.');
@@ -496,7 +606,7 @@ export default function CustomerProfile() {
               Account Type
             </p>
             <p className="mt-2 font-semibold text-slate-800">
-              Verified Customer
+              {isPhoneVerified ? 'Verified Customer' : 'Unverified Customer'}
             </p>
           </div>
 
@@ -684,6 +794,70 @@ export default function CustomerProfile() {
                 disabled={!isEditing}
                 className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none transition disabled:bg-slate-50 disabled:text-slate-500 focus:border-emerald-600"
               />
+            </div>
+
+            <div className="mt-3">
+              <p
+                className={`text-xs font-semibold ${
+                  isPhoneVerified ? 'text-emerald-700' : 'text-amber-700'
+                }`}
+              >
+                {isPhoneVerified
+                  ? 'Phone is verified.'
+                  : 'Phone verification required.'}
+              </p>
+
+              {!isPhoneVerified && (
+                <div className="mt-3 space-y-3 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+                  <button
+                    type="button"
+                    onClick={handleRequestPhoneOtp}
+                    disabled={isSendingOtp}
+                    className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-emerald-400"
+                  >
+                    {isSendingOtp ? 'Sending OTP...' : 'Send Verification OTP'}
+                  </button>
+
+                  {hasOtpSent && (
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={verificationOtp}
+                        onChange={(event) =>
+                          setVerificationOtp(
+                            event.target.value.replace(/\D/g, '').slice(0, 6),
+                          )
+                        }
+                        placeholder="Enter 6-digit OTP"
+                        className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-emerald-600 sm:max-w-52"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={handleVerifyPhoneOtp}
+                        disabled={isVerifyingOtp}
+                        className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border border-emerald-700 bg-white px-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:border-emerald-300 disabled:text-emerald-300"
+                      >
+                        {isVerifyingOtp ? 'Verifying...' : 'Verify Phone'}
+                      </button>
+                    </div>
+                  )}
+
+                  {verificationError && (
+                    <p className="text-xs font-medium text-red-600">
+                      {verificationError}
+                    </p>
+                  )}
+
+                  {verificationNotice && (
+                    <p className="text-xs font-medium text-emerald-700">
+                      {verificationNotice}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1113,10 +1287,27 @@ export default function CustomerProfile() {
                   {customer.joinedDate}
                 </p>
 
-                <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">
+                <div
+                  className={`mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${
+                    isPhoneVerified
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'bg-amber-50 text-amber-700'
+                  }`}
+                >
                   <ShieldCheck size={17} />
-                  Verified Customer
+                  {isPhoneVerified ? 'Verified Customer' : 'Unverified Customer'}
                 </div>
+
+                {!isPhoneVerified && (
+                  <button
+                    type="button"
+                    onClick={handleRequestPhoneOtp}
+                    disabled={isSendingOtp}
+                    className="mt-3 inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border border-emerald-700 bg-white px-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:border-emerald-300 disabled:text-emerald-300"
+                  >
+                    {isSendingOtp ? 'Sending OTP...' : 'Verify Account'}
+                  </button>
+                )}
 
                 <div className="mt-6 space-y-3 border-t border-slate-100 pt-6 text-left">
                   <p className="flex items-center gap-3 text-sm text-slate-600">

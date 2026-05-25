@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../customer/home_screen.dart'; 
 import 'signup_screen.dart';
+import 'phone_login_screen.dart';
 import '../../controllers/auth_controller.dart';
+import '../../models/app_user.dart';
+import '../worker/worker_registration_screen.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -94,6 +97,66 @@ class _LoginScreenState extends State<LoginScreen> {
                   });
                 },
                 child: const Text("Sign In", style: TextStyle(color: Colors.white, fontSize: 18)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: OutlinedButton(
+                onPressed: () async {
+                  final navigator = Navigator.of(context);
+                  final messenger = ScaffoldMessenger.of(context);
+
+                  try {
+                    final success = await authController.loginWithGoogle(
+                      role: UserRole.customer,
+                      signupFlow: false,
+                    );
+
+                    if (!mounted || !success) return;
+
+                    final nextScreen = authController.currentUserRole == UserRole.worker
+                        ? const WorkerRegistrationScreen()
+                        : const HomeScreen();
+
+                    navigator.pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => nextScreen),
+                      (route) => false,
+                    );
+                  } catch (error) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+                    );
+                  }
+                },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF006D44)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset('assets/images/google_logo.png', height: 20),
+                    const SizedBox(width: 10),
+                    const Text('Continue with Google', style: TextStyle(color: Color(0xFF006D44), fontSize: 16, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PhoneLoginScreen()));
+                },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF006D44)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                ),
+                child: const Text("Continue with phone number", style: TextStyle(color: Color(0xFF006D44))),
               ),
             ),
             const SizedBox(height: 12),

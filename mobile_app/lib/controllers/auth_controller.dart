@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../models/app_user.dart';
 import '../services/api_client.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/google_auth_config.dart';
 
 class AuthController {
   static final AuthController _instance = AuthController._internal();
@@ -27,6 +29,7 @@ class AuthController {
 
   static const _prefsTokenKey = 'skilledlk_token';
   static const _prefsUserKey = 'skilledlk_user';
+  static Future<void>? _googleSignInInitializationFuture;
 
   void _setSession(AppUser user, {String? token}) {
     _currentUserRole = user.role;
@@ -45,6 +48,8 @@ class AuthController {
         'id': user.id,
         'name': user.name,
         'email': user.email,
+        'phone': user.phone,
+        'phoneVerifiedAt': user.phoneVerifiedAt?.toIso8601String(),
         'role': user.role.toString().split('.').last,
         'isRegistrationComplete': user.isRegistrationComplete,
       };
@@ -68,9 +73,13 @@ class AuthController {
         id: map['id'].toString(),
         name: map['name']?.toString(),
         email: map['email']?.toString(),
+        phone: map['phone']?.toString(),
         token: token,
         role: role,
         isRegistrationComplete: map['isRegistrationComplete'] == true,
+        phoneVerifiedAt: map['phoneVerifiedAt'] != null
+            ? DateTime.tryParse(map['phoneVerifiedAt'].toString())
+            : null,
       );
     } catch (_) {}
   }
@@ -81,9 +90,11 @@ class AuthController {
         id: _authStateNotifier.value!.id,
         name: _authStateNotifier.value!.name,
         email: _authStateNotifier.value!.email,
+        phone: _authStateNotifier.value!.phone,
         token: _authStateNotifier.value!.token,
         role: _authStateNotifier.value!.role,
         isRegistrationComplete: true,
+        phoneVerifiedAt: _authStateNotifier.value!.phoneVerifiedAt,
       );
     }
   }
@@ -101,9 +112,13 @@ class AuthController {
         id: user['id'].toString(),
         name: user['name']?.toString(),
         email: user['email']?.toString(),
+        phone: user['phone']?.toString(),
         token: token,
         role: role,
         isRegistrationComplete: role != UserRole.worker,
+        phoneVerifiedAt: user['phone_verified_at'] != null
+            ? DateTime.tryParse(user['phone_verified_at'].toString())
+            : null,
       ),
       token: token,
     );
@@ -122,9 +137,13 @@ class AuthController {
         id: user['id'].toString(),
         name: user['name']?.toString(),
         email: user['email']?.toString(),
+        phone: user['phone']?.toString(),
         token: token,
         role: UserRole.customer,
         isRegistrationComplete: true,
+        phoneVerifiedAt: user['phone_verified_at'] != null
+            ? DateTime.tryParse(user['phone_verified_at'].toString())
+            : null,
       ),
       token: token,
     );
@@ -143,9 +162,105 @@ class AuthController {
         id: user['id'].toString(),
         name: user['name']?.toString(),
         email: user['email']?.toString(),
+        phone: user['phone']?.toString(),
         token: token,
         role: UserRole.worker,
         isRegistrationComplete: false,
+        phoneVerifiedAt: user['phone_verified_at'] != null
+            ? DateTime.tryParse(user['phone_verified_at'].toString())
+            : null,
+      ),
+      token: token,
+    );
+
+    return true;
+  }
+
+  Future<Map<String, dynamic>> requestPhoneOtp(String name, String phone, UserRole role) {
+    return ApiClient.instance.requestPhoneOtp(
+      name: name,
+      phone: phone,
+      role: role.toString().split('.').last,
+    );
+  }
+
+  Future<bool> verifyPhoneOtp(String phone, String otp) async {
+    final response = await ApiClient.instance.verifyPhoneOtp(phone: phone, otp: otp);
+    final data = response['data'] as Map<String, dynamic>;
+    final user = data['user'] as Map<String, dynamic>;
+    final token = data['token'] as String?;
+    final role = user['role']?.toString() == 'worker' ? UserRole.worker : UserRole.customer;
+
+    _setSession(
+      AppUser(
+        id: user['id'].toString(),
+        name: user['name']?.toString(),
+        email: user['email']?.toString(),
+        phone: user['phone']?.toString(),
+        token: token,
+        role: role,
+        isRegistrationComplete: role != UserRole.worker,
+        phoneVerifiedAt: user['phone_verified_at'] != null
+            ? DateTime.tryParse(user['phone_verified_at'].toString())
+            : null,
+      ),
+      token: token,
+    );
+
+    return true;
+  }
+
+  GoogleSignIn _createGoogleSignIn() {
+    if (googleClientId.isEmpty) {
+      throw StateError('Google sign-in is not configured.');
+    }
+
+    return GoogleSignIn.instance;
+  }
+
+  Future<void> _ensureGoogleSignInInitialized() {
+    _googleSignInInitializationFuture ??= GoogleSignIn.instance.initialize(
+      clientId: kIsWeb ? googleClientId : null,
+      serverClientId: googleClientId,
+    );
+
+    return _googleSignInInitializationFuture!;
+  }
+
+  Future<bool> loginWithGoogle({required UserRole role, required bool signupFlow}) async {
+    _createGoogleSignIn();
+    await _ensureGoogleSignInInitialized();
+    final account = await GoogleSignIn.instance.authenticate(scopeHint: const ['email']);
+
+    final credential = account.authentication.idToken;
+
+    if (credential == null || credential.isEmpty) {
+      throw Exception('Unable to read the Google credential.');
+    }
+
+    final response = await ApiClient.instance.googleAuth(
+      credential: credential,
+      flow: signupFlow ? 'signup' : 'signin',
+      role: role.toString().split('.').last,
+    );
+
+    final data = response['data'] as Map<String, dynamic>;
+    final user = data['user'] as Map<String, dynamic>;
+    final token = data['token'] as String?;
+    final resolvedRole = user['role']?.toString() == 'worker' ? UserRole.worker : UserRole.customer;
+
+    _setSession(
+      AppUser(
+        id: user['id'].toString(),
+        name: user['name']?.toString(),
+        email: user['email']?.toString(),
+        phone: user['phone']?.toString(),
+        token: token,
+        role: resolvedRole,
+        isRegistrationComplete: resolvedRole != UserRole.worker,
+        phoneVerifiedAt: user['phone_verified_at'] != null
+            ? DateTime.tryParse(user['phone_verified_at'].toString())
+            : null,
       ),
       token: token,
     );
