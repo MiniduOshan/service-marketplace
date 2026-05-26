@@ -354,31 +354,7 @@ export default function WorkerMessages() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 text-slate-600">
-                  <button
-                    type="button"
-                    className="transition hover:text-emerald-700"
-                    aria-label="Call"
-                  >
-                    <Phone size={20} />
-                  </button>
-
-                  <button
-                    type="button"
-                    className="transition hover:text-emerald-700"
-                    aria-label="Video call"
-                  >
-                    <Video size={20} />
-                  </button>
-
-                  <button
-                    type="button"
-                    className="transition hover:text-emerald-700"
-                    aria-label="More"
-                  >
-                    <MoreVertical size={20} />
-                  </button>
-                </div>
+                {/* Action buttons removed as requested */}
               </div>
 
               {selectedConversation.bookingStatus === 'pending' ? (

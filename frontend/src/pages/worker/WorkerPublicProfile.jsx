@@ -200,10 +200,14 @@ export default function WorkerPublicProfile() {
                 {name}
               </h1>
 
-              {workerInfo?.phone_verified_at && (
+              {workerInfo?.phone_verified_at ? (
                 <span className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2 py-1 text-[9px] font-bold uppercase text-white">
                   <BadgeCheck size={11} />
                   Verified
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded bg-red-600 px-2 py-1 text-[9px] font-bold uppercase text-white">
+                  Unverified Worker
                 </span>
               )}
 

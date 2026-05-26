@@ -387,7 +387,9 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            if (worker.isVerified) _badge("Verified", Colors.green, Icons.check_circle),
+                            worker.isVerified
+                                ? _badge("Verified", Colors.green, Icons.check_circle)
+                                : _badge("Unverified Worker", Colors.red, Icons.cancel),
                             if (worker.isFeatured) const SizedBox(width: 8),
                             if (worker.isFeatured) _badge("Featured", Colors.orange, Icons.star),
                           ],

@@ -457,7 +457,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: const TextStyle(color: primaryGreen),
                   ),
                 ),
-                if (worker.isVerified) _buildBadge("Verified", Colors.green),
+                worker.isVerified
+                    ? _buildBadge("Verified", Colors.green)
+                    : _buildBadge("Unverified Worker", Colors.red),
               ],
             ),
             const SizedBox(height: 12),

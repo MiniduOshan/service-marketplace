@@ -400,10 +400,14 @@ function WorkerCard({ worker }) {
                 {worker.name}
               </h3>
 
-              {worker.verified && (
+              {worker.verified ? (
                 <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
                   <BadgeCheck size={12} />
                   Verified
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-red-700">
+                  Unverified Worker
                 </span>
               )}
 

@@ -432,15 +432,7 @@ export default function ChatPage() {
                 </div>
               </div>
 
-              <div className="flex shrink-0 items-center gap-3 text-slate-600">
-                <button
-                  type="button"
-                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg transition hover:bg-slate-100 hover:text-emerald-700"
-                  aria-label="More"
-                >
-                  <MoreVertical size={22} />
-                </button>
-              </div>
+              {/* Action buttons removed as requested */}
             </header>
 
             {activeConversation.status === 'pending' ? (
