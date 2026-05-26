@@ -16,7 +16,7 @@ class AuthController {
 
   final _authStateNotifier = ValueNotifier<AppUser?>(null);
   ValueNotifier<AppUser?> get authStateNotifier => _authStateNotifier;
-  
+
   late final Stream<AppUser?> _authStream = _authStateNotifier.asStream();
   Stream<AppUser?> get onAuthStateChanged => _authStream;
 
@@ -29,7 +29,27 @@ class AuthController {
 
   static const _prefsTokenKey = 'skilledlk_token';
   static const _prefsUserKey = 'skilledlk_user';
+  static const _workerRegistrationCompleteKeyPrefix =
+      'skilledlk_worker_registration_complete_';
   static Future<void>? _googleSignInInitializationFuture;
+
+  Future<bool> _resolveWorkerRegistrationComplete({
+    required String userId,
+    required String? token,
+  }) async {
+    if (token != null && token.isNotEmpty) {
+      try {
+        final services = await ApiClient.instance.getWorkerServices(
+          token: token,
+        );
+        if (services.isNotEmpty) {
+          return true;
+        }
+      } catch (_) {}
+    }
+
+    return _loadWorkerRegistrationComplete(userId);
+  }
 
   void _setSession(AppUser user, {String? token}) {
     _currentUserRole = user.role;
@@ -54,7 +74,24 @@ class AuthController {
         'isRegistrationComplete': user.isRegistrationComplete,
       };
       await prefs.setString(_prefsUserKey, jsonEncode(userMap));
+
+      if (user.role == UserRole.worker && user.isRegistrationComplete) {
+        await prefs.setBool(
+          '$_workerRegistrationCompleteKeyPrefix${user.id}',
+          true,
+        );
+      }
     } catch (_) {}
+  }
+
+  Future<bool> _loadWorkerRegistrationComplete(String userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('$_workerRegistrationCompleteKeyPrefix$userId') ??
+          false;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> loadFromDisk() async {
@@ -65,7 +102,9 @@ class AuthController {
       if (token == null || userJson == null) return;
 
       final map = jsonDecode(userJson) as Map<String, dynamic>;
-      final role = map['role']?.toString() == 'worker' ? UserRole.worker : UserRole.customer;
+      final role = map['role']?.toString() == 'worker'
+          ? UserRole.worker
+          : UserRole.customer;
 
       _sessionToken = token;
       _currentUserRole = role;
@@ -81,31 +120,66 @@ class AuthController {
             ? DateTime.tryParse(map['phoneVerifiedAt'].toString())
             : null,
       );
+
+      if (_authStateNotifier.value!.role == UserRole.worker) {
+        final isComplete = await _resolveWorkerRegistrationComplete(
+          userId: _authStateNotifier.value!.id,
+          token: token,
+        );
+        if (isComplete) {
+          _authStateNotifier.value = AppUser(
+            id: _authStateNotifier.value!.id,
+            name: _authStateNotifier.value!.name,
+            email: _authStateNotifier.value!.email,
+            phone: _authStateNotifier.value!.phone,
+            token: _authStateNotifier.value!.token,
+            role: _authStateNotifier.value!.role,
+            isRegistrationComplete: true,
+            phoneVerifiedAt: _authStateNotifier.value!.phoneVerifiedAt,
+          );
+        }
+      }
     } catch (_) {}
   }
 
   void completeRegistration() {
-    if (_authStateNotifier.value != null) {
-      _authStateNotifier.value = AppUser(
-        id: _authStateNotifier.value!.id,
-        name: _authStateNotifier.value!.name,
-        email: _authStateNotifier.value!.email,
-        phone: _authStateNotifier.value!.phone,
-        token: _authStateNotifier.value!.token,
-        role: _authStateNotifier.value!.role,
-        isRegistrationComplete: true,
-        phoneVerifiedAt: _authStateNotifier.value!.phoneVerifiedAt,
-      );
+    final currentUser = _authStateNotifier.value;
+    if (currentUser == null) {
+      return;
     }
+
+    final completedUser = AppUser(
+      id: currentUser.id,
+      name: currentUser.name,
+      email: currentUser.email,
+      phone: currentUser.phone,
+      token: currentUser.token,
+      role: currentUser.role,
+      isRegistrationComplete: true,
+      phoneVerifiedAt: currentUser.phoneVerifiedAt,
+    );
+
+    _authStateNotifier.value = completedUser;
+    _saveSessionToDisk(completedUser, token: currentUser.token);
   }
 
-
   Future<bool> loginWithEmail(String email, String password) async {
-    final response = await ApiClient.instance.login(email: email, password: password);
+    final response = await ApiClient.instance.login(
+      email: email,
+      password: password,
+    );
     final data = response['data'] as Map<String, dynamic>;
     final user = data['user'] as Map<String, dynamic>;
     final token = data['token'] as String?;
-    final role = user['role']?.toString() == 'worker' ? UserRole.worker : UserRole.customer;
+    final role = user['role']?.toString() == 'worker'
+        ? UserRole.worker
+        : UserRole.customer;
+    final isRegistrationComplete = role == UserRole.worker
+        ? await _resolveWorkerRegistrationComplete(
+            userId: user['id'].toString(),
+            token: token,
+          )
+        : true;
 
     _setSession(
       AppUser(
@@ -115,7 +189,7 @@ class AuthController {
         phone: user['phone']?.toString(),
         token: token,
         role: role,
-        isRegistrationComplete: role != UserRole.worker,
+        isRegistrationComplete: isRegistrationComplete,
         phoneVerifiedAt: user['phone_verified_at'] != null
             ? DateTime.tryParse(user['phone_verified_at'].toString())
             : null,
@@ -126,8 +200,16 @@ class AuthController {
     return true;
   }
 
-  Future<bool> registerCustomer(String name, String email, String password) async {
-    final response = await ApiClient.instance.registerCustomer(name: name, email: email, password: password);
+  Future<bool> registerCustomer(
+    String name,
+    String email,
+    String password,
+  ) async {
+    final response = await ApiClient.instance.registerCustomer(
+      name: name,
+      email: email,
+      password: password,
+    );
     final data = response['data'] as Map<String, dynamic>;
     final user = data['user'] as Map<String, dynamic>;
     final token = data['token'] as String?;
@@ -151,8 +233,16 @@ class AuthController {
     return true;
   }
 
-  Future<bool> registerWorker(String name, String email, String password) async {
-    final response = await ApiClient.instance.registerWorker(name: name, email: email, password: password);
+  Future<bool> registerWorker(
+    String name,
+    String email,
+    String password,
+  ) async {
+    final response = await ApiClient.instance.registerWorker(
+      name: name,
+      email: email,
+      password: password,
+    );
     final data = response['data'] as Map<String, dynamic>;
     final user = data['user'] as Map<String, dynamic>;
     final token = data['token'] as String?;
@@ -176,7 +266,11 @@ class AuthController {
     return true;
   }
 
-  Future<Map<String, dynamic>> requestPhoneOtp(String name, String phone, UserRole role) {
+  Future<Map<String, dynamic>> requestPhoneOtp(
+    String name,
+    String phone,
+    UserRole role,
+  ) {
     return ApiClient.instance.requestPhoneOtp(
       name: name,
       phone: phone,
@@ -185,11 +279,22 @@ class AuthController {
   }
 
   Future<bool> verifyPhoneOtp(String phone, String otp) async {
-    final response = await ApiClient.instance.verifyPhoneOtp(phone: phone, otp: otp);
+    final response = await ApiClient.instance.verifyPhoneOtp(
+      phone: phone,
+      otp: otp,
+    );
     final data = response['data'] as Map<String, dynamic>;
     final user = data['user'] as Map<String, dynamic>;
     final token = data['token'] as String?;
-    final role = user['role']?.toString() == 'worker' ? UserRole.worker : UserRole.customer;
+    final role = user['role']?.toString() == 'worker'
+        ? UserRole.worker
+        : UserRole.customer;
+    final isRegistrationComplete = role == UserRole.worker
+        ? await _resolveWorkerRegistrationComplete(
+            userId: user['id'].toString(),
+            token: token,
+          )
+        : true;
 
     _setSession(
       AppUser(
@@ -199,7 +304,7 @@ class AuthController {
         phone: user['phone']?.toString(),
         token: token,
         role: role,
-        isRegistrationComplete: role != UserRole.worker,
+        isRegistrationComplete: isRegistrationComplete,
         phoneVerifiedAt: user['phone_verified_at'] != null
             ? DateTime.tryParse(user['phone_verified_at'].toString())
             : null,
@@ -227,10 +332,15 @@ class AuthController {
     return _googleSignInInitializationFuture!;
   }
 
-  Future<bool> loginWithGoogle({required UserRole role, required bool signupFlow}) async {
+  Future<bool> loginWithGoogle({
+    required UserRole role,
+    required bool signupFlow,
+  }) async {
     _createGoogleSignIn();
     await _ensureGoogleSignInInitialized();
-    final account = await GoogleSignIn.instance.authenticate(scopeHint: const ['email']);
+    final account = await GoogleSignIn.instance.authenticate(
+      scopeHint: const ['email'],
+    );
 
     final credential = account.authentication.idToken;
 
@@ -247,7 +357,15 @@ class AuthController {
     final data = response['data'] as Map<String, dynamic>;
     final user = data['user'] as Map<String, dynamic>;
     final token = data['token'] as String?;
-    final resolvedRole = user['role']?.toString() == 'worker' ? UserRole.worker : UserRole.customer;
+    final resolvedRole = user['role']?.toString() == 'worker'
+        ? UserRole.worker
+        : UserRole.customer;
+    final isRegistrationComplete = resolvedRole == UserRole.worker
+        ? await _resolveWorkerRegistrationComplete(
+            userId: user['id'].toString(),
+            token: token,
+          )
+        : true;
 
     _setSession(
       AppUser(
@@ -257,7 +375,7 @@ class AuthController {
         phone: user['phone']?.toString(),
         token: token,
         role: resolvedRole,
-        isRegistrationComplete: resolvedRole != UserRole.worker,
+        isRegistrationComplete: isRegistrationComplete,
         phoneVerifiedAt: user['phone_verified_at'] != null
             ? DateTime.tryParse(user['phone_verified_at'].toString())
             : null,
@@ -276,7 +394,9 @@ class AuthController {
     );
     final data = response['data'] as Map<String, dynamic>;
     final user = data['user'] as Map<String, dynamic>;
-    final role = user['role']?.toString() == 'worker' ? UserRole.worker : UserRole.customer;
+    final role = user['role']?.toString() == 'worker'
+        ? UserRole.worker
+        : UserRole.customer;
 
     _setSession(
       AppUser(
@@ -286,7 +406,9 @@ class AuthController {
         phone: user['phone']?.toString(),
         token: _sessionToken,
         role: role,
-        isRegistrationComplete: _authStateNotifier.value?.isRegistrationComplete ?? (role != UserRole.worker),
+        isRegistrationComplete:
+            _authStateNotifier.value?.isRegistrationComplete ??
+            (role != UserRole.worker),
         phoneVerifiedAt: user['phone_verified_at'] != null
             ? DateTime.tryParse(user['phone_verified_at'].toString())
             : null,
@@ -321,5 +443,3 @@ extension ValueNotifierExtension<T> on ValueNotifier<T> {
 }
 
 final AuthController authController = AuthController();
-
-
