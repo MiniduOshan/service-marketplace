@@ -137,4 +137,65 @@ class MarketplaceTest extends TestCase
             'status' => 'cancelled',
         ]);
     }
+
+    public function test_worker_can_complete_booking_and_update_wallet(): void
+    {
+        $category = ServiceCategory::create([
+            'name' => 'Gardening',
+            'slug' => 'gardening',
+            'description' => 'Gardening services',
+            'is_active' => true,
+        ]);
+
+        $worker = User::factory()->create([
+            'role' => 'worker',
+            'phone' => '94771234568',
+            'phone_verified_at' => now(),
+        ]);
+
+        $servicePackage = ServicePackage::create([
+            'user_id' => $worker->id,
+            'service_category_id' => $category->id,
+            'title' => 'Lawn Mowing',
+            'slug' => 'lawn-mowing',
+            'description' => 'Professional lawn mowing',
+            'price' => 1500,
+            'duration_minutes' => 60,
+            'location_type' => 'onsite',
+            'is_active' => true,
+        ]);
+
+        $customer = User::factory()->create([
+            'role' => 'customer',
+            'phone' => '94777654322',
+            'phone_verified_at' => now(),
+        ]);
+
+        $booking = Booking::create([
+            'customer_id' => $customer->id,
+            'worker_id' => $worker->id,
+            'service_package_id' => $servicePackage->id,
+            'scheduled_at' => now()->addDay(),
+            'address' => '456 Garden St, Colombo',
+            'total_price' => 1500,
+            'status' => 'confirmed',
+        ]);
+
+        $token = $worker->issueApiToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/auth/bookings/'.$booking->id.'/complete')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'completed');
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $booking->id,
+            'status' => 'completed',
+        ]);
+
+        $this->assertDatabaseHas('wallets', [
+            'user_id' => $worker->id,
+            'balance' => 1500.00,
+        ]);
+    }
 }

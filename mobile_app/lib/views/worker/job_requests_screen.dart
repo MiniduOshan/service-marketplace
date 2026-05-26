@@ -240,7 +240,10 @@ class _JobRequestsScreenState extends State<JobRequestsScreen> {
         final date = b['scheduled_at'] != null 
           ? b['scheduled_at'].toString().split('T')[0]
           : 'No Date';
-        final customerName = b['customer']?.name ?? 'Verified Customer';
+        final customerValue = b['customer'];
+        final customerName = (customerValue is Map)
+          ? (customerValue['name']?.toString() ?? 'Verified Customer')
+          : (customerValue?.name ?? 'Verified Customer');
         final notes = b['notes']?.toString();
 
         return Container(
@@ -281,8 +284,9 @@ class _JobRequestsScreenState extends State<JobRequestsScreen> {
                     const SizedBox(width: 8),
                     Expanded(child: _outlinedBtn(context, "Chat first", Colors.black, () {
                       Navigator.pushNamed(context, '/chat', arguments: {
-                        'workerId': b['customer']?.id?.toString() ?? '',
-                        'workerName': customerName,
+                        'bookingId': b['id']?.toString() ?? '',
+                        'counterpartName': customerName,
+                        'counterpartTag': 'Customer',
                       });
                     })),
                   ],

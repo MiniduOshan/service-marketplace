@@ -80,7 +80,18 @@ class SkilledLKApp extends StatelessWidget {
         '/booking-steps': (context) => const BookingStepsScreen(),
         '/cancel-booking': (context) => const CancelBookingScreen(),
         '/chat-list': (context) => const ChatListScreen(),
-        '/chat': (context) => const ChatScreen(),
+        '/chat': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          if (args == null || args['bookingId'] == null) {
+            return const ChatListScreen();
+          }
+
+          return ChatScreen(
+            bookingId: args['bookingId'].toString(),
+            workerName: args['counterpartName']?.toString() ?? 'Chat',
+            workerTag: args['counterpartTag']?.toString() ?? 'Booking',
+          );
+        },
         '/document-verification': (context) => const DocumentVerificationScreen(),
         '/job-requests': (context) => const JobRequestsScreen(),
         '/my-bookings': (context) => const MyBookingsScreen(),

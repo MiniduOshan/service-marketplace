@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\BookingController;
+use App\Http\Controllers\Api\BookingMessageController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ServiceCategoryController;
 use App\Http\Controllers\Api\ServicePackageController;
@@ -36,6 +37,10 @@ Route::prefix('auth')->group(function () {
         Route::get('/bookings', [BookingController::class, 'index']);
         Route::post('/bookings', [BookingController::class, 'store']);
         Route::patch('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
+        Route::patch('/bookings/{booking}/accept', [BookingController::class, 'accept']);
+        Route::patch('/bookings/{booking}/complete', [BookingController::class, 'complete']);
+        Route::get('/bookings/{booking}/messages', [BookingMessageController::class, 'index']);
+        Route::post('/bookings/{booking}/messages', [BookingMessageController::class, 'store']);
 
         Route::middleware(EnsureUserRole::class.':worker')->group(function () {
             Route::get('/worker/services', [ServicePackageController::class, 'workerServices']);

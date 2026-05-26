@@ -66,20 +66,22 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
   }
 
   Future<void> _acceptJob(String bookingId) async {
-    // Since backend does not have worker accept route, we simulate acceptance and show toast.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Job request accepted! Check 'Upcoming Jobs'."), backgroundColor: darkDashboardGreen)
-    );
-    setState(() {
-      _bookings = _bookings.map((b) {
-        if (b['id']?.toString() == bookingId) {
-          final updated = Map<String, dynamic>.from(b);
-          updated['status'] = 'confirmed';
-          return updated;
-        }
-        return b;
-      }).toList();
-    });
+    try {
+      final token = authController.sessionToken;
+      await ApiClient.instance.acceptBooking(bookingId: bookingId, token: token);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Job request accepted! Check 'Upcoming Jobs'."), backgroundColor: darkDashboardGreen)
+        );
+        _fetchData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')))
+        );
+      }
+    }
   }
 
   Future<void> _declineJob(String bookingId) async {
@@ -90,16 +92,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Job request declined."), backgroundColor: Colors.red)
         );
-        setState(() {
-          _bookings = _bookings.map((b) {
-            if (b['id']?.toString() == bookingId) {
-              final updated = Map<String, dynamic>.from(b);
-              updated['status'] = 'cancelled';
-              return updated;
-            }
-            return b;
-          }).toList();
-        });
+        _fetchData();
       }
     } catch (e) {
       if (mounted) {
@@ -111,20 +104,22 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
   }
 
   Future<void> _completeJob(String bookingId) async {
-    // Simulate completion and show toast
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Job marked as complete!"), backgroundColor: darkDashboardGreen)
-    );
-    setState(() {
-      _bookings = _bookings.map((b) {
-        if (b['id']?.toString() == bookingId) {
-          final updated = Map<String, dynamic>.from(b);
-          updated['status'] = 'completed';
-          return updated;
-        }
-        return b;
-      }).toList();
-    });
+    try {
+      final token = authController.sessionToken;
+      await ApiClient.instance.completeBooking(bookingId: bookingId, token: token);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Job marked as complete!"), backgroundColor: darkDashboardGreen)
+        );
+        _fetchData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')))
+        );
+      }
+    }
   }
 
   @override

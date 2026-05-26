@@ -30,6 +30,7 @@ class _BookingStepsScreenState extends State<BookingStepsScreen> {
   bool _isSubmitting = false;
   bool _isLoadingService = true;
   String? _errorMessage;
+  String _selectedPaymentMethod = "Credit / Debit Card";
 
   @override
   void initState() {
@@ -235,9 +236,9 @@ class _BookingStepsScreenState extends State<BookingStepsScreen> {
         const SizedBox(height: 24),
         const Text("Payment Method", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
-        _paymentOption("Credit / Debit Card", Icons.credit_card, true),
-        _paymentOption("Mobile Wallet", Icons.wallet, false),
-        _paymentOption("Cash to worker", Icons.payments, false),
+        _paymentOption("Credit / Debit Card", Icons.credit_card, _selectedPaymentMethod == "Credit / Debit Card"),
+        _paymentOption("Mobile Wallet", Icons.wallet, _selectedPaymentMethod == "Mobile Wallet"),
+        _paymentOption("Cash to worker", Icons.payments, _selectedPaymentMethod == "Cash to worker"),
       ],
     );
   }
@@ -340,6 +341,11 @@ class _BookingStepsScreenState extends State<BookingStepsScreen> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
+        onTap: () {
+          setState(() {
+            _selectedPaymentMethod = title;
+          });
+        },
         leading: Icon(icon, color: isSelected ? primaryGreen : Colors.grey),
         title: Text(title, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
         trailing: Icon(

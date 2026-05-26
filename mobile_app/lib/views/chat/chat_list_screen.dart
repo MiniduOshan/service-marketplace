@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../controllers/auth_controller.dart';
+import '../../services/api_client.dart';
 import 'chat_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
@@ -10,29 +13,55 @@ class ChatListScreen extends StatefulWidget {
 
 class _ChatListScreenState extends State<ChatListScreen> {
   static const Color primaryGreen = Color(0xFF006D44);
+  bool _isLoading = true;
+  String? _errorMessage;
   
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
   
-  final List<Map<String, dynamic>> _allChats = [];
+  final List<Map<String, dynamic>> _allBookings = [];
 
-  late List<Map<String, dynamic>> _filteredChats;
+  late List<Map<String, dynamic>> _filteredBookings;
 
   @override
   void initState() {
     super.initState();
-    _filteredChats = List.from(_allChats);
+    _filteredBookings = List.from(_allBookings);
+    _loadBookings();
+  }
+
+  Future<void> _loadBookings() async {
+    try {
+      final bookings = await ApiClient.instance.getBookings(token: authController.sessionToken);
+      if (!mounted) return;
+
+      setState(() {
+        _allBookings
+          ..clear()
+          ..addAll(bookings);
+        _filteredBookings = List.from(_allBookings);
+        _isLoading = false;
+        _errorMessage = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+        _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
   }
 
   void _filterChats(String query) {
     setState(() {
       if (query.isEmpty) {
-        _filteredChats = List.from(_allChats);
+        _filteredBookings = List.from(_allBookings);
       } else {
-        _filteredChats = _allChats
-            .where((chat) => 
-                chat['name'].toLowerCase().contains(query.toLowerCase()) ||
-                chat['tag'].toLowerCase().contains(query.toLowerCase()))
+        _filteredBookings = _allBookings
+            .where((booking) =>
+                _bookingTitle(booking).toLowerCase().contains(query.toLowerCase()) ||
+                _bookingSubtitle(booking).toLowerCase().contains(query.toLowerCase()))
             .toList();
       }
     });
@@ -84,11 +113,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!_isSearching) _buildRecentWorkers(),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
             child: Text(
-              _isSearching ? "Search Results (${_filteredChats.length})" : "All Messages",
+              _isSearching ? "Search Results (${_filteredBookings.length})" : "All Messages",
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey),
             ),
           ),
@@ -98,96 +126,76 @@ class _ChatListScreenState extends State<ChatListScreen> {
     );
   }
 
-  Widget _buildRecentWorkers() {
-    if (_allChats.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Text("Recent Workers", 
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
-          ),
-          const SizedBox(height: 15),
-          SizedBox(
-            height: 90,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              itemCount: 5,
-              itemBuilder: (context, index) {
-                final names = ["Kasun", "Amara", "Nuwan", "Dilini", "Saman"];
-                return _recentWorkerAvatar(names[index % names.length]);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _recentWorkerAvatar(String name) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Column(
-        children: [
-          Stack(
-            children: [
-              const CircleAvatar(radius: 30, backgroundColor: Color(0xFFE2E8F0)),
-              Positioned(
-                right: 2, bottom: 2,
-                child: Container(
-                  width: 12, height: 12,
-                  decoration: BoxDecoration(
-                    color: Colors.green, 
-                    shape: BoxShape.circle, 
-                    border: Border.all(color: Colors.white, width: 2)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 5),
-          Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-
   Widget _buildChatList(BuildContext context) {
-    if (_filteredChats.isEmpty) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: primaryGreen));
+    }
+
+    if (_errorMessage != null && _allBookings.isEmpty) {
+      return Center(
+        child: Text(_errorMessage!, style: const TextStyle(color: Colors.grey)),
+      );
+    }
+
+    if (_filteredBookings.isEmpty) {
       return const Center(
-        child: Text("No conversations found", style: TextStyle(color: Colors.grey)),
+        child: Text("No bookings found yet.", style: TextStyle(color: Colors.grey)),
       );
     }
     return ListView.separated(
       padding: const EdgeInsets.only(top: 10),
-      itemCount: _filteredChats.length,
+      itemCount: _filteredBookings.length,
       separatorBuilder: (context, index) => const Divider(height: 1, indent: 90),
       itemBuilder: (context, index) {
-        final chat = _filteredChats[index];
+        final booking = _filteredBookings[index];
         return _chatTile(
           context,
-          chat['name'],
-          chat['tag'],
-          chat['msg'],
-          chat['time'],
-          unreadCount: chat['unread'],
+          _bookingTitle(booking),
+          _bookingTag(),
+          _bookingSubtitle(booking),
+          _bookingTime(booking),
+          bookingId: booking['id']?.toString() ?? '',
         );
       },
     );
   }
 
-  Widget _chatTile(BuildContext context, String name, String tag, String msg, String time, {int unreadCount = 0}) {
+  String _bookingTitle(Map<String, dynamic> booking) {
+    final currentUser = authController.currentUser;
+    final worker = booking['worker'] as Map<String, dynamic>?;
+    final customer = booking['customer'] as Map<String, dynamic>?;
+    return currentUser?.role == 'worker'
+        ? (customer?['name']?.toString() ?? 'Customer')
+        : (worker?['name']?.toString() ?? 'Worker');
+  }
+
+  String _bookingTag() {
+    return authController.currentUser?.role == 'worker' ? 'Customer' : 'Worker';
+  }
+
+  String _bookingSubtitle(Map<String, dynamic> booking) {
+    final servicePackage = booking['service_package'] as Map<String, dynamic>?;
+    final status = booking['status']?.toString() ?? 'pending';
+    final title = servicePackage?['title']?.toString() ?? 'Booking';
+    final statusLabel = status.isEmpty ? 'Pending' : '${status[0].toUpperCase()}${status.substring(1)}';
+    return '$title • $statusLabel';
+  }
+
+  String _bookingTime(Map<String, dynamic> booking) {
+    final createdAt = booking['created_at']?.toString() ?? '';
+    if (createdAt.contains('T')) {
+      return createdAt.split('T').first;
+    }
+    return 'Now';
+  }
+
+  Widget _chatTile(BuildContext context, String name, String tag, String msg, String time, {required String bookingId}) {
     return ListTile(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(
-        workerName: name,
-        workerTag: tag,
-      ))),
+      onTap: () => Navigator.pushNamed(context, '/chat', arguments: {
+        'bookingId': bookingId,
+        'counterpartName': name,
+        'counterpartTag': tag,
+      }),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       tileColor: Colors.white,
       leading: const CircleAvatar(radius: 28, backgroundColor: Color(0xFFE2E8F0)),
@@ -203,13 +211,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(time, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-          const SizedBox(height: 5),
-          if (unreadCount > 0)
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: const BoxDecoration(color: primaryGreen, shape: BoxShape.circle),
-              child: Text("$unreadCount", style: const TextStyle(color: Colors.white, fontSize: 10)),
-            ),
         ],
       ),
     );
@@ -222,4 +223,4 @@ class _ChatListScreenState extends State<ChatListScreen> {
       child: Text(text, style: const TextStyle(color: Color(0xFF3B82F6), fontSize: 10, fontWeight: FontWeight.bold)),
     );
   }
-}
+}

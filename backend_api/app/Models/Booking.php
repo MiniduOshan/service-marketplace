@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Booking extends Model
@@ -42,5 +43,10 @@ class Booking extends Model
     public function servicePackage(): BelongsTo
     {
         return $this->belongsTo(ServicePackage::class);
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(BookingMessage::class);
     }
 }

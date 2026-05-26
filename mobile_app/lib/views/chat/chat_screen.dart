@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../../controllers/auth_controller.dart';
+import '../../services/api_client.dart';
+
 class ChatScreen extends StatefulWidget {
+  final String bookingId;
   final String workerName;
   final String workerTag;
 
   const ChatScreen({
     super.key,
-    this.workerName = 'Kasun Silva',
-    this.workerTag = 'PAINTER',
+    this.bookingId = '',
+    this.workerName = 'Conversation',
+    this.workerTag = 'Booking',
   });
 
   @override
@@ -19,12 +24,14 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
+  bool _isLoading = true;
+  String? _errorMessage;
   final List<Map<String, dynamic>> _messages = [];
 
   String get initials {
     final parts = widget.workerName.trim().split(RegExp(r'\s+'));
     if (parts.length > 1) {
-      return "${parts[0][0]}${parts[1][0]}".toUpperCase();
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
     if (parts.isNotEmpty && parts[0].isNotEmpty) {
       return parts[0].substring(0, parts[0].length >= 2 ? 2 : parts[0].length).toUpperCase();
@@ -32,22 +39,10 @@ class _ChatScreenState extends State<ChatScreen> {
     return 'PR';
   }
 
-  String get formattedTag {
-    if (widget.workerTag.isEmpty) return 'Pro';
-    return widget.workerTag[0].toUpperCase() + widget.workerTag.substring(1).toLowerCase();
-  }
-
   @override
   void initState() {
     super.initState();
-    // Start with a clean welcome context message
-    _messages.addAll([
-      {
-        "text": "Hello! I saw your booking request. Could you please share more details about the work required?",
-        "isMe": false,
-        "time": "10:22 AM"
-      }
-    ]);
+    _loadMessages();
   }
 
   @override
@@ -57,32 +52,91 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  void _sendMessage() {
-    final text = _messageController.text.trim();
-    if (text.isEmpty) return;
-
-    final now = DateTime.now();
-    final timeStr = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
-
-    setState(() {
-      _messages.add({
-        "text": text,
-        "isMe": true,
-        "time": timeStr,
+  Future<void> _loadMessages() async {
+    if (widget.bookingId.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Select a booking to start chatting.';
       });
-      _messageController.clear();
-    });
+      return;
+    }
 
-    // Auto scroll to bottom
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+    try {
+      final messages = await ApiClient.instance.getBookingMessages(
+        bookingId: widget.bookingId,
+        token: authController.sessionToken,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _messages
+          ..clear()
+          ..addAll(messages.map(_mapMessage));
+        _isLoading = false;
+        _errorMessage = null;
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  Map<String, dynamic> _mapMessage(Map<String, dynamic> message) {
+    final currentUserId = authController.currentUser?.id?.toString();
+    final sender = message['sender'] as Map<String, dynamic>?;
+    final senderId = sender?['id']?.toString() ?? message['sender_id']?.toString();
+    final createdAt = message['created_at']?.toString() ?? '';
+    final time = createdAt.contains('T') ? createdAt.split('T').last.substring(0, 5) : 'Now';
+
+    return {
+      'text': message['body']?.toString() ?? '',
+      'isMe': senderId != null && senderId == currentUserId,
+      'time': time,
+    };
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || widget.bookingId.isEmpty) return;
+
+    try {
+      final response = await ApiClient.instance.sendBookingMessage(
+        bookingId: widget.bookingId,
+        body: text,
+        token: authController.sessionToken,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _messages.add(_mapMessage(response['data'] as Map<String, dynamic>));
+        _messageController.clear();
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   @override
@@ -94,15 +148,24 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           _buildWarningBanner(),
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(20),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                return _buildBubble(msg['text'], msg['isMe'], msg['time']);
-              },
-            ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: primaryGreen))
+                : _errorMessage != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(_errorMessage!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(20),
+                        itemCount: _messages.length,
+                        itemBuilder: (context, index) {
+                          final msg = _messages[index];
+                          return _buildBubble(msg['text'], msg['isMe'], msg['time']);
+                        },
+                      ),
           ),
           _buildInputArea(),
         ],
@@ -115,14 +178,14 @@ class _ChatScreenState extends State<ChatScreen> {
       backgroundColor: Colors.white,
       elevation: 0.5,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: primaryGreen), 
+        icon: const Icon(Icons.arrow_back, color: primaryGreen),
         onPressed: () => Navigator.pop(context),
       ),
       title: Row(
         children: [
           CircleAvatar(
-            radius: 18, 
-            backgroundColor: const Color(0xFFE8F6F1), 
+            radius: 18,
+            backgroundColor: const Color(0xFFE8F6F1),
             child: Text(initials, style: const TextStyle(fontSize: 14, color: primaryGreen, fontWeight: FontWeight.bold)),
           ),
           const SizedBox(width: 10),
@@ -131,7 +194,7 @@ class _ChatScreenState extends State<ChatScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.workerName, 
+                  widget.workerName,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
                 ),
@@ -140,7 +203,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
-                      "${widget.workerTag} • Online", 
+                      '${widget.workerTag} • Online',
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
@@ -151,10 +214,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
-      actions: [
-        IconButton(icon: const Icon(Icons.phone_in_talk_outlined, color: Colors.grey), onPressed: () {}),
-        IconButton(icon: const Icon(Icons.info_outline, color: Colors.grey), onPressed: () {}),
-      ],
+      actions: [],
     );
   }
 
@@ -168,11 +228,11 @@ class _ChatScreenState extends State<ChatScreen> {
           SizedBox(width: 12),
           Expanded(
             child: Text.rich(TextSpan(
-              text: "Worker's phone number will be shared after booking is confirmed. ",
+              text: 'Contact details will be shared after booking is confirmed. ',
               style: TextStyle(fontSize: 13),
               children: [
                 TextSpan(
-                  text: "Book now", 
+                  text: 'Book now',
                   style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
                 ),
               ],
@@ -226,7 +286,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: TextField(
                 controller: _messageController,
                 onSubmitted: (_) => _sendMessage(),
-                decoration: const InputDecoration(hintText: "Type a message...", border: InputBorder.none),
+                decoration: const InputDecoration(hintText: 'Type a message...', border: InputBorder.none),
               ),
             ),
           ),
@@ -234,7 +294,7 @@ class _ChatScreenState extends State<ChatScreen> {
           GestureDetector(
             onTap: _sendMessage,
             child: const CircleAvatar(
-              backgroundColor: primaryGreen, 
+              backgroundColor: primaryGreen,
               child: Icon(Icons.send, color: Colors.white, size: 20),
             ),
           ),

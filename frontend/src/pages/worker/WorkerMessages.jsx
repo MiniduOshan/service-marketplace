@@ -12,6 +12,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import WorkerLayout from '../../components/layout/WorkerLayout';
+import { apiRequest, getStoredSessionUser } from '../../lib/api';
 
 const filters = [
   { key: 'all', label: 'All Chats' },
@@ -91,6 +92,11 @@ function MessageBubble({ message, selectedConversation }) {
           isWorker ? 'text-right' : ''
         }`}
       >
+        {!isWorker && (
+          <p className="mb-1 text-left text-xs font-semibold text-slate-500">
+            {selectedConversation.name}
+          </p>
+        )}
         <div
           className={`rounded-2xl px-5 py-4 text-sm leading-relaxed shadow-sm sm:text-base ${
             isWorker
@@ -113,6 +119,7 @@ function MessageBubble({ message, selectedConversation }) {
 
 export default function WorkerMessages() {
   const location = useLocation();
+  const currentUser = getStoredSessionUser();
   const [conversations, setConversations] = useState([]);
   const [conversationMessages, setConversationMessages] = useState({});
   const [activeConversationId, setActiveConversationId] = useState(null);
@@ -121,57 +128,75 @@ export default function WorkerMessages() {
   const [messageText, setMessageText] = useState('');
 
   useEffect(() => {
-    if (location.state && location.state.customerId) {
-      const { customerId, customerName } = location.state;
+    async function loadConversations() {
+      try {
+        const res = await apiRequest('/auth/bookings');
+        const list = res.data?.data || res.data || [];
+        const mapped = list.map((b) => {
+          const counterpartName = b.customer?.name || 'Customer';
+          return {
+            id: b.id,
+            workerId: b.worker_id,
+            customerId: b.customer_id,
+            name: counterpartName,
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(counterpartName)}&background=006D44&color=fff`,
+            status: 'Online now',
+            online: true,
+            lastMessage: `Booking status: ${b.status}`,
+            time: new Date(b.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+            unread: false,
+            starred: false,
+            bookingStatus: b.status,
+            phone: b.customer?.phone,
+          };
+        });
+        setConversations(mapped);
 
-      setConversations((prevConvs) => {
-        const exists = prevConvs.some((c) => c.id === customerId);
-        if (exists) {
-          setActiveConversationId(customerId);
-          return prevConvs;
+        // Auto select active conversation
+        if (location.state?.bookingId) {
+          setActiveConversationId(Number(location.state.bookingId));
+        } else if (mapped.length > 0) {
+          setActiveConversationId(mapped[0].id);
         }
-
-        const newConv = {
-          id: customerId,
-          name: customerName,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(customerName)}&background=006D44&color=fff`,
-          status: 'Online now',
-          online: true,
-          lastMessage: 'Start of conversation',
-          time: 'Just now',
-          unread: false,
-          starred: false,
-        };
-
-        setActiveConversationId(customerId);
-        return [newConv, ...prevConvs];
-      });
-
-      setConversationMessages((prevMsgs) => {
-        if (prevMsgs[customerId]) return prevMsgs;
-        return {
-          ...prevMsgs,
-          [customerId]: [
-            {
-              id: 'system-1',
-              sender: 'system',
-              text: 'Conversation started',
-            },
-          ],
-        };
-      });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    if (currentUser) {
+      loadConversations();
     }
   }, [location.state]);
 
-  useEffect(() => {
-    if (!activeConversationId && conversations.length > 0) {
-      setActiveConversationId(conversations[0].id);
-    }
+  const selectedConversation = useMemo(() => {
+    return conversations.find((c) => c.id == activeConversationId) || null;
   }, [conversations, activeConversationId]);
 
-  const selectedConversation = useMemo(() => {
-    return conversations.find((c) => c.id === activeConversationId) || null;
-  }, [conversations, activeConversationId]);
+  const fetchMessages = async (bookingId) => {
+    try {
+      const res = await apiRequest(`/auth/bookings/${bookingId}/messages`);
+      const msgList = res.data || [];
+      setConversationMessages((prev) => ({
+        ...prev,
+        [bookingId]: msgList.map((msg) => ({
+          id: msg.id,
+          sender: msg.sender_id === currentUser?.id ? 'worker' : 'customer',
+          text: msg.body,
+          time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        })),
+      }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (!activeConversationId) return;
+    fetchMessages(activeConversationId);
+    const interval = setInterval(() => {
+      fetchMessages(activeConversationId);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [activeConversationId]);
 
   const filteredConversations = useMemo(() => {
     return conversations.filter((conversation) => {
@@ -192,41 +217,34 @@ export default function WorkerMessages() {
     return activeConversationId ? conversationMessages[activeConversationId] || [] : [];
   }, [conversationMessages, activeConversationId]);
 
-  function handleSendMessage(event) {
+  async function handleSendMessage(event) {
     event.preventDefault();
 
     const cleanMessage = messageText.trim();
     if (!cleanMessage || !activeConversationId) return;
 
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const msgId = Date.now();
-
-    const newMsg = {
-      id: msgId,
-      sender: 'worker',
-      text: cleanMessage,
-      time: timeStr,
-    };
-
-    setConversationMessages((prev) => ({
-      ...prev,
-      [activeConversationId]: [...(prev[activeConversationId] || []), newMsg],
-    }));
-
-    setConversations((prevConvs) =>
-      prevConvs.map((c) =>
-        c.id === activeConversationId
-          ? {
-              ...c,
-              lastMessage: cleanMessage,
-              time: timeStr,
-            }
-          : c
-      )
-    );
-
-    setMessageText('');
+    try {
+      const res = await apiRequest(`/auth/bookings/${activeConversationId}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ body: cleanMessage }),
+      });
+      const newMsg = res.data;
+      if (newMsg) {
+        const mapped = {
+          id: newMsg.id,
+          sender: 'worker',
+          text: newMsg.body,
+          time: new Date(newMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setConversationMessages((prev) => ({
+          ...prev,
+          [activeConversationId]: [...(prev[activeConversationId] || []), mapped],
+        }));
+        setMessageText('');
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   return (
@@ -285,7 +303,7 @@ export default function WorkerMessages() {
                 <ConversationItem
                   key={conversation.id}
                   conversation={conversation}
-                  active={conversation.id === activeConversationId}
+                  active={conversation.id == activeConversationId}
                   onClick={() => setActiveConversationId(conversation.id)}
                 />
               ))
@@ -363,9 +381,15 @@ export default function WorkerMessages() {
                 </div>
               </div>
 
-              <div className="border-t border-amber-100 bg-amber-50 px-5 py-3 text-center text-sm font-medium text-amber-700 sm:px-7">
-                Customer’s phone number will be shared after booking is confirmed.
-              </div>
+              {selectedConversation.bookingStatus === 'pending' ? (
+                <div className="border-t border-amber-100 bg-amber-50 px-5 py-3 text-center text-sm font-medium text-amber-700 sm:px-7">
+                  Customer’s phone number will be shared after booking is confirmed.
+                </div>
+              ) : (
+                <div className="border-t border-emerald-100 bg-emerald-50 px-5 py-3 text-center text-sm font-medium text-emerald-800 sm:px-7">
+                  Booking Confirmed! Customer Contact: <span className="font-bold text-emerald-950">{selectedConversation.phone || '077 123 4567'}</span>
+                </div>
+              )}
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-7">

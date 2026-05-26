@@ -15,6 +15,7 @@ import {
 
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
+import { apiRequest, getStoredSessionUser } from '../../lib/api';
 
 const filters = ['All Chats', 'Unread', 'Starring'];
 
@@ -73,7 +74,7 @@ function ConversationItem({ conversation, active, onClick }) {
   );
 }
 
-function ChatBubble({ message, workerAvatar }) {
+function ChatBubble({ message, workerAvatar, workerName }) {
   if (message.type === 'system') {
     return (
       <div className="flex justify-center">
@@ -116,6 +117,11 @@ function ChatBubble({ message, workerAvatar }) {
           isCustomer ? 'items-end' : 'items-start'
         }`}
       >
+        {!isCustomer && (
+          <p className="mb-1 text-left text-xs font-semibold text-slate-500">
+            {workerName}
+          </p>
+        )}
         <div
           className={`rounded-2xl px-5 py-4 text-base leading-7 shadow-sm ${
             isCustomer
@@ -140,6 +146,7 @@ function ChatBubble({ message, workerAvatar }) {
 
 export default function ChatPage() {
   const location = useLocation();
+  const currentUser = getStoredSessionUser();
   const [conversations, setConversations] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [conversationMessages, setConversationMessages] = useState({});
@@ -148,61 +155,87 @@ export default function ChatPage() {
   const [mobileListOpen, setMobileListOpen] = useState(false);
 
   useEffect(() => {
-    if (location.state && location.state.workerId) {
-      const { workerId, workerName, workerRole } = location.state;
+    async function loadConversations() {
+      try {
+        const res = await apiRequest('/auth/bookings');
+        const list = res.data?.data || res.data || [];
+        const mapped = list.map((b) => {
+          const isWorker = currentUser?.role === 'worker';
+          const counterpartName = isWorker ? (b.customer?.name || 'Customer') : (b.worker?.name || 'Worker Pro');
+          return {
+            id: b.id,
+            workerId: b.worker_id,
+            customerId: b.customer_id,
+            name: counterpartName,
+            role: b.service_package?.category?.name || 'Verified Pro',
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(counterpartName)}&background=006D44&color=fff`,
+            lastMessage: `Booking status: ${b.status}`,
+            time: new Date(b.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+            unread: false,
+            online: true,
+            starred: false,
+            status: b.status,
+            phone: isWorker ? b.customer?.phone : b.worker?.phone,
+          };
+        });
+        setConversations(mapped);
 
-      setConversations((prevConvs) => {
-        const exists = prevConvs.some((c) => c.id === workerId);
-        if (exists) {
-          setActiveConversationId(workerId);
-          return prevConvs;
+        // Auto select active conversation
+        if (location.state?.bookingId) {
+          setActiveConversationId(Number(location.state.bookingId));
+        } else if (location.state?.workerId) {
+          const existing = mapped.find((c) => c.workerId === Number(location.state.workerId));
+          if (existing) {
+            setActiveConversationId(existing.id);
+          } else if (mapped.length > 0) {
+            setActiveConversationId(mapped[0].id);
+          }
+        } else if (mapped.length > 0) {
+          setActiveConversationId(mapped[0].id);
         }
-
-        const newConv = {
-          id: workerId,
-          name: workerName,
-          role: workerRole || 'Verified Pro',
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(workerName)}&background=006D44&color=fff`,
-          lastMessage: 'Start of conversation',
-          time: 'Just now',
-          unread: false,
-          online: true,
-          starred: false,
-        };
-
-        setActiveConversationId(workerId);
-        return [newConv, ...prevConvs];
-      });
-
-      setConversationMessages((prevMsgs) => {
-        if (prevMsgs[workerId]) return prevMsgs;
-        return {
-          ...prevMsgs,
-          [workerId]: [
-            {
-              id: 'system-1',
-              type: 'system',
-              text: 'Conversation started',
-            },
-          ],
-        };
-      });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    if (currentUser) {
+      loadConversations();
     }
   }, [location.state]);
-
-  useEffect(() => {
-    if (!activeConversationId && conversations.length > 0) {
-      setActiveConversationId(conversations[0].id);
-    }
-  }, [conversations, activeConversationId]);
 
   const activeConversation = useMemo(
     () =>
       conversations.find(
-        (conversation) => conversation.id === activeConversationId
+        (conversation) => conversation.id == activeConversationId
       ) || null,
     [conversations, activeConversationId]
   );
+
+  const fetchMessages = async (bookingId) => {
+    try {
+      const res = await apiRequest(`/auth/bookings/${bookingId}/messages`);
+      const msgList = res.data || [];
+      setConversationMessages((prev) => ({
+        ...prev,
+        [bookingId]: msgList.map((msg) => ({
+          id: msg.id,
+          sender: msg.sender_id === currentUser?.id ? 'customer' : 'worker',
+          text: msg.body,
+          time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        })),
+      }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (!activeConversationId) return;
+    fetchMessages(activeConversationId);
+    const interval = setInterval(() => {
+      fetchMessages(activeConversationId);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [activeConversationId]);
 
   const filteredConversations = useMemo(() => {
     if (activeFilter === 'Unread') {
@@ -226,39 +259,32 @@ export default function ChatPage() {
     setMobileListOpen(false);
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     const text = messageInput.trim();
     if (!text || !activeConversationId) return;
 
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const msgId = Date.now();
-
-    const newMsg = {
-      id: msgId,
-      sender: 'customer',
-      text,
-      time: timeStr,
-    };
-
-    setConversationMessages((prev) => ({
-      ...prev,
-      [activeConversationId]: [...(prev[activeConversationId] || []), newMsg],
-    }));
-
-    setConversations((prevConvs) =>
-      prevConvs.map((c) =>
-        c.id === activeConversationId
-          ? {
-              ...c,
-              lastMessage: text,
-              time: timeStr,
-            }
-          : c
-      )
-    );
-
-    setMessageInput('');
+    try {
+      const res = await apiRequest(`/auth/bookings/${activeConversationId}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ body: text }),
+      });
+      const newMsg = res.data;
+      if (newMsg) {
+        const mapped = {
+          id: newMsg.id,
+          sender: 'customer',
+          text: newMsg.body,
+          time: new Date(newMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setConversationMessages((prev) => ({
+          ...prev,
+          [activeConversationId]: [...(prev[activeConversationId] || []), mapped],
+        }));
+        setMessageInput('');
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -333,7 +359,7 @@ export default function ChatPage() {
                   <ConversationItem
                     key={conversation.id}
                     conversation={conversation}
-                    active={conversation.id === activeConversationId}
+                    active={conversation.id == activeConversationId}
                     onClick={() => handleSelectConversation(conversation.id)}
                   />
                 ))
@@ -417,22 +443,32 @@ export default function ChatPage() {
               </div>
             </header>
 
-            {/* Alert */}
-            <div className="flex shrink-0 items-center justify-between gap-4 border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm">
-              <div className="flex min-w-0 items-center gap-3 text-orange-700">
-                <Info size={18} className="shrink-0" />
-                <p className="truncate">
-                  Worker’s phone number will be shared after booking is confirmed.
-                </p>
-              </div>
+            {activeConversation.status === 'pending' ? (
+              <div className="flex shrink-0 items-center justify-between gap-4 border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm">
+                <div className="flex min-w-0 items-center gap-3 text-orange-700">
+                  <Info size={18} className="shrink-0" />
+                  <p className="truncate">
+                    Worker’s phone number will be shared after booking is confirmed.
+                  </p>
+                </div>
 
-              <button
-                type="button"
-                className="shrink-0 cursor-pointer font-bold text-emerald-700 hover:text-emerald-800"
-              >
-                Book now
-              </button>
-            </div>
+                <button
+                  type="button"
+                  className="shrink-0 cursor-pointer font-bold text-emerald-700 hover:text-emerald-800"
+                >
+                  Book now
+                </button>
+              </div>
+            ) : (
+              <div className="flex shrink-0 items-center justify-between gap-4 border-b border-emerald-200 bg-emerald-50 px-5 py-3 text-sm">
+                <div className="flex min-w-0 items-center gap-3 text-emerald-800">
+                  <Info size={18} className="shrink-0 text-emerald-700" />
+                  <p className="truncate font-semibold">
+                    Booking Confirmed! Worker Contact: <span className="font-bold text-emerald-900">{activeConversation.phone || '077 123 4567'}</span>
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Messages area scrolls */}
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8 lg:px-16">
@@ -442,6 +478,7 @@ export default function ChatPage() {
                     key={message.id}
                     message={message}
                     workerAvatar={activeConversation.avatar}
+                    workerName={activeConversation.name}
                   />
                 ))}
               </div>

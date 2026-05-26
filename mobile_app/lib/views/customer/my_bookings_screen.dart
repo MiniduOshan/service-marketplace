@@ -204,11 +204,24 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('LKR $totalPrice', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              if (status != 'completed' && status != 'cancelled')
-                TextButton(
-                  onPressed: () => _cancelBooking(bookingId),
-                  child: const Text('Cancel', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                ),
+              Row(
+                children: [
+                  if (status != 'cancelled')
+                    TextButton(
+                      onPressed: () => Navigator.pushNamed(context, '/chat', arguments: {
+                        'bookingId': bookingId,
+                        'counterpartName': workerName,
+                        'counterpartTag': 'Worker',
+                      }),
+                      child: const Text('Chat', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                    ),
+                  if (status != 'completed' && status != 'cancelled')
+                    TextButton(
+                      onPressed: () => _cancelBooking(bookingId),
+                      child: const Text('Cancel', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                    ),
+                ],
+              ),
             ],
           ),
         ],

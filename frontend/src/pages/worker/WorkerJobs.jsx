@@ -114,7 +114,7 @@ function RequestJobCard({ job, onAccept, onDecline, onChat }) {
 
             <button
               type="button"
-              onClick={() => onChat(job.customer)}
+              onClick={() => onChat(job.id)}
               className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-8 py-3 text-sm font-semibold text-slate-600 transition hover:border-emerald-600 hover:text-emerald-700 cursor-pointer"
             >
               <MessageSquareText size={17} />
@@ -166,11 +166,11 @@ function ActiveJobCard({ job, onComplete, onChat }) {
 
             <button
               type="button"
-              onClick={() => onChat(job.customer)}
+              onClick={() => onChat(job.id)}
               className="inline-flex items-center gap-1 text-sm font-bold text-emerald-700 hover:underline cursor-pointer"
             >
-              <Phone size={15} />
-              Call customer
+              <MessageSquareText size={15} />
+              Chat with customer
             </button>
 
             <div className="flex-1" />
@@ -294,10 +294,17 @@ export default function WorkerJobs() {
   }, []);
 
   const handleAccept = async (id) => {
-    alert('Job accepted successfully!');
-    setBookings((current) =>
-      current.map((b) => (b.id === id ? { ...b, status: 'confirmed' } : b))
-    );
+    try {
+      await apiRequest(`/auth/bookings/${id}/accept`, {
+        method: 'PATCH',
+      });
+      alert('Job accepted successfully!');
+      setBookings((current) =>
+        current.map((b) => (b.id === id ? { ...b, status: 'confirmed' } : b))
+      );
+    } catch (err) {
+      alert(err.message || 'Failed to accept job.');
+    }
   };
 
   const handleDecline = async (id) => {
@@ -316,14 +323,21 @@ export default function WorkerJobs() {
   };
 
   const handleComplete = async (id) => {
-    alert('Job marked as completed!');
-    setBookings((current) =>
-      current.map((b) => (b.id === id ? { ...b, status: 'completed' } : b))
-    );
+    try {
+      await apiRequest(`/auth/bookings/${id}/complete`, {
+        method: 'PATCH',
+      });
+      alert('Job marked as completed!');
+      setBookings((current) =>
+        current.map((b) => (b.id === id ? { ...b, status: 'completed' } : b))
+      );
+    } catch (err) {
+      alert(err.message || 'Failed to complete job.');
+    }
   };
 
-  const handleChat = (customerName) => {
-    navigate('/chat', { state: { recipientName: customerName } });
+  const handleChat = (bookingId) => {
+    navigate('/worker/messages', { state: { bookingId } });
   };
 
   const mappedJobs = useMemo(() => {
