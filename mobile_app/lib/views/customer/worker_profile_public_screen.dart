@@ -109,7 +109,7 @@ class _WorkerProfilePublicScreenState extends State<WorkerProfilePublicScreen> {
           children: [
             Text(worker.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(width: 8),
-            _tag("VERIFIED", Colors.green),
+            if (worker.isVerified) _tag("VERIFIED", Colors.green),
             if (worker.isFeatured) ...[
               const SizedBox(width: 4),
               _tag("FEATURED", Colors.orange),

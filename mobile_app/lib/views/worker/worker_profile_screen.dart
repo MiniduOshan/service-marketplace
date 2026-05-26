@@ -791,6 +791,20 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
           "Help Center",
           onTap: () => Navigator.pushNamed(context, '/help-center'),
         ),
+        const SizedBox(height: 12),
+        _buildSettingsTile(
+          context,
+          Icons.logout,
+          "Sign Out",
+          onTap: () {
+            authController.logOut();
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/welcome',
+              (route) => false,
+            );
+          },
+        ),
       ],
     );
   }

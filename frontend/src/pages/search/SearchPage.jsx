@@ -608,9 +608,9 @@ export default function SearchPage() {
             price: parseFloat(service.price) || 0,
             unit: '/ task',
             distance: 4,
-            verified: true,
+            verified: !!service.worker?.phone_verified_at,
             featured: service.is_active,
-            pro: true,
+            pro: !!service.worker?.phone_verified_at,
             avatarClass: 'bg-emerald-700 text-white',
           };
         });

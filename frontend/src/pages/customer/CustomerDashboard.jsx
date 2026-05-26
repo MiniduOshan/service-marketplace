@@ -239,7 +239,7 @@ export default function CustomerDashboard() {
               rating: '4.8',
               distance: `${(1.2 + idx * 0.7).toFixed(1)} km`,
               price: `LKR ${parseFloat(service.price).toLocaleString()}`,
-              verified: true,
+              verified: !!service.worker?.phone_verified_at,
               avatarBg: bgColors[idx % bgColors.length],
               reviews: `${24 + idx * 7} reviews`,
               image: defaultImages[idx % defaultImages.length],

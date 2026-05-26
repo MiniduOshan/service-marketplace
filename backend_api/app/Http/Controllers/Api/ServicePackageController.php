@@ -13,7 +13,7 @@ class ServicePackageController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = ServicePackage::query()
-            ->with(['category', 'worker:id,name,role,primary_service_category_id'])
+            ->with(['category', 'worker:id,name,role,primary_service_category_id,phone_verified_at'])
             ->where('is_active', true)
             ->latest();
 
@@ -44,7 +44,7 @@ class ServicePackageController extends Controller
     public function show(ServicePackage $servicePackage): JsonResponse
     {
         return response()->json([
-            'data' => $servicePackage->load(['category', 'worker:id,name,role,primary_service_category_id']),
+            'data' => $servicePackage->load(['category', 'worker:id,name,role,primary_service_category_id,phone_verified_at']),
         ]);
     }
 

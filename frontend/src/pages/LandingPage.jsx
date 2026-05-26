@@ -292,7 +292,7 @@ export default function LandingPage() {
               role: service.title || 'Service Expert',
               rating: '4.9',
               jobs: '120+ Jobs',
-              badge: 'Verified ID',
+              badge: service.worker?.phone_verified_at ? 'Verified ID' : 'Basic ID',
               image: defaultImages[idx % defaultImages.length],
               label: service.is_active ? 'ELITE' : null,
             };

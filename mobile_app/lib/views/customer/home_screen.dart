@@ -166,8 +166,8 @@ class _HomeScreenState extends State<HomeScreen> {
           startingPrice: service['price']?.toString() ?? '0',
           priceUnit: 'service',
           initial: workerName.isNotEmpty ? workerName[0].toUpperCase() : 'S',
-          isVerified: true,
-          isPro: true,
+          isVerified: service['worker'] is Map<String, dynamic> && service['worker']['phone_verified_at'] != null,
+          isPro: service['worker'] is Map<String, dynamic> && service['worker']['phone_verified_at'] != null,
         );
       }).toList();
 
@@ -457,7 +457,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: const TextStyle(color: primaryGreen),
                   ),
                 ),
-                _buildBadge("Verified", Colors.green),
+                if (worker.isVerified) _buildBadge("Verified", Colors.green),
               ],
             ),
             const SizedBox(height: 12),

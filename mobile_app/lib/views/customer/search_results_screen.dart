@@ -84,8 +84,8 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
             startingPrice: service['price']?.toString() ?? '0',
             priceUnit: 'service',
             initial: workerName.isNotEmpty ? workerName[0].toUpperCase() : 'S',
-            isVerified: true,
-            isPro: true,
+            isVerified: service['worker'] is Map<String, dynamic> && service['worker']['phone_verified_at'] != null,
+            isPro: service['worker'] is Map<String, dynamic> && service['worker']['phone_verified_at'] != null,
           );
         }).toList();
 
@@ -387,7 +387,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            _badge("Verified", Colors.green, Icons.check_circle),
+                            if (worker.isVerified) _badge("Verified", Colors.green, Icons.check_circle),
                             if (worker.isFeatured) const SizedBox(width: 8),
                             if (worker.isFeatured) _badge("Featured", Colors.orange, Icons.star),
                           ],
