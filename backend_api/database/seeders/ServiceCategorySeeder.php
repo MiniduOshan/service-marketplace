@@ -18,6 +18,19 @@ class ServiceCategorySeeder extends Seeder
             'AC Repair',
             'Cleaning',
             'Masonry',
+            'Gardening',
+            'Appliance Repair',
+            'Pest Control',
+            'Auto Repair',
+            'Car Detailing',
+            'Tech Support',
+            'Graphic Design',
+            'Photography',
+            'Catering',
+            'Personal Training',
+            'Academic Tutoring',
+            'Moving & Packing',
+            'Translation',
         ];
 
         foreach ($categories as $category) {

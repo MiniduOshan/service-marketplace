@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { getStoredSessionUser, clearSession } from '../../lib/api';
 import {
   Bell,
   BriefcaseBusiness,
@@ -24,81 +25,7 @@ const sidebarItems = [
   { name: 'Subscription', icon: Settings, path: '/worker/subscription' },
 ];
 
-const initialNotifications = [
-  {
-    id: 1,
-    group: 'TODAY',
-    title: 'Booking Confirmed',
-    message:
-      "Marcus Chen confirmed your booking for 'Full Stack Development Audit'.",
-    time: '2h ago',
-    unread: true,
-    icon: CalendarCheck,
-    iconClassName: 'bg-emerald-50 text-emerald-700',
-  },
-  {
-    id: 2,
-    group: 'TODAY',
-    title: 'New Message',
-    message:
-      'New message from Sarah Jenkins regarding technical specifications.',
-    time: '5h ago',
-    unread: true,
-    icon: Mail,
-    iconClassName: 'bg-blue-50 text-blue-600',
-  },
-  {
-    id: 3,
-    group: 'TODAY',
-    title: 'Payment Received',
-    message: "$2,450.00 for 'Mobile App Redesign' credited to your wallet.",
-    time: '8h ago',
-    unread: false,
-    icon: CreditCard,
-    iconClassName: 'bg-amber-50 text-amber-600',
-  },
-  {
-    id: 4,
-    group: 'YESTERDAY',
-    title: 'New Review',
-    message:
-      '"Exceptional work quality..." - 5-star review from Horizon Tech.',
-    time: 'Yesterday',
-    unread: false,
-    icon: Star,
-    iconClassName: 'bg-purple-50 text-purple-600',
-  },
-  {
-    id: 5,
-    group: 'YESTERDAY',
-    title: 'Job Request Received',
-    message: 'A new room painting request is waiting for your response.',
-    time: 'Yesterday',
-    unread: true,
-    icon: BriefcaseBusiness,
-    iconClassName: 'bg-emerald-50 text-emerald-700',
-  },
-  {
-    id: 6,
-    group: 'THIS WEEK',
-    title: 'Subscription Renewed',
-    message: 'Your Pro Plan was renewed successfully.',
-    time: '3d ago',
-    unread: false,
-    icon: CreditCard,
-    iconClassName: 'bg-amber-50 text-amber-600',
-  },
-  {
-    id: 7,
-    group: 'THIS WEEK',
-    title: 'Profile Boost Active',
-    message: 'Your profile is currently boosted with +25 priority points.',
-    time: '4d ago',
-    unread: false,
-    icon: Star,
-    iconClassName: 'bg-purple-50 text-purple-600',
-  },
-];
+const initialNotifications = [];
 
 function NotificationPanel({
   notifications,
@@ -228,6 +155,15 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
   const [notificationExpanded, setNotificationExpanded] = useState(false);
   const [notifications, setNotifications] = useState(initialNotifications);
 
+  const currentUser = getStoredSessionUser();
+  const firstName = currentUser?.name?.split(' ')[0] || 'Worker';
+
+  useEffect(() => {
+    if (!currentUser) {
+      navigate('/login');
+    }
+  }, [currentUser, navigate]);
+
   const unreadCount = useMemo(
     () => notifications.filter((notification) => notification.unread).length,
     [notifications]
@@ -288,7 +224,10 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
           <div className="px-6 py-7">
             <button
               type="button"
-              onClick={() => navigate('/')}
+              onClick={() => {
+                clearSession();
+                window.location.href = '/';
+              }}
               className="flex w-full items-center gap-4 rounded-lg px-3 py-3 text-sm font-semibold text-slate-500 transition hover:bg-red-50 hover:text-red-600"
             >
               <LogOut size={21} />
@@ -310,7 +249,7 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
               </button>
 
               <h1 className="text-lg font-bold text-slate-950 sm:text-xl">
-                Good morning, Kasun 👷
+                Good morning, {firstName} 👷
               </h1>
             </div>
 
@@ -347,11 +286,9 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
                 className="rounded-full"
                 aria-label="Open worker profile"
               >
-                <img
-                  src="https://i.pravatar.cc/120?img=12"
-                  alt="Kasun"
-                  className="h-10 w-10 rounded-full border-4 border-emerald-700 object-cover transition hover:ring-4 hover:ring-emerald-100"
-                />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border-4 border-emerald-700 bg-emerald-700 text-sm font-bold text-white transition hover:ring-4 hover:ring-emerald-100">
+                  {firstName.slice(0, 2).toUpperCase()}
+                </div>
               </button>
             </div>
           </header>
@@ -379,7 +316,10 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
 
                 <button
                   type="button"
-                  onClick={() => navigate('/')}
+                  onClick={() => {
+                    clearSession();
+                    window.location.href = '/';
+                  }}
                   className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600"
                 >
                   <LogOut size={19} />

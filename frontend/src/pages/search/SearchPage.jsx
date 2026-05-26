@@ -19,7 +19,9 @@ import {
 
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
-import { apiRequest } from '../../lib/api';
+import Navbar from '../../components/layout/Navbar';
+import Footer from '../../components/layout/Footer';
+import { apiRequest, getStoredSessionUser } from '../../lib/api';
 
 const workers = [
   {
@@ -510,6 +512,8 @@ export default function SearchPage() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
+  const isLoggedIn = !!getStoredSessionUser();
+
   const [workersList, setWorkersList] = useState([]);
   const [categoriesList, setCategoriesList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -531,6 +535,19 @@ export default function SearchPage() {
           { id: 5, name: 'AC Repair', slug: 'ac-repair' },
           { id: 6, name: 'Cleaning', slug: 'cleaning' },
           { id: 7, name: 'Masonry', slug: 'masonry' },
+          { id: 8, name: 'Gardening', slug: 'gardening' },
+          { id: 9, name: 'Appliance Repair', slug: 'appliance-repair' },
+          { id: 10, name: 'Pest Control', slug: 'pest-control' },
+          { id: 11, name: 'Auto Repair', slug: 'auto-repair' },
+          { id: 12, name: 'Car Detailing', slug: 'car-detailing' },
+          { id: 13, name: 'Tech Support', slug: 'tech-support' },
+          { id: 14, name: 'Graphic Design', slug: 'graphic-design' },
+          { id: 15, name: 'Photography', slug: 'photography' },
+          { id: 16, name: 'Catering', slug: 'catering' },
+          { id: 17, name: 'Personal Training', slug: 'personal-training' },
+          { id: 18, name: 'Academic Tutoring', slug: 'academic-tutoring' },
+          { id: 19, name: 'Moving & Packing', slug: 'moving-and-packing' },
+          { id: 20, name: 'Translation', slug: 'translation' },
         ]);
       }
     }
@@ -799,16 +816,20 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
-      <CustomerNavbar
-        activePage="search"
-        showSearchBar
-        serviceValue={filters.serviceQuery}
-        locationValue={filters.locationQuery}
-        onServiceChange={updateServiceSearch}
-        onLocationChange={(value) => updateFilter('locationQuery', value)}
-      />
+      {isLoggedIn ? (
+        <CustomerNavbar
+          activePage="search"
+          showSearchBar
+          serviceValue={filters.serviceQuery}
+          locationValue={filters.locationQuery}
+          onServiceChange={updateServiceSearch}
+          onLocationChange={(value) => updateFilter('locationQuery', value)}
+        />
+      ) : (
+        <Navbar />
+      )}
 
-      <main className="flex min-h-[calc(100vh-80px)]">
+      <main className={`flex min-h-[calc(100vh-80px)] ${!isLoggedIn ? 'pt-16' : ''}`}>
         <FilterPanel
           filters={filters}
           updateFilter={updateFilter}
@@ -976,7 +997,7 @@ export default function SearchPage() {
         </section>
       </main>
 
-      <CustomerFooter />
+      {isLoggedIn ? <CustomerFooter /> : <Footer />}
     </div>
   );
 }

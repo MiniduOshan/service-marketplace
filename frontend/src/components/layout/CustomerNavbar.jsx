@@ -166,7 +166,6 @@ export default function CustomerNavbar({
     { label: 'Home', href: '/customer/dashboard', key: 'home' },
     { label: 'Search', href: '/search', key: 'search' },
     { label: 'Bookings', href: '/bookings', key: 'bookings' },
-    { label: 'About Us', href: '/about', key: 'about' },
   ];
 
   const goTo = (href) => {

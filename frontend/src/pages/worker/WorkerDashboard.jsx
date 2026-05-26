@@ -65,25 +65,6 @@ function StatusCard({
   );
 }
 
-function PriorityScoreCard() {
-  return (
-    <DashboardCard className="p-6">
-      <div className="flex items-start justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-          Priority Score
-        </p>
-
-        <p className="text-base font-bold text-emerald-700">
-          87<span className="text-slate-950">/100</span>
-        </p>
-      </div>
-
-      <div className="mt-4 h-2 rounded-full bg-slate-200">
-        <div className="h-2 w-[87%] rounded-full bg-emerald-700" />
-      </div>
-    </DashboardCard>
-  );
-}
 
 function JobRequest({ id, title, location, price, isNew, status, onAccept, onDecline }) {
   return (
@@ -216,16 +197,6 @@ function EarningsCard({ earnings, completedCount, onViewEarnings }) {
         <div>
           <p className="text-sm text-emerald-100">Completed Jobs</p>
           <p className="mt-1 text-2xl font-bold">{completedCount}</p>
-        </div>
-
-        <div>
-          <p className="text-sm text-emerald-100">Avg. Rating</p>
-          <p className="mt-1 text-2xl font-bold">4.9 ★</p>
-        </div>
-
-        <div>
-          <p className="text-sm text-emerald-100">Response Rate</p>
-          <p className="mt-1 text-2xl font-bold">95%</p>
         </div>
       </div>
     </div>
@@ -402,8 +373,6 @@ export default function WorkerDashboard() {
             value="Featured"
             iconClass="bg-amber-50 text-amber-500"
           />
-
-          <PriorityScoreCard />
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_380px] 2xl:gap-8">

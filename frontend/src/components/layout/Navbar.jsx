@@ -4,9 +4,11 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState(
-    window.location.hash || '#services'
-  );
+  const isLandingPage = window.location.pathname === '/';
+  const [activeSection, setActiveSection] = useState(() => {
+    if (!isLandingPage) return '';
+    return window.location.hash || '#services';
+  });
   const navigate = useNavigate();
 
   const navLinks = [
@@ -21,13 +23,19 @@ export default function Navbar() {
   const closeMenu = () => setOpen(false);
 
   useEffect(() => {
+    const isLanding = window.location.pathname === '/';
+
     const updateFromHash = () => {
+      if (window.location.pathname !== '/') {
+        setActiveSection('');
+        return;
+      }
       setActiveSection(window.location.hash || '#services');
     };
 
-    const sections = navLinks
-      .map((link) => document.querySelector(link.href))
-      .filter(Boolean);
+    const sections = isLanding
+      ? navLinks.map((link) => document.querySelector(link.href)).filter(Boolean)
+      : [];
 
     const updateFromScroll = () => {
       if (!sections.length) return;
@@ -74,7 +82,7 @@ export default function Navbar() {
     <header className="fixed left-0 top-0 z-50 w-full border-b border-slate-100 bg-white/95 backdrop-blur">
       <nav className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 2xl:max-w-550 min-[1920px]:max-w-700 min-[2560px]:max-w-800 2xl:h-18 2xl:px-12 min-[1920px]:h-20 min-[1920px]:px-16 min-[2560px]:px-20">
         <a
-          href="#services"
+          href={isLandingPage ? "#services" : "/#services"}
           onClick={() => handleSectionClick('#services')}
           className="cursor-pointer text-xl font-extrabold tracking-tight text-[#05735f] sm:text-2xl 2xl:text-[28px] min-[1920px]:text-[32px]"
         >
@@ -85,7 +93,7 @@ export default function Navbar() {
           {navLinks.map((link) => (
             <a
               key={link.label}
-              href={link.href}
+              href={isLandingPage ? link.href : `/${link.href}`}
               onClick={() => handleSectionClick(link.href)}
               aria-current={activeSection === link.href ? 'page' : undefined}
               className={`relative cursor-pointer text-sm font-medium transition hover:text-[#05735f] 2xl:text-[15px] min-[1920px]:text-base ${
@@ -135,7 +143,7 @@ export default function Navbar() {
             {navLinks.map((link) => (
               <a
                 key={link.label}
-                href={link.href}
+                href={isLandingPage ? link.href : `/${link.href}`}
                 onClick={() => handleSectionClick(link.href)}
                 aria-current={activeSection === link.href ? 'page' : undefined}
                 className={`cursor-pointer rounded-lg px-3 py-3 text-sm font-medium transition hover:bg-emerald-50 hover:text-[#05735f] 2xl:px-4 2xl:py-3.5 2xl:text-[15px] min-[1920px]:text-base ${

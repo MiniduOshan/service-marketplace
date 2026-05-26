@@ -18,7 +18,9 @@ import {
 
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
-import { apiRequest } from '../../lib/api';
+import Navbar from '../../components/layout/Navbar';
+import Footer from '../../components/layout/Footer';
+import { apiRequest, getStoredSessionUser } from '../../lib/api';
 
 const ratingBreakdown = [
   { stars: 5, count: 136, percent: 92 },
@@ -86,6 +88,7 @@ function SectionCard({ title, children, className = '' }) {
 export default function WorkerPublicProfile() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const isLoggedIn = !!getStoredSessionUser();
 
   const [services, setServices] = useState([]);
   const [workerInfo, setWorkerInfo] = useState(null);
@@ -136,7 +139,7 @@ export default function WorkerPublicProfile() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <CustomerNavbar activePage="search" />
+      {isLoggedIn ? <CustomerNavbar activePage="search" /> : <Navbar />}
         <div className="flex h-96 items-center justify-center">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-700 border-t-transparent" />
         </div>
@@ -164,7 +167,7 @@ export default function WorkerPublicProfile() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <CustomerNavbar activePage="search" />
+      {isLoggedIn ? <CustomerNavbar activePage="search" /> : <Navbar />}
 
       <main className="mx-auto w-full max-w-none px-5 py-5 sm:px-8 lg:px-10 xl:px-12 2xl:px-10">
         <button
@@ -512,7 +515,7 @@ export default function WorkerPublicProfile() {
         </div>
       </main>
 
-      <CustomerFooter />
+      {isLoggedIn ? <CustomerFooter /> : <Footer />}
     </div>
   );
 }

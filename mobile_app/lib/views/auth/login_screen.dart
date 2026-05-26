@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../customer/home_screen.dart'; 
+import '../customer/home_screen.dart';
 import 'signup_screen.dart';
 import 'phone_login_screen.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/app_user.dart';
 import '../worker/worker_registration_screen.dart';
-
+import '../worker/worker_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -29,6 +29,18 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     const Color primaryGreen = Color(0xFF006D44);
 
+    Widget nextScreenForCurrentUser() {
+      final user = authController.currentUser;
+
+      if (user?.role == UserRole.worker) {
+        return user?.isRegistrationComplete == true
+            ? const WorkerDashboard()
+            : const WorkerRegistrationScreen();
+      }
+
+      return const HomeScreen();
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -38,7 +50,10 @@ class _LoginScreenState extends State<LoginScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text("Login", style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Login",
+          style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -46,7 +61,10 @@ class _LoginScreenState extends State<LoginScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 32),
-            const Text("Welcome Back", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+            const Text(
+              "Welcome Back",
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 32),
             TextField(
               controller: _emailController,
@@ -56,7 +74,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 hintText: "Email",
                 filled: true,
                 fillColor: Colors.grey[100],
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -68,7 +89,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 hintText: "Password",
                 filled: true,
                 fillColor: Colors.grey[100],
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
             const SizedBox(height: 32),
@@ -78,25 +102,42 @@ class _LoginScreenState extends State<LoginScreen> {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryGreen,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
                 ),
                 onPressed: () {
-                  authController.loginWithEmail(_emailController.text, _passwordController.text).then((success) {
-                    if (!context.mounted || !success) return;
+                  authController
+                      .loginWithEmail(
+                        _emailController.text,
+                        _passwordController.text,
+                      )
+                      .then((success) {
+                        if (!context.mounted || !success) return;
 
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (context) => const HomeScreen()),
-                      (route) => false,
-                    );
-                  }).catchError((error) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
-                    );
-                  });
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => nextScreenForCurrentUser(),
+                          ),
+                          (route) => false,
+                        );
+                      })
+                      .catchError((error) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              error.toString().replaceFirst('Exception: ', ''),
+                            ),
+                          ),
+                        );
+                      });
                 },
-                child: const Text("Sign In", style: TextStyle(color: Colors.white, fontSize: 18)),
+                child: const Text(
+                  "Sign In",
+                  style: TextStyle(color: Colors.white, fontSize: 18),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -116,9 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     if (!mounted || !success) return;
 
-                    final nextScreen = authController.currentUserRole == UserRole.worker
-                        ? const WorkerRegistrationScreen()
-                        : const HomeScreen();
+                    final nextScreen = nextScreenForCurrentUser();
 
                     navigator.pushAndRemoveUntil(
                       MaterialPageRoute(builder: (_) => nextScreen),
@@ -126,20 +165,33 @@ class _LoginScreenState extends State<LoginScreen> {
                     );
                   } catch (error) {
                     messenger.showSnackBar(
-                      SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+                      SnackBar(
+                        content: Text(
+                          error.toString().replaceFirst('Exception: ', ''),
+                        ),
+                      ),
                     );
                   }
                 },
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Color(0xFF006D44)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Image.asset('assets/images/google_logo.png', height: 20),
                     const SizedBox(width: 10),
-                    const Text('Continue with Google', style: TextStyle(color: Color(0xFF006D44), fontSize: 16, fontWeight: FontWeight.w600)),
+                    const Text(
+                      'Continue with Google',
+                      style: TextStyle(
+                        color: Color(0xFF006D44),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -152,14 +204,22 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const PhoneLoginScreen(role: UserRole.customer)),
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const PhoneLoginScreen(role: UserRole.customer),
+                    ),
                   );
                 },
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Color(0xFF006D44)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
                 ),
-                child: const Text("Continue with phone number", style: TextStyle(color: Color(0xFF006D44))),
+                child: const Text(
+                  "Continue with phone number",
+                  style: TextStyle(color: Color(0xFF006D44)),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -169,12 +229,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Text("New here? "),
                 TextButton(
                   onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const SignupScreen(role: UserRole.customer)),
-                      );
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const SignupScreen(role: UserRole.customer),
+                      ),
+                    );
                   },
-                  child: const Text("Create an account", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF006D44))),
+                  child: const Text(
+                    "Create an account",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF006D44),
+                    ),
+                  ),
                 ),
               ],
             ),

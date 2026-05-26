@@ -1,18 +1,104 @@
 import 'package:flutter/material.dart';
-import 'document_verification_screen.dart';
+import '../../controllers/auth_controller.dart';
+import 'worker_service_packages_screen.dart';
+import '../onboarding/welcome_screen.dart';
 
 class WorkerRegistrationScreen extends StatefulWidget {
   final bool isEditing;
   const WorkerRegistrationScreen({super.key, this.isEditing = false});
 
   @override
-  State<WorkerRegistrationScreen> createState() => _WorkerRegistrationScreenState();
+  State<WorkerRegistrationScreen> createState() =>
+      _WorkerRegistrationScreenState();
 }
 
 class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
   static const Color primaryGreen = Color(0xFF006D44);
-  int experienceYears = 8;
-  bool isGpsActive = true;
+  int experienceYears = 1;
+  String selectedCategory = 'Painting';
+  String selectedCity = 'Colombo';
+  final TextEditingController _skillController = TextEditingController();
+  late TextEditingController _nameController;
+  late TextEditingController _phoneController;
+  late TextEditingController _emailController;
+  late TextEditingController _bioController;
+
+  final List<String> _skills = [];
+
+  @override
+  void initState() {
+    super.initState();
+    final currentUser = authController.currentUser;
+    _nameController = TextEditingController(text: currentUser?.name ?? '');
+    String displayPhone = currentUser?.phone ?? '';
+    if (displayPhone.startsWith('+94')) {
+      displayPhone = displayPhone.substring(3);
+    }
+    _phoneController = TextEditingController(text: displayPhone);
+    _emailController = TextEditingController(text: currentUser?.email ?? '');
+    _bioController = TextEditingController(text: '');
+  }
+
+  static const List<String> categoryOptions = [
+    'Painting',
+    'Electrical',
+    'Plumbing',
+    'AC Repair',
+    'Carpentry',
+    'Cleaning',
+    'Masonry',
+    'Gardening',
+    'Appliance Repair',
+    'Pest Control',
+    'Auto Repair',
+    'Car Detailing',
+    'Tech Support',
+    'Graphic Design',
+    'Photography',
+    'Catering',
+    'Personal Training',
+    'Academic Tutoring',
+    'Moving & Packing',
+    'Translation',
+  ];
+
+  static const List<String> cityOptions = [
+    'Colombo',
+    'Gampaha',
+    'Kalutara',
+    'Kandy',
+    'Matale',
+    'Nuwara Eliya',
+    'Galle',
+    'Matara',
+    'Hambantota',
+    'Jaffna',
+    'Kilinochchi',
+    'Mannar',
+    'Vavuniya',
+    'Mullaitivu',
+    'Batticaloa',
+    'Ampara',
+    'Trincomalee',
+    'Kurunegala',
+    'Puttalam',
+    'Anuradhapura',
+    'Polonnaruwa',
+    'Badulla',
+    'Monaragala',
+    'Ratnapura',
+    'Kegalle',
+  ];
+
+  @override
+  void dispose() {
+    _skillController.dispose();
+    _nameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _bioController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,43 +109,76 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: primaryGreen),
-          onPressed: () => Navigator.pop(context),
+          onPressed: _handleBack,
         ),
-        title: const Text("Worker Registration", 
-          style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text(
+          "Worker Registration",
+          style: TextStyle(
+            color: primaryGreen,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
         centerTitle: true,
       ),
       body: Column(
         children: [
-          _buildProgressBar(0.25, "Step 2 of 4 — Personal Details", "25% Complete"),
+          _buildProgressBar(
+            0.25,
+            "Step 2 of 4 — Personal Details",
+            "25% Complete",
+          ),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Tell us about yourself", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const Text("This information will appear on your public profile.", style: TextStyle(color: Colors.grey)),
+                  const Text(
+                    "Tell us about yourself",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const Text(
+                    "This information will appear on your public profile.",
+                    style: TextStyle(color: Colors.grey),
+                  ),
                   const SizedBox(height: 30),
                   _buildPhotoUpload(),
                   const SizedBox(height: 30),
                   _buildLabel("FULL NAME"),
-                  _buildTextField("Kasun Silva"),
+                  _buildTextField(
+                    "Your Full Name",
+                    controller: _nameController,
+                  ),
                   const SizedBox(height: 20),
                   _buildLabel("PHONE NUMBER"),
                   _buildPhoneField(),
                   const SizedBox(height: 20),
                   _buildLabelWithOptional("EMAIL ADDRESS", "OPTIONAL"),
-                  _buildTextField("kasun.silva@email.com"),
+                  _buildTextField(
+                    "name@example.com",
+                    controller: _emailController,
+                  ),
                   const SizedBox(height: 20),
                   _buildLabel("SERVICE CATEGORY"),
-                  _buildDropdown("Painter"),
+                  _buildDropdown(
+                    value: selectedCategory,
+                    options: categoryOptions,
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => selectedCategory = value);
+                    },
+                  ),
                   const SizedBox(height: 20),
                   _buildLabel("YEARS OF EXPERIENCE"),
                   _buildExperiencePicker(),
                   const SizedBox(height: 20),
                   _buildLabel("BIO"),
-                  _buildTextField("Briefly describe your expertise and service style...", maxLines: 4),
+                  _buildTextField(
+                    "Briefly describe your expertise and service style...",
+                    maxLines: 4,
+                    controller: _bioController,
+                  ),
                   const SizedBox(height: 20),
                   _buildLabel("SKILLS"),
                   _buildSkillInput(),
@@ -75,17 +194,45 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
     );
   }
 
+  void _handleBack() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+      (route) => false,
+    );
+  }
+
   Widget _buildProgressBar(double progress, String step, String percent) {
     return Column(
       children: [
-        LinearProgressIndicator(value: progress, backgroundColor: Colors.grey.shade100, color: primaryGreen, minHeight: 4),
+        LinearProgressIndicator(
+          value: progress,
+          backgroundColor: Colors.grey.shade100,
+          color: primaryGreen,
+          minHeight: 4,
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(step, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              Text(percent, style: const TextStyle(fontSize: 12, color: primaryGreen, fontWeight: FontWeight.bold)),
+              Text(
+                step,
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              Text(
+                percent,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: primaryGreen,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         ),
@@ -102,7 +249,11 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
             padding: const EdgeInsets.all(25),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: primaryGreen, style: BorderStyle.none, width: 1.5),
+              border: Border.all(
+                color: primaryGreen,
+                style: BorderStyle.none,
+                width: 1.5,
+              ),
             ),
             child: Stack(
               alignment: Alignment.center,
@@ -114,14 +265,25 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
                 const Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.camera_alt_outlined, color: primaryGreen, size: 24),
+                    Icon(
+                      Icons.camera_alt_outlined,
+                      color: primaryGreen,
+                      size: 24,
+                    ),
                   ],
                 ),
               ],
             ),
           ),
           const SizedBox(height: 8),
-          const Text("Upload photo", style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold, fontSize: 13)),
+          const Text(
+            "Upload photo",
+            style: TextStyle(
+              color: primaryGreen,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
         ],
       ),
     );
@@ -133,8 +295,22 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1D2125))),
-          Text(optional, style: TextStyle(fontSize: 10, color: Colors.grey.shade400, fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1D2125),
+            ),
+          ),
+          Text(
+            optional,
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey.shade400,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
@@ -143,13 +319,29 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1D2125))),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF1D2125),
+        ),
+      ),
     );
   }
 
-  Widget _buildTextField(String hint, {int maxLines = 1, String? prefix, Widget? suffixIcon}) {
+  Widget _buildTextField(
+    String hint, {
+    int maxLines = 1,
+    String? prefix,
+    Widget? suffixIcon,
+    TextEditingController? controller,
+    ValueChanged<String>? onSubmitted,
+  }) {
     return TextField(
+      controller: controller,
       maxLines: maxLines,
+      onSubmitted: onSubmitted,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
@@ -157,7 +349,10 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: Colors.grey.shade200),
@@ -185,12 +380,18 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
           child: const Text("+94", style: TextStyle(color: Colors.grey)),
         ),
         const SizedBox(width: 8),
-        Expanded(child: _buildTextField("77 123 4567")),
+        Expanded(
+          child: _buildTextField("771234567", controller: _phoneController),
+        ),
       ],
     );
   }
 
-  Widget _buildDropdown(String value) {
+  Widget _buildDropdown({
+    required String value,
+    required List<String> options,
+    required ValueChanged<String?> onChanged,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
@@ -203,8 +404,21 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
         isExpanded: true,
         underline: const SizedBox(),
         icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-        items: [value].map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14, color: Color(0xFF1D2125))))).toList(),
-        onChanged: (v) {},
+        items: options
+            .map(
+              (e) => DropdownMenuItem(
+                value: e,
+                child: Text(
+                  e,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF1D2125),
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+        onChanged: onChanged,
       ),
     );
   }
@@ -219,7 +433,18 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
       child: Row(
         children: [
           _counterButton(Icons.remove, () => setState(() => experienceYears--)),
-          Expanded(child: Center(child: Text("$experienceYears", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1D2125))))),
+          Expanded(
+            child: Center(
+              child: Text(
+                "$experienceYears",
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1D2125),
+                ),
+              ),
+            ),
+          ),
           _counterButton(Icons.add, () => setState(() => experienceYears++)),
         ],
       ),
@@ -235,7 +460,11 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2)),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: Icon(icon, color: primaryGreen, size: 20),
@@ -244,6 +473,18 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
   }
 
   Widget _buildSkillInput() {
+    void addSkill() {
+      final skill = _skillController.text.trim();
+      if (skill.isEmpty) return;
+
+      setState(() {
+        if (!_skills.contains(skill)) {
+          _skills.add(skill);
+        }
+        _skillController.clear();
+      });
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -251,25 +492,38 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _skillChip("Interior Painting"),
-            _skillChip("Exterior"),
-            _skillChip("Waterproofing"),
+            ..._skills.map(
+              (skill) => _skillChip(
+                skill,
+                onDeleted: () {
+                  setState(() => _skills.remove(skill));
+                },
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
-              child: _buildTextField("Add a skill..."),
+              child: _buildTextField(
+                "Add a skill...",
+                controller: _skillController,
+                onSubmitted: (_) => addSkill(),
+              ),
             ),
             const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: primaryGreen,
-                borderRadius: BorderRadius.circular(8),
+            InkWell(
+              onTap: addSkill,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: primaryGreen,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.add, color: Colors.white),
               ),
-              child: const Icon(Icons.add, color: Colors.white),
             ),
           ],
         ),
@@ -277,11 +531,14 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
     );
   }
 
-  Widget _skillChip(String label) {
+  Widget _skillChip(String label, {VoidCallback? onDeleted}) {
     return Chip(
-      label: Text(label, style: const TextStyle(color: primaryGreen, fontSize: 12)),
+      label: Text(
+        label,
+        style: const TextStyle(color: primaryGreen, fontSize: 12),
+      ),
       backgroundColor: const Color(0xFFE8F6F1),
-      onDeleted: () {},
+      onDeleted: onDeleted,
       deleteIcon: const Icon(Icons.close, size: 14, color: primaryGreen),
       side: BorderSide.none,
       shape: StadiumBorder(),
@@ -292,85 +549,101 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text("Service Location", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            Row(children: [
-              Transform.scale(
-                scale: 0.8,
-                child: Switch(
-                  value: isGpsActive, 
-                  onChanged: (v) => setState(() => isGpsActive = v), 
-                  activeThumbColor: Colors.white,
-                  activeTrackColor: primaryGreen,
-                ),
-              ),
-              const Text("GPS Active", style: TextStyle(fontSize: 12, color: primaryGreen, fontWeight: FontWeight.bold)),
-            ]),
-          ],
+        const Text(
+          "Service Location",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
         ),
         const SizedBox(height: 8),
-        _buildTextField("Colombo", suffixIcon: const Icon(Icons.location_on_outlined, color: Colors.grey, size: 20)),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: ["Colombo 01-15", "Nugegoda", "Dehiwala", "Battaramulla"]
-              .map((e) => _locationChip(e, e == "Colombo 01-15"))
-              .toList(),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: DropdownButton<String>(
+            value: selectedCity,
+            isExpanded: true,
+            underline: const SizedBox(),
+            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+            items: cityOptions
+                .map(
+                  (city) => DropdownMenuItem(
+                    value: city,
+                    child: Text(
+                      city,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF1D2125),
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => selectedCity = value);
+            },
+          ),
         ),
       ],
-    );
-  }
-
-  Widget _locationChip(String label, bool isSelected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isSelected ? primaryGreen : Colors.grey.shade200),
-      ),
-      child: Text(
-        label, 
-        style: TextStyle(
-          color: isSelected ? primaryGreen : Colors.grey.shade600,
-          fontSize: 12,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
-      ),
     );
   }
 
   Widget _buildBottomNav() {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFF1F4F9)))),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: Color(0xFFF1F4F9))),
+      ),
       child: Row(
         children: [
           TextButton.icon(
-            onPressed: () => Navigator.pop(context), 
+            onPressed: _handleBack,
             icon: const Icon(Icons.chevron_left, color: Colors.grey),
-            label: const Text("Back", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            label: const Text(
+              "Back",
+              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+            ),
           ),
           const Spacer(),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: primaryGreen, minimumSize: const Size(180, 50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryGreen,
+              minimumSize: const Size(180, 50),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
             onPressed: () {
               if (widget.isEditing) {
                 // Save logic here
                 Navigator.pop(context);
               } else {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const DocumentVerificationScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const WorkerServicePackagesScreen(),
+                  ),
+                );
               }
             },
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(widget.isEditing ? "Save Changes" : "Next: Documents", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                Text(
+                  widget.isEditing ? "Save Changes" : "Next: Packages",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Icon(widget.isEditing ? Icons.check : Icons.chevron_right, color: Colors.white, size: 20),
+                Icon(
+                  widget.isEditing ? Icons.check : Icons.chevron_right,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ],
             ),
           ),
@@ -395,7 +668,10 @@ class DashedCirclePainter extends CustomPainter {
     var angle = 0.0;
     while (angle < 360) {
       canvas.drawArc(
-        Rect.fromCircle(center: Offset(size.width / 2, size.height / 2), radius: startRadius),
+        Rect.fromCircle(
+          center: Offset(size.width / 2, size.height / 2),
+          radius: startRadius,
+        ),
         angle * 0.0174533,
         dashWidth * 0.0174533,
         false,

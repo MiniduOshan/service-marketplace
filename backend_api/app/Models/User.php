@@ -144,4 +144,10 @@ class User extends Authenticatable
     {
         return $this->role === 'customer';
     }
+
+    public function category()
+    {
+        return $this->belongsTo(ServiceCategory::class, 'primary_service_category_id');
+    }
 }
+

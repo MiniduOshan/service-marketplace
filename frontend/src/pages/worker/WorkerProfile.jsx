@@ -18,43 +18,9 @@ import {
 import WorkerLayout from '../../components/layout/WorkerLayout';
 import { apiRequest } from '../../lib/api';
 
-const initialServices = [
-  {
-    id: 1,
-    title: 'Interior Painting',
-    rating: '4.9',
-    reviews: 42,
-    price: 'LKR 4,500',
-    unit: '/ hour',
-    active: true,
-    image:
-      'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=700&q=80',
-  },
-  {
-    id: 2,
-    title: 'Leak Repair',
-    rating: '5.0',
-    reviews: 18,
-    price: 'LKR 3,800',
-    unit: '/ task',
-    active: true,
-    image:
-      'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?auto=format&fit=crop&w=700&q=80',
-  },
-];
+const initialServices = [];
 
-const initialPortfolio = [
-  {
-    id: 1,
-    image:
-      'https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=700&q=80',
-  },
-  {
-    id: 2,
-    image:
-      'https://images.unsplash.com/photo-1618220252344-8ec99ec624b1?auto=format&fit=crop&w=700&q=80',
-  },
-];
+const initialPortfolio = [];
 
 function Modal({ title, children, onClose }) {
   return (
@@ -132,7 +98,14 @@ function SettingsRow({ icon: Icon, label, onClick }) {
   );
 }
 
-function ProfileCompleteness({ onManage }) {
+function ProfileCompleteness({ onManage, user }) {
+  const checks = [
+    { label: 'Identity Verified', done: !!user?.phone_verified_at },
+    { label: 'Phone Linked', done: !!user?.phone },
+    { label: 'Certificates', done: false },
+  ];
+  const pct = Math.round((checks.filter(c => c.done).length / checks.length) * 100);
+
   return (
     <section className="rounded-xl border border-emerald-900/20 bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4">
@@ -143,10 +116,10 @@ function ProfileCompleteness({ onManage }) {
 
           <div className="mt-4 flex items-center gap-4">
             <div className="h-3 flex-1 overflow-hidden rounded-full bg-blue-100">
-              <div className="h-full w-[85%] rounded-full bg-emerald-700" />
+              <div className="h-full rounded-full bg-emerald-700" style={{ width: `${pct}%` }} />
             </div>
 
-            <span className="text-lg font-bold text-emerald-700">85%</span>
+            <span className="text-lg font-bold text-emerald-700">{pct}%</span>
           </div>
         </div>
 
@@ -160,20 +133,16 @@ function ProfileCompleteness({ onManage }) {
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-          <CheckCircle2 size={18} className="fill-emerald-500 text-white" />
-          Identity Verified
-        </div>
-
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-          <CheckCircle2 size={18} className="fill-emerald-500 text-white" />
-          Phone Linked
-        </div>
-
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
-          <span className="h-[18px] w-[18px] rounded-full border-2 border-slate-300" />
-          Certificates
-        </div>
+        {checks.map((check) => (
+          <div key={check.label} className={`flex items-center gap-2 text-sm font-semibold ${check.done ? 'text-slate-700' : 'text-slate-500'}`}>
+            {check.done ? (
+              <CheckCircle2 size={18} className="fill-emerald-500 text-white" />
+            ) : (
+              <span className="h-[18px] w-[18px] rounded-full border-2 border-slate-300" />
+            )}
+            {check.label}
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -200,11 +169,6 @@ function ServiceCard({ service, onToggle }) {
 
       <div className="p-5">
         <h3 className="font-bold text-slate-950">{service.title}</h3>
-
-        <p className="mt-2 flex items-center gap-1 text-sm text-slate-600">
-          <Star size={15} className="fill-emerald-600 text-emerald-600" />
-          4.8 (120 reviews)
-        </p>
 
         <p className="mt-2 text-sm font-bold text-[#05735f]">
           {priceLabel}{' '}
@@ -237,73 +201,19 @@ function PortfolioCard({ item, onRemove }) {
 }
 
 function ReviewCard() {
-   const navigate = useNavigate();
+  const navigate = useNavigate();
   return (
     <section className="overflow-hidden rounded-xl border border-emerald-900/20 bg-white shadow-sm">
-      <div className="grid gap-6 p-6 lg:grid-cols-[170px_minmax(0,1fr)]">
-        <div>
-          <p className="text-5xl font-bold text-slate-950">5.0</p>
-
-          <div className="mt-2 flex text-emerald-600">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Star key={index} size={17} className="fill-emerald-600" />
-            ))}
-          </div>
-
-          <p className="mt-1 text-sm text-slate-500">60 Reviews</p>
-        </div>
-
-        <div className="space-y-3">
-          {[5, 4, 3].map((rating, index) => (
-            <div key={rating} className="flex items-center gap-4">
-              <span className="w-4 text-sm text-slate-500">{rating}</span>
-
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-full rounded-full bg-emerald-500"
-                  style={{
-                    width: index === 0 ? '95%' : index === 1 ? '8%' : '0%',
-                  }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="p-6">
+        <h2 className="text-lg font-bold text-slate-950">Reviews</h2>
+        <p className="mt-3 text-sm text-slate-500">Customer reviews will appear here after completed bookings.</p>
       </div>
-
-      <div className="border-t border-slate-200 p-6">
-        <div className="flex gap-4">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-bold text-slate-500">
-            AM
-          </div>
-
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="font-bold text-slate-950">Amara M.</p>
-              <span className="text-xs text-slate-400">• 2 days ago</span>
-            </div>
-
-            <div className="mt-1 flex text-emerald-600">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <Star key={index} size={14} className="fill-emerald-600" />
-              ))}
-            </div>
-
-            <p className="mt-2 leading-relaxed text-slate-600">
-              “Kasun did an amazing job with our kitchen leak. He was
-              professional, on time, and left the place spotless. Highly
-              recommended!”
-            </p>
-          </div>
-        </div>
-      </div>
-
       <button
-      type="button"
-      onClick={() => navigate('/worker/reviews')}
-      className="w-full bg-blue-50 px-5 py-4 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
+        type="button"
+        onClick={() => navigate('/worker/reviews')}
+        className="w-full bg-blue-50 px-5 py-4 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
       >
-      View All Reviews
+        View All Reviews
       </button>
     </section>
   );
@@ -363,13 +273,8 @@ function PaymentDetailsModal({ onClose, onManageAccount }) {
   return (
     <Modal title="Payment Details" onClose={onClose}>
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-        <p className="text-sm text-slate-500">Primary bank account</p>
-        <h3 className="mt-1 font-bold text-slate-950">
-          Commercial Bank of Ceylon
-        </h3>
-        <p className="mt-1 text-sm text-slate-500">
-          Savings Account •••• 8902
-        </p>
+        <p className="text-sm text-slate-500">No bank account linked yet.</p>
+        <p className="mt-2 text-sm text-slate-400">Add a bank account from the Earnings page to manage payouts.</p>
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -456,22 +361,26 @@ function HelpCenterModal({ onClose }) {
   );
 }
 
-function AnalyticsModal({ onClose }) {
+function AnalyticsModal({ onClose, stats }) {
   return (
     <Modal title="Visibility Analytics" onClose={onClose}>
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-xl bg-emerald-50 p-5 text-center">
-          <p className="text-3xl font-bold text-emerald-700">422</p>
+          <p className="text-3xl font-bold text-emerald-700">{stats?.profile_views ?? '--'}</p>
           <p className="mt-1 text-sm text-slate-500">Profile Views</p>
         </div>
 
         <div className="rounded-xl bg-blue-50 p-5 text-center">
-          <p className="text-3xl font-bold text-blue-600">38</p>
+          <p className="text-3xl font-bold text-blue-600">{stats?.total_bookings ?? '--'}</p>
           <p className="mt-1 text-sm text-slate-500">New Leads</p>
         </div>
 
         <div className="rounded-xl bg-amber-50 p-5 text-center">
-          <p className="text-3xl font-bold text-amber-600">12%</p>
+          <p className="text-3xl font-bold text-amber-600">
+            {stats?.jobs_done > 0 && stats?.total_bookings > 0
+              ? Math.round((stats.jobs_done / stats.total_bookings) * 100) + '%'
+              : '0%'}
+          </p>
           <p className="mt-1 text-sm text-slate-500">Conversion</p>
         </div>
       </div>
@@ -532,20 +441,27 @@ export default function WorkerProfile() {
     }
   }
 
-  function addPortfolio() {
-    const newImages = [
-      'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=700&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=700&q=80',
-      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=700&q=80',
-    ];
+  const portfolioInputRef = React.useRef(null);
 
-    setPortfolio((current) => [
-      ...current,
-      {
-        id: Date.now(),
-        image: newImages[current.length % newImages.length],
-      },
-    ]);
+  function addPortfolio() {
+    portfolioInputRef.current?.click();
+  }
+
+  function handlePortfolioFileChange(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPortfolio((current) => [
+        ...current,
+        {
+          id: Date.now(),
+          image: e.target.result,
+        },
+      ]);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
   }
 
   function removePortfolio(id) {
@@ -727,7 +643,7 @@ export default function WorkerProfile() {
           </aside>
 
           <main className="space-y-8">
-            <ProfileCompleteness onManage={() => goToEditProfile(2)} />
+            <ProfileCompleteness onManage={() => goToEditProfile(2)} user={user} />
 
             <section>
               <div className="mb-5 flex items-center justify-between gap-4">
@@ -756,6 +672,13 @@ export default function WorkerProfile() {
             </section>
 
             <section>
+              <input
+                type="file"
+                ref={portfolioInputRef}
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handlePortfolioFileChange}
+              />
               <div className="mb-5 flex items-center justify-between gap-4">
                 <h2 className="text-2xl font-bold text-slate-950">Portfolio</h2>
 
@@ -811,7 +734,7 @@ export default function WorkerProfile() {
       {modal === 'help' && <HelpCenterModal onClose={() => setModal(null)} />}
 
       {modal === 'analytics' && (
-        <AnalyticsModal onClose={() => setModal(null)} />
+        <AnalyticsModal onClose={() => setModal(null)} stats={stats} />
       )}
     </WorkerLayout>
   );

@@ -191,6 +191,12 @@ export default function CustomerDashboard() {
   const currentUser = getStoredSessionUser();
   const customerName = currentUser?.name?.trim();
 
+  useEffect(() => {
+    if (!currentUser) {
+      navigate('/login');
+    }
+  }, [currentUser, navigate]);
+
   const [servicesList, setServicesList] = useState([]);
   const [loading, setLoading] = useState(true);
 

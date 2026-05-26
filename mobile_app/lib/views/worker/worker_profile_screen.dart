@@ -3,6 +3,7 @@ import '../../controllers/auth_controller.dart';
 import '../../models/app_user.dart';
 import '../../services/api_client.dart';
 import '../auth/otp_screen.dart';
+import 'document_verification_screen.dart';
 import 'worker_service_packages_screen.dart';
 
 class WorkerProfileScreen extends StatefulWidget {
@@ -20,6 +21,9 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
   List<Map<String, dynamic>>? _services;
   Map<String, dynamic>? _stats;
   bool _isLoading = true;
+  bool _isIdVerified = false;
+  bool _hasCertificate = false;
+  final List<String> _portfolioUrls = [];
 
   @override
   void initState() {
@@ -97,12 +101,18 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
 
   Widget _buildProfileHeader(BuildContext context) {
     final currentUser = authController.currentUser;
-    final isPhoneVerified = currentUser?.isPhoneVerified ?? false;
     final name = currentUser?.name ?? '';
     final initials = name.isNotEmpty
-        ? name.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').join().toUpperCase()
+        ? name
+              .trim()
+              .split(' ')
+              .map((e) => e.isNotEmpty ? e[0] : '')
+              .join()
+              .toUpperCase()
         : 'WK';
-    final displayInitials = initials.length > 2 ? initials.substring(0, 2) : initials;
+    final displayInitials = initials.length > 2
+        ? initials.substring(0, 2)
+        : initials;
     final displayName = name.isNotEmpty ? name : 'Worker';
 
     return Column(
@@ -154,29 +164,16 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
             color: accentBlue,
           ),
         ),
-        const SizedBox(height: 6),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.verified, color: primaryGreen, size: 18),
-            const SizedBox(width: 5),
-            Text(
-              isPhoneVerified ? "PHONE VERIFIED" : "PHONE VERIFICATION REQUIRED",
-              style: const TextStyle(
-                color: primaryGreen,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
       ],
     );
   }
 
   Widget _buildPersonalDetailsSection(BuildContext context) {
-    final isPhoneVerified = authController.currentUser?.isPhoneVerified ?? false;
+    final int verifiedCount =
+        (_isIdVerified ? 1 : 0) + (_hasCertificate ? 1 : 0);
+    final double completeness = verifiedCount / 2;
+    final String completenessPct =
+        "${(completeness * 100).toStringAsFixed(0)}%";
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -185,7 +182,11 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -218,14 +219,17 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text(
+            children: [
+              const Text(
                 "Profile Completeness",
-                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               Text(
-                "85%",
-                style: TextStyle(
+                completenessPct,
+                style: const TextStyle(
                   color: primaryGreen,
                   fontWeight: FontWeight.bold,
                 ),
@@ -236,7 +240,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
-              value: 0.85,
+              value: completeness,
               backgroundColor: primaryGreen.withValues(alpha: 0.1),
               valueColor: const AlwaysStoppedAnimation<Color>(primaryGreen),
               minHeight: 8,
@@ -248,20 +252,35 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
             style: TextStyle(color: Colors.grey, fontSize: 13),
           ),
           const SizedBox(height: 20),
-          _buildChecklistItem("ID Verification", true),
           _buildChecklistItem(
-            "Phone Verified", 
-            isPhoneVerified, 
-            actionText: isPhoneVerified ? "DONE" : "VERIFY",
-            onTap: isPhoneVerified ? null : () => _startPhoneVerification(context),
+            "ID Verification",
+            _isIdVerified,
+            actionText: _isIdVerified ? "DONE" : "VERIFY",
+            onTap: _isIdVerified
+                ? null
+                : () => _startDocumentVerification(context),
           ),
-          _buildChecklistItem("Certificates", false, actionText: "UPLOAD"),
+          _buildChecklistItem(
+            "Certificates",
+            _hasCertificate,
+            actionText: _hasCertificate ? "DONE" : "UPLOAD",
+            onTap: _hasCertificate
+                ? null
+                : () {
+                    setState(() => _hasCertificate = true);
+                  },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildChecklistItem(String title, bool isDone, {String? actionText, VoidCallback? onTap}) {
+  Widget _buildChecklistItem(
+    String title,
+    bool isDone, {
+    String? actionText,
+    VoidCallback? onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -401,7 +420,8 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const WorkerServicePackagesScreen(isEditing: true),
+                      builder: (context) =>
+                          const WorkerServicePackagesScreen(isEditing: true),
                     ),
                   );
                   // Refresh services and stats after returning from manage screen
@@ -442,10 +462,13 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
           ...servicesList.map((service) {
             final title = service['title']?.toString() ?? 'Unnamed Service';
             final priceNum = service['price'];
-            final price = priceNum != null ? "Rs. $priceNum / task" : "Negotiable";
+            final price = priceNum != null
+                ? "Rs. $priceNum / task"
+                : "Negotiable";
             final categoryObj = service['category'] as Map<String, dynamic>?;
             final categoryName = categoryObj?['name']?.toString();
-            final isActive = service['is_active'] == true || service['is_active'] == 1;
+            final isActive =
+                service['is_active'] == true || service['is_active'] == 1;
             final serviceId = service['id']?.toString() ?? '';
 
             return _buildServiceTile(
@@ -461,7 +484,14 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
     );
   }
 
-  Widget _buildServiceTile(BuildContext context, String servicePackageId, String name, String price, IconData icon, bool isActive) {
+  Widget _buildServiceTile(
+    BuildContext context,
+    String servicePackageId,
+    String name,
+    String price,
+    IconData icon,
+    bool isActive,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       padding: const EdgeInsets.all(15),
@@ -515,7 +545,9 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                 // Refresh local state
                 setState(() {
                   if (_services != null) {
-                    final index = _services!.indexWhere((s) => s['id'].toString() == servicePackageId);
+                    final index = _services!.indexWhere(
+                      (s) => s['id'].toString() == servicePackageId,
+                    );
                     if (index != -1) {
                       _services![index]['is_active'] = v;
                     }
@@ -524,13 +556,19 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
 
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("$name ${v ? 'enabled' : 'disabled'}")),
+                    SnackBar(
+                      content: Text("$name ${v ? 'enabled' : 'disabled'}"),
+                    ),
                   );
                 }
               } catch (error) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+                    SnackBar(
+                      content: Text(
+                        error.toString().replaceFirst('Exception: ', ''),
+                      ),
+                    ),
                   );
                 }
               }
@@ -551,8 +589,8 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text(
+            children: [
+              const Text(
                 "Portfolio",
                 style: TextStyle(
                   fontSize: 18,
@@ -561,11 +599,8 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                 ),
               ),
               Text(
-                "12 Items",
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 14,
-                ),
+                "${_portfolioUrls.length} Items",
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
               ),
             ],
           ),
@@ -577,9 +612,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.only(left: 20),
             children: [
-              _buildPortfolioImage('https://images.unsplash.com/photo-1589939705384-5185138a04b9?q=80&w=200&auto=format&fit=crop'),
-              _buildPortfolioImage('https://images.unsplash.com/photo-1562259949-e8e7689d7828?q=80&w=200&auto=format&fit=crop'),
-              _buildPortfolioImage('https://images.unsplash.com/photo-1604147706480-5163723f2cfc?q=80&w=200&auto=format&fit=crop'),
+              ..._portfolioUrls.map((url) => _buildPortfolioImage(url)),
               _buildAddWorkButton(context),
             ],
           ),
@@ -594,10 +627,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
       margin: const EdgeInsets.only(right: 15),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
-        image: DecorationImage(
-          image: NetworkImage(url),
-          fit: BoxFit.cover,
-        ),
+        image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
       ),
     );
   }
@@ -605,7 +635,14 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
   Widget _buildAddWorkButton(BuildContext context) {
     return InkWell(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Add to portfolio coming soon!")));
+        setState(() {
+          _portfolioUrls.add(
+            'https://picsum.photos/200?random=${_portfolioUrls.length}',
+          );
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Portfolio item added!")));
       },
       child: Container(
         width: 150,
@@ -613,12 +650,19 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: primaryGreen.withValues(alpha: 0.3), style: BorderStyle.solid),
+          border: Border.all(
+            color: primaryGreen.withValues(alpha: 0.3),
+            style: BorderStyle.solid,
+          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
-            Icon(Icons.add_photo_alternate_outlined, color: primaryGreen, size: 30),
+            Icon(
+              Icons.add_photo_alternate_outlined,
+              color: primaryGreen,
+              size: 30,
+            ),
             SizedBox(height: 8),
             Text(
               "Add New Work",
@@ -667,14 +711,18 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                 ),
                 Row(
                   children: const [
-                    Icon(Icons.star, color: Colors.orange, size: 20),
+                    Icon(Icons.star, color: Colors.grey, size: 20),
                     SizedBox(width: 4),
                     Text(
-                      "4.9",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      "0.0",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
                     ),
                     Text(
-                      " (112)",
+                      " (0)",
                       style: TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                     SizedBox(width: 4),
@@ -685,47 +733,14 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          Row(
-            children: [
-              const CircleAvatar(
-                radius: 18,
-                backgroundImage: NetworkImage('https://i.pravatar.cc/100?u=amara'),
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Text(
+                "No reviews yet. Completed jobs will show customer feedback here.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 13),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      "Amara Jayasekara",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      "2 days ago",
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            "\"Kasun did an excellent job painting our master bedroom. Very punctual and clean work.\"",
-            style: TextStyle(color: accentBlue, fontSize: 14, height: 1.4),
-          ),
-          const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Reply feature coming soon!")));
-            },
-            icon: const Icon(Icons.reply, size: 16),
-            label: const Text("Reply to feedback"),
-            style: TextButton.styleFrom(
-              foregroundColor: primaryGreen,
-              padding: EdgeInsets.zero,
-              minimumSize: const Size(0, 0),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ),
         ],
@@ -750,19 +765,43 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
           ),
         ),
         const SizedBox(height: 15),
-        _buildSettingsTile(context, Icons.notifications_none, "Notification Preferences", 
-          onTap: () => Navigator.pushNamed(context, '/worker-notification-settings')),
-        _buildSettingsTile(context, Icons.payment, "Payment Details",
-          onTap: () => Navigator.pushNamed(context, '/worker-payment-settings')),
-        _buildSettingsTile(context, Icons.language, "Language", trailingText: "English",
-          onTap: () => Navigator.pushNamed(context, '/language-settings')),
-        _buildSettingsTile(context, Icons.help_outline, "Help Center",
-          onTap: () => Navigator.pushNamed(context, '/help-center')),
+        _buildSettingsTile(
+          context,
+          Icons.notifications_none,
+          "Notification Preferences",
+          onTap: () =>
+              Navigator.pushNamed(context, '/worker-notification-settings'),
+        ),
+        _buildSettingsTile(
+          context,
+          Icons.payment,
+          "Payment Details",
+          onTap: () => Navigator.pushNamed(context, '/worker-payment-settings'),
+        ),
+        _buildSettingsTile(
+          context,
+          Icons.language,
+          "Language",
+          trailingText: "English",
+          onTap: () => Navigator.pushNamed(context, '/language-settings'),
+        ),
+        _buildSettingsTile(
+          context,
+          Icons.help_outline,
+          "Help Center",
+          onTap: () => Navigator.pushNamed(context, '/help-center'),
+        ),
       ],
     );
   }
 
-  Widget _buildSettingsTile(BuildContext context, IconData icon, String title, {String? trailingText, VoidCallback? onTap}) {
+  Widget _buildSettingsTile(
+    BuildContext context,
+    IconData icon,
+    String title, {
+    String? trailingText,
+    VoidCallback? onTap,
+  }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       decoration: BoxDecoration(
@@ -770,9 +809,13 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
         borderRadius: BorderRadius.circular(15),
       ),
       child: ListTile(
-        onTap: onTap ?? () {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$title settings coming soon!")));
-        },
+        onTap:
+            onTap ??
+            () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("$title settings coming soon!")),
+              );
+            },
         leading: Icon(icon, color: accentBlue.withValues(alpha: 0.7)),
         title: Text(
           title,
@@ -801,15 +844,25 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
       unselectedItemColor: Colors.grey,
       currentIndex: 3,
       onTap: (index) {
-        if (index == 0) Navigator.pushReplacementNamed(context, '/worker-dashboard');
+        if (index == 0)
+          Navigator.pushReplacementNamed(context, '/worker-dashboard');
         if (index == 1) Navigator.pushNamed(context, '/job-requests');
         if (index == 2) Navigator.pushNamed(context, '/worker-wallet');
       },
-      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+      selectedLabelStyle: const TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: 12,
+      ),
       items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: "Dashboard"),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.dashboard_outlined),
+          label: "Dashboard",
+        ),
         BottomNavigationBarItem(icon: Icon(Icons.work_outline), label: "Jobs"),
-        BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet_outlined), label: "Earnings"),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.account_balance_wallet_outlined),
+          label: "Earnings",
+        ),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
       ],
     );
@@ -830,9 +883,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
 
     if (phone.isEmpty) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Please add your phone number first.'),
-        ),
+        const SnackBar(content: Text('Please add your phone number first.')),
       );
       _showEditProfileBottomSheet(context);
       return;
@@ -869,10 +920,18 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
     }
   }
 
+  void _startDocumentVerification(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const DocumentVerificationScreen()),
+    );
+  }
+
   void _showEditProfileBottomSheet(BuildContext context) {
     final currentUser = authController.currentUser;
     final nameController = TextEditingController(text: currentUser?.name ?? '');
-    final phoneController = TextEditingController(text: currentUser?.phone ?? '');
+    final phoneController = TextEditingController(
+      text: currentUser?.phone ?? '',
+    );
     final formKey = GlobalKey<FormState>();
     bool isLoading = false;
 
@@ -926,13 +985,19 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                     controller: nameController,
                     decoration: InputDecoration(
                       labelText: "Full Name",
-                      prefixIcon: const Icon(Icons.person_outline, color: primaryGreen),
+                      prefixIcon: const Icon(
+                        Icons.person_outline,
+                        color: primaryGreen,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: primaryGreen, width: 2),
+                        borderSide: const BorderSide(
+                          color: primaryGreen,
+                          width: 2,
+                        ),
                       ),
                     ),
                     validator: (value) {
@@ -948,14 +1013,20 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
                       labelText: "Phone Number",
-                      prefixIcon: const Icon(Icons.phone_outlined, color: primaryGreen),
+                      prefixIcon: const Icon(
+                        Icons.phone_outlined,
+                        color: primaryGreen,
+                      ),
                       hintText: "+94771234567",
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: primaryGreen, width: 2),
+                        borderSide: const BorderSide(
+                          color: primaryGreen,
+                          width: 2,
+                        ),
                       ),
                     ),
                     validator: (value) {
@@ -985,10 +1056,15 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                                   if (formKey.currentState!.validate()) {
                                     setModalState(() => isLoading = true);
                                     try {
-                                      final newPhone = phoneController.text.trim();
-                                      final oldPhone = currentUser?.phone?.trim() ?? '';
-                                      final isPhoneVerificationNeeded = newPhone.isNotEmpty &&
-                                          (newPhone != oldPhone || !(currentUser?.isPhoneVerified ?? false));
+                                      final newPhone = phoneController.text
+                                          .trim();
+                                      final oldPhone =
+                                          currentUser?.phone?.trim() ?? '';
+                                      final isPhoneVerificationNeeded =
+                                          newPhone.isNotEmpty &&
+                                          (newPhone != oldPhone ||
+                                              !(currentUser?.isPhoneVerified ??
+                                                  false));
 
                                       await authController.updateProfile(
                                         name: nameController.text.trim(),
@@ -997,34 +1073,51 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
 
                                       if (context.mounted) {
                                         if (isPhoneVerificationNeeded) {
-                                          final updatedUser = authController.currentUser;
+                                          final updatedUser =
+                                              authController.currentUser;
                                           if (updatedUser != null) {
-                                            final response = await authController.requestPhoneOtp(
-                                              (updatedUser.name ?? 'Worker').trim().isNotEmpty
-                                                  ? updatedUser.name!.trim()
-                                                  : 'Worker',
-                                              updatedUser.phone!,
-                                              updatedUser.role,
-                                            );
-                                            final verificationPhone = response['data']?['phone']?.toString() ?? updatedUser.phone!;
-                                            
+                                            final response =
+                                                await authController
+                                                    .requestPhoneOtp(
+                                                      (updatedUser.name ??
+                                                                  'Worker')
+                                                              .trim()
+                                                              .isNotEmpty
+                                                          ? updatedUser.name!
+                                                                .trim()
+                                                          : 'Worker',
+                                                      updatedUser.phone!,
+                                                      updatedUser.role,
+                                                    );
+                                            final verificationPhone =
+                                                response['data']?['phone']
+                                                    ?.toString() ??
+                                                updatedUser.phone!;
+
                                             if (context.mounted) {
-                                              final navigator = Navigator.of(context);
+                                              final navigator = Navigator.of(
+                                                context,
+                                              );
                                               navigator.pop();
                                               navigator.push(
                                                 MaterialPageRoute(
-                                                  builder: (_) => OTPVerificationScreen(
-                                                    verificationTarget: verificationPhone,
-                                                    phoneNumber: verificationPhone,
-                                                    isFromProfile: true,
-                                                  ),
+                                                  builder: (_) =>
+                                                      OTPVerificationScreen(
+                                                        verificationTarget:
+                                                            verificationPhone,
+                                                        phoneNumber:
+                                                            verificationPhone,
+                                                        isFromProfile: true,
+                                                      ),
                                                 ),
                                               );
                                             }
                                           }
                                         } else {
                                           Navigator.pop(context);
-                                          ScaffoldMessenger.of(context).showSnackBar(
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
                                             const SnackBar(
                                               content: Text(
                                                 "Profile updated successfully!",
@@ -1035,13 +1128,15 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                                       }
                                     } catch (e) {
                                       if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           SnackBar(
                                             content: Text(
                                               e.toString().replaceFirst(
-                                                    'Exception: ',
-                                                    '',
-                                                  ),
+                                                'Exception: ',
+                                                '',
+                                              ),
                                             ),
                                           ),
                                         );

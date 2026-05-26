@@ -30,12 +30,12 @@ class WorkerPaymentSettingsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSectionHeader("PRIMARY PAYOUT METHOD"),
-            _buildBankCard(
-              context,
-              "Commercial Bank",
-              "**** 8842",
-              "SAVINGS ACCOUNT",
-              isPrimary: true,
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              child: Text(
+                "No bank account linked yet.",
+                style: TextStyle(color: Colors.grey, fontSize: 14),
+              ),
             ),
             const SizedBox(height: 20),
             _buildSectionHeader("ADDITIONAL METHODS"),

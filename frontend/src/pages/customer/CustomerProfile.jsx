@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Bell,
   CalendarDays,
@@ -28,7 +29,7 @@ import {
 
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
-import { apiRequest, getStoredSessionUser, storeSession } from '../../lib/api';
+import { apiRequest, getStoredSessionUser, storeSession, clearSession } from '../../lib/api';
 
 const initialAddresses = [];
 
@@ -161,7 +162,15 @@ function PasswordInput({
 }
 
 export default function CustomerProfile() {
+  const navigate = useNavigate();
   const [sessionUser, setSessionUser] = useState(() => getStoredSessionUser());
+
+  useEffect(() => {
+    if (!sessionUser) {
+      navigate('/login');
+    }
+  }, [sessionUser, navigate]);
+
   const [statsData, setStatsData] = useState({
     total_bookings: 0,
     completed_bookings: 0,
@@ -454,7 +463,7 @@ export default function CustomerProfile() {
     const confirmed = window.confirm('Are you sure you want to sign out?');
     if (!confirmed) return;
 
-    // Temporary frontend-only sign out action.
+    clearSession();
     window.location.href = '/';
   };
 

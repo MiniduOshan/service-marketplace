@@ -13,12 +13,26 @@ import {
   Star,
   CheckCircle,
   XCircle,
+  Flower2,
+  Tv,
+  Bug,
+  Car,
+  Sparkles,
+  Laptop,
+  Palette,
+  Camera,
+  Utensils,
+  Dumbbell,
+  GraduationCap,
+  Truck,
+  Languages,
 } from 'lucide-react';
 
 import Navbar from '../components/layout/Navbar';
+import CustomerNavbar from '../components/layout/CustomerNavbar';
 import Footer from '../components/layout/Footer';
 import AuthFlow from './auth/AuthFlow';
-import { apiRequest } from '../lib/api';
+import { apiRequest, getStoredSessionUser } from '../lib/api';
 
 const defaultServiceCategories = [
   {
@@ -218,6 +232,19 @@ export default function LandingPage() {
           'AC Repair': { icon: Snowflake, color: 'text-teal-500', bg: 'bg-teal-50' },
           Cleaning: { icon: SprayCan, color: 'text-purple-500', bg: 'bg-purple-50' },
           Masonry: { icon: Wrench, color: 'text-slate-600', bg: 'bg-slate-50' },
+          Gardening: { icon: Flower2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          'Appliance Repair': { icon: Tv, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          'Pest Control': { icon: Bug, color: 'text-red-500', bg: 'bg-red-50' },
+          'Auto Repair': { icon: Car, color: 'text-blue-600', bg: 'bg-blue-50' },
+          'Car Detailing': { icon: Sparkles, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+          'Tech Support': { icon: Laptop, color: 'text-slate-800', bg: 'bg-slate-100' },
+          'Graphic Design': { icon: Palette, color: 'text-pink-500', bg: 'bg-pink-50' },
+          Photography: { icon: Camera, color: 'text-sky-500', bg: 'bg-sky-50' },
+          Catering: { icon: Utensils, color: 'text-amber-600', bg: 'bg-amber-50' },
+          'Personal Training': { icon: Dumbbell, color: 'text-red-600', bg: 'bg-red-50' },
+          'Academic Tutoring': { icon: GraduationCap, color: 'text-violet-600', bg: 'bg-violet-50' },
+          'Moving & Packing': { icon: Truck, color: 'text-orange-600', bg: 'bg-orange-50' },
+          Translation: { icon: Languages, color: 'text-teal-600', bg: 'bg-teal-50' },
         };
 
         const cards = response.data.map((category) => {
@@ -297,9 +324,11 @@ export default function LandingPage() {
     navigate(`/search${queryStr}`);
   };
 
+  const isLoggedIn = !!getStoredSessionUser();
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f8f7fb] text-slate-900">
-      <Navbar />
+      {isLoggedIn ? <CustomerNavbar activePage="home" /> : <Navbar />}
 
       <main className="pt-16">
         {/* Hero / Services Section */}

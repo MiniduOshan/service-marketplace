@@ -21,28 +21,59 @@ import {
   X,
 } from 'lucide-react';
 import CustomerFooter from '../../components/layout/CustomerFooter';
+import { getStoredSessionUser } from '../../lib/api';
 
 const serviceCategories = [
-  'Home Painting & Renovation',
-  'Electrical Services',
+  'Painting',
+  'Electrical',
   'Plumbing',
   'AC Repair',
   'Carpentry',
   'Cleaning',
+  'Masonry',
   'Gardening',
+  'Appliance Repair',
+  'Pest Control',
+  'Auto Repair',
+  'Car Detailing',
+  'Tech Support',
+  'Graphic Design',
+  'Photography',
+  'Catering',
+  'Personal Training',
+  'Academic Tutoring',
+  'Moving & Packing',
+  'Translation',
 ];
 
-const districts = [
+const initialSkills = [];
+const cityOptions = [
   'Colombo',
   'Gampaha',
   'Kalutara',
   'Kandy',
+  'Matale',
+  'Nuwara Eliya',
   'Galle',
   'Matara',
+  'Hambantota',
+  'Jaffna',
+  'Kilinochchi',
+  'Mannar',
+  'Vavuniya',
+  'Mullaitivu',
+  'Batticaloa',
+  'Ampara',
+  'Trincomalee',
+  'Kurunegala',
+  'Puttalam',
+  'Anuradhapura',
+  'Polonnaruwa',
+  'Badulla',
+  'Monaragala',
+  'Ratnapura',
+  'Kegalle',
 ];
-
-const initialSkills = ['Interior Painting', 'Exterior', 'Waterproofing'];
-const initialZones = ['Colombo 01-15', 'Dehiwala', 'Nugegoda'];
 
 function WorkerRegistrationHeader({ isEditMode }) {
   const navigate = useNavigate();
@@ -197,10 +228,11 @@ function Chip({ children, onRemove }) {
 }
 
 function StepTwo({ onBack, onNext, isEditMode }) {
+  const currentUser = getStoredSessionUser();
   const [skills, setSkills] = useState(initialSkills);
-  const [zones, setZones] = useState(initialZones);
   const [skillInput, setSkillInput] = useState('');
-  const [zoneInput, setZoneInput] = useState('');
+  const [avatar, setAvatar] = useState(null);
+  const fileInputRef = React.useRef(null);
 
   function addSkill() {
     const cleanSkill = skillInput.trim();
@@ -209,11 +241,14 @@ function StepTwo({ onBack, onNext, isEditMode }) {
     setSkillInput('');
   }
 
-  function addZone() {
-    const cleanZone = zoneInput.trim();
-    if (!cleanZone) return;
-    setZones((current) => [...current, cleanZone]);
-    setZoneInput('');
+  function handleAvatarChange(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setAvatar(e.target.result);
+    };
+    reader.readAsDataURL(file);
   }
 
   return (
@@ -237,7 +272,7 @@ function StepTwo({ onBack, onNext, isEditMode }) {
 
           <div className="mt-7 grid gap-5 sm:grid-cols-2">
             <Field label="Full Name">
-              <Input defaultValue="Kasun Silva" />
+              <Input defaultValue={currentUser?.name || ''} />
             </Field>
 
             <Field label="Phone Number">
@@ -245,7 +280,7 @@ function StepTwo({ onBack, onNext, isEditMode }) {
                 <span className="grid h-12 place-items-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-100 px-4 text-sm font-bold text-slate-600">
                   +94
                 </span>
-                <Input defaultValue="771234567" className="rounded-l-none" />
+                <Input defaultValue={currentUser?.phone ? currentUser.phone.replace(/^\+94/, '') : ''} className="rounded-l-none" />
               </div>
             </Field>
 
@@ -253,35 +288,19 @@ function StepTwo({ onBack, onNext, isEditMode }) {
               <Field label="Email Address Optional">
                 <Input
                   type="email"
-                  defaultValue="kasun.silva@example.com"
+                  defaultValue={currentUser?.email || ''}
                 />
               </Field>
             </div>
 
             <Field label="Service Category">
-              <Select defaultValue="Home Painting & Renovation">
+              <Select defaultValue={currentUser?.category?.name || ''}>
+                <option value="" disabled>Select Category</option>
                 {serviceCategories.map((category) => (
                   <option key={category}>{category}</option>
                 ))}
               </Select>
             </Field>
-
-            <Field label="Years of Experience">
-              <Input type="number" min="0" defaultValue="5" />
-            </Field>
-
-            <div className="sm:col-span-2">
-              <Field label="Bio / About">
-                <TextArea
-                  defaultValue={
-                    isEditMode
-                      ? 'Experienced home painting and renovation worker with reliable service quality and strong customer reviews.'
-                      : ''
-                  }
-                  placeholder="Describe your expertise and what makes your service unique..."
-                />
-              </Field>
-            </div>
 
             <div className="sm:col-span-2">
               <Field label="Skills / Specializations">
@@ -334,14 +353,26 @@ function StepTwo({ onBack, onNext, isEditMode }) {
             </h2>
 
             <div className="mt-5 flex flex-col items-center text-center">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleAvatarChange}
+              />
               <button
                 type="button"
-                className="grid h-36 w-36 place-items-center rounded-full border-2 border-dashed border-emerald-900/30 bg-emerald-50 text-emerald-700 transition hover:border-emerald-700"
+                onClick={() => fileInputRef.current?.click()}
+                className="grid h-36 w-36 place-items-center rounded-full border-2 border-dashed border-emerald-900/30 bg-emerald-50 text-emerald-700 transition hover:border-emerald-700 overflow-hidden"
               >
-                <div>
-                  <Camera className="mx-auto" size={32} />
-                  <p className="mt-2 text-sm font-bold">Upload photo</p>
-                </div>
+                {avatar ? (
+                  <img src={avatar} alt="Profile preview" className="h-full w-full object-cover" />
+                ) : (
+                  <div>
+                    <Camera className="mx-auto" size={32} />
+                    <p className="mt-2 text-sm font-bold">Upload photo</p>
+                  </div>
+                )}
               </button>
 
               <p className="mt-5 max-w-xs text-sm leading-relaxed text-slate-500">
@@ -352,80 +383,19 @@ function StepTwo({ onBack, onNext, isEditMode }) {
           </div>
 
           <div className="rounded-xl border border-emerald-900/20 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="font-bold uppercase tracking-wide text-slate-600">
-                Service Location
-              </h2>
-
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                Use my GPS
-                <button
-                  type="button"
-                  className="relative h-6 w-12 rounded-full bg-emerald-700"
-                  aria-label="GPS enabled"
-                >
-                  <span className="absolute left-7 top-1 h-4 w-4 rounded-full bg-white" />
-                </button>
-              </div>
-            </div>
+            <h2 className="font-bold uppercase tracking-wide text-slate-600">
+              Service Location
+            </h2>
 
             <div className="mt-5">
-              <Field label="District">
-                <Select defaultValue="Colombo">
-                  {districts.map((district) => (
-                    <option key={district}>{district}</option>
+              <Field label="City">
+                <Select defaultValue="">
+                  <option value="" disabled>Select City</option>
+                  {cityOptions.map((city) => (
+                    <option key={city}>{city}</option>
                   ))}
                 </Select>
               </Field>
-            </div>
-
-            <div className="mt-5">
-              <Field label="Service Zones">
-                <div className="flex gap-3">
-                  <Input
-                    value={zoneInput}
-                    onChange={(event) => setZoneInput(event.target.value)}
-                    placeholder="Add zone"
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault();
-                        addZone();
-                      }
-                    }}
-                  />
-
-                  <button
-                    type="button"
-                    onClick={addZone}
-                    className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-emerald-700 text-white transition hover:bg-emerald-800"
-                    aria-label="Add zone"
-                  >
-                    <Plus size={20} />
-                  </button>
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {zones.map((zone) => (
-                    <Chip
-                      key={zone}
-                      onRemove={() =>
-                        setZones((current) =>
-                          current.filter((item) => item !== zone)
-                        )
-                      }
-                    >
-                      {zone}
-                    </Chip>
-                  ))}
-                </div>
-              </Field>
-            </div>
-
-            <div className="mt-5 grid h-40 place-items-center rounded-xl border border-slate-200 bg-slate-100 text-center text-slate-500">
-              <div>
-                <MapPin className="mx-auto text-emerald-700" size={28} />
-                <p className="mt-2 text-sm font-medium">Map preview</p>
-              </div>
             </div>
           </div>
         </aside>
@@ -440,7 +410,8 @@ function StepTwo({ onBack, onNext, isEditMode }) {
   );
 }
 
-function UploadBox({ title, subtitle, uploaded = false, optional = false }) {
+function UploadBox({ title, subtitle, uploaded = false, optional = false, onFileSelect }) {
+  const fileInputRef = React.useRef(null);
   return (
     <div
       className={`rounded-xl border p-5 ${
@@ -449,6 +420,16 @@ function UploadBox({ title, subtitle, uploaded = false, optional = false }) {
           : 'border-dashed border-slate-300 bg-slate-50'
       }`}
     >
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file && onFileSelect) onFileSelect(file);
+        }}
+      />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <div
@@ -482,6 +463,7 @@ function UploadBox({ title, subtitle, uploaded = false, optional = false }) {
         ) : (
           <button
             type="button"
+            onClick={() => fileInputRef.current?.click()}
             className="rounded-lg border border-emerald-700 px-5 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
           >
             Upload
@@ -493,6 +475,34 @@ function UploadBox({ title, subtitle, uploaded = false, optional = false }) {
 }
 
 function StepThree({ onBack, onNext, isEditMode }) {
+  const currentUser = getStoredSessionUser();
+  const [nicFront, setNicFront] = useState(null);
+  const [nicBack, setNicBack] = useState(null);
+  const [certificate, setCertificate] = useState(null);
+  const [policeClearance, setPoliceClearance] = useState(null);
+  const [portfolio, setPortfolio] = useState([]);
+  const portfolioInputRef = React.useRef(null);
+
+  function handlePortfolioFileSelect(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPortfolio((current) => [...current, { id: Date.now(), image: e.target.result }]);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  }
+
+  // Calculate score dynamically
+  const baseScore = 20;
+  const nicFrontScore = nicFront ? 20 : 0;
+  const nicBackScore = nicBack ? 20 : 0;
+  const phoneScore = currentUser?.phone_verified_at ? 15 : 0;
+  const portfolioScore = portfolio.length > 0 ? 15 : 0;
+  const certificateScore = certificate ? 10 : 0;
+  const score = baseScore + nicFrontScore + nicBackScore + phoneScore + portfolioScore + certificateScore;
+
   return (
     <>
       <ProgressHeader
@@ -526,26 +536,32 @@ function StepThree({ onBack, onNext, isEditMode }) {
             <div className="mt-6 space-y-4">
               <UploadBox
                 title="National ID / NIC - Front Side"
-                subtitle="Front image uploaded successfully."
-                uploaded
+                subtitle={nicFront ? "Front ID uploaded successfully." : "Front side image of your National Identity Card."}
+                uploaded={!!nicFront}
+                onFileSelect={(file) => setNicFront(file)}
               />
 
               <UploadBox
                 title="National ID / NIC - Back Side"
-                subtitle="Back image uploaded successfully."
-                uploaded
+                subtitle={nicBack ? "Back ID uploaded successfully." : "Back side image of your National Identity Card."}
+                uploaded={!!nicBack}
+                onFileSelect={(file) => setNicBack(file)}
               />
 
               <UploadBox
                 title="Work Certificate"
-                subtitle="Upload professional certificates or work experience letters."
+                subtitle={certificate ? "Certificate uploaded successfully." : "Upload professional certificates or work experience letters."}
                 optional
+                uploaded={!!certificate}
+                onFileSelect={(file) => setCertificate(file)}
               />
 
               <UploadBox
                 title="Police Clearance"
-                subtitle="Recommended for building more customer trust."
+                subtitle={policeClearance ? "Clearance uploaded successfully." : "Recommended for building more customer trust."}
                 optional
+                uploaded={!!policeClearance}
+                onFileSelect={(file) => setPoliceClearance(file)}
               />
             </div>
           </div>
@@ -561,8 +577,16 @@ function StepThree({ onBack, onNext, isEditMode }) {
                 </p>
               </div>
 
+              <input
+                type="file"
+                ref={portfolioInputRef}
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handlePortfolioFileSelect}
+              />
               <button
                 type="button"
+                onClick={() => portfolioInputRef.current?.click()}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
               >
                 <ImagePlus size={17} />
@@ -571,23 +595,20 @@ function StepThree({ onBack, onNext, isEditMode }) {
             </div>
 
             <div className="mt-6 grid gap-4 sm:grid-cols-3">
-              {[1, 2].map((item) => (
+              {portfolio.map((item) => (
                 <div
-                  key={item}
+                  key={item.id}
                   className="relative h-36 overflow-hidden rounded-xl bg-slate-200"
                 >
                   <img
-                    src={`https://images.unsplash.com/photo-${
-                      item === 1
-                        ? '1581578731548-c64695cc6952'
-                        : '1503387762-592deb58ef4e'
-                    }?auto=format&fit=crop&w=400&q=80`}
+                    src={item.image}
                     alt="Portfolio"
                     className="h-full w-full object-cover"
                   />
 
                   <button
                     type="button"
+                    onClick={() => setPortfolio((current) => current.filter((p) => p.id !== item.id))}
                     className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-red-600 shadow"
                     aria-label="Remove photo"
                   >
@@ -598,6 +619,7 @@ function StepThree({ onBack, onNext, isEditMode }) {
 
               <button
                 type="button"
+                onClick={() => portfolioInputRef.current?.click()}
                 className="grid h-36 place-items-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-slate-500 transition hover:border-emerald-600 hover:text-emerald-700"
               >
                 <div className="text-center">
@@ -614,24 +636,24 @@ function StepThree({ onBack, onNext, isEditMode }) {
             <h2 className="text-xl font-bold text-slate-950">Trust Score</h2>
 
             <div className="mt-5 text-center">
-              <p className="text-4xl font-bold text-emerald-700">72</p>
+              <p className="text-4xl font-bold text-emerald-700">{score}</p>
               <p className="text-sm font-semibold text-slate-500">/100</p>
             </div>
 
             <div className="mt-6 space-y-4">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-500">NIC Verified</span>
-                <span className="font-bold text-emerald-700">+20</span>
+                <span className={`font-bold ${nicFront && nicBack ? 'text-emerald-700' : 'text-slate-400'}`}>+20</span>
               </div>
 
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-500">Phone Verified</span>
-                <span className="font-bold text-emerald-700">+15</span>
+                <span className={`font-bold ${phoneScore > 0 ? 'text-emerald-700' : 'text-slate-400'}`}>+15</span>
               </div>
 
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-500">Portfolio Added</span>
-                <span className="font-bold text-emerald-700">+15</span>
+                <span className={`font-bold ${portfolioScore > 0 ? 'text-emerald-700' : 'text-slate-400'}`}>+15</span>
               </div>
             </div>
 
@@ -714,6 +736,27 @@ function PackageCard({ title, price, description, active = false }) {
 function StepFour({ onBack, onSubmit, isEditMode }) {
   const [agreedTerms, setAgreedTerms] = useState(isEditMode);
   const [authenticDocs, setAuthenticDocs] = useState(isEditMode);
+  const [customPackages, setCustomPackages] = useState([]);
+
+  function addCustomPackage() {
+    const name = prompt("Enter package name:");
+    if (!name) return;
+    const price = prompt("Enter package price (e.g. LKR 10,000):");
+    if (!price) return;
+    const description = prompt("Enter package description:");
+    if (!description) return;
+
+    setCustomPackages((current) => [
+      ...current,
+      {
+        id: Date.now(),
+        title: name,
+        price: price,
+        description: description,
+        active: true,
+      },
+    ]);
+  }
 
   return (
     <>
@@ -733,44 +776,35 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
 
             <div className="mt-6 grid gap-5 sm:grid-cols-2">
               <Field label="Package Name">
-                <Input defaultValue="Room Painting - Small" />
+                <Input defaultValue="" placeholder="e.g. Room Painting - Small" />
               </Field>
 
               <Field label="Base Price">
-                <Input defaultValue="LKR 15,000" />
+                <Input defaultValue="" placeholder="e.g. LKR 15,000" />
               </Field>
 
               <div className="sm:col-span-2">
                 <Field label="Description">
-                  <TextArea defaultValue="Standard wall preparation, single color application for a standard 12x12 room. Includes minor crack filling and protective sheeting for floors." />
+                  <TextArea defaultValue="" placeholder="Describe what is included in the basic package..." />
                 </Field>
               </div>
             </div>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2">
-            <PackageCard
-              title="Full House / Large Project"
-              price="LKR 35,000+"
-              description="Comprehensive service for multiple rooms or exterior work."
-            />
+          <div className="rounded-xl border border-emerald-900/20 bg-white p-6 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
+              Add package
+            </p>
 
-            <PackageCard
-              title="Custom Quote / Hourly"
-              price="Custom"
-              description="For specialized tasks that require on-site assessment."
-            />
+            <button
+              type="button"
+              onClick={addCustomPackage}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-700 px-5 py-3 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
+            >
+              <Plus size={18} />
+              More packages
+            </button>
           </div>
-
-          <button
-            type="button"
-            className="grid min-h-40 w-full place-items-center rounded-xl border border-dashed border-emerald-600 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100"
-          >
-            <div className="text-center">
-              <Plus className="mx-auto" size={26} />
-              <p className="mt-2 font-bold">Add custom package</p>
-            </div>
-          </button>
         </section>
 
         <aside className="space-y-6">

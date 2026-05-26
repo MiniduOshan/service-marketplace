@@ -723,8 +723,8 @@ export default function WorkerEarnings() {
               </div>
 
               <p className="mt-5 text-sm text-slate-600">
-                Next billing date:{' '}
-                <span className="font-bold text-slate-950">May 12, 2025</span>
+                See your subscription details on the{' '}
+                <span className="font-bold text-emerald-700 cursor-pointer hover:underline" onClick={() => window.location.href='/worker/subscription'}>Subscription page</span>.
               </p>
 
               <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-slate-700">
