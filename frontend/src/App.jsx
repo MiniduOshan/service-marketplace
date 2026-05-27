@@ -6,6 +6,15 @@ import SearchPage from './pages/search/SearchPage';
 import CustomerDashboard from './pages/customer/CustomerDashboard';
 import CustomerProfile from './pages/customer/CustomerProfile';
 
+import AdminOverview from './pages/admin/AdminOverview';
+import AdminWorkers from './pages/admin/AdminWorkers';
+import AdminCustomers from './pages/admin/AdminCustomers';
+import AdminPrivileges from './pages/admin/AdminPrivileges';
+import AdminPricingPlans from './pages/admin/AdminPricingPlans';
+import AdminCredentials from './pages/admin/AdminCredentials';
+import AdminNotifications from './pages/admin/AdminNotifications';
+import AdminSystemHealth from './pages/admin/AdminSystemHealth';
+
 import WorkerDashboard from './pages/worker/WorkerDashboard';
 import WorkerJobs from './pages/worker/WorkerJobs';
 import WorkerEarnings from './pages/worker/WorkerEarnings';
@@ -44,6 +53,17 @@ function App() {
           {/* Customer Routes */}
           <Route path="/customer/profile" element={<CustomerProfile />} />
           <Route path="/customer/dashboard" element={<CustomerDashboard />} />
+
+          {/* Admin Routes */}
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/admin/dashboard" element={<AdminOverview />} />
+          <Route path="/admin/workers" element={<AdminWorkers />} />
+          <Route path="/admin/customers" element={<AdminCustomers />} />
+          <Route path="/admin/privileges" element={<AdminPrivileges />} />
+          <Route path="/admin/pricing-plans" element={<AdminPricingPlans />} />
+          <Route path="/admin/credentials" element={<AdminCredentials />} />
+          <Route path="/admin/notifications" element={<AdminNotifications />} />
+          <Route path="/admin/system" element={<AdminSystemHealth />} />
 
           {/* Worker Routes */}
           <Route path="/worker/register" element={<WorkerRegistration />} />

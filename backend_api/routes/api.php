@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\BookingMessageController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\PricingPlanController;
 use App\Http\Controllers\Api\ServiceCategoryController;
 use App\Http\Controllers\Api\ServicePackageController;
 use App\Http\Middleware\AuthenticateApiToken;
@@ -41,6 +42,13 @@ Route::prefix('auth')->group(function () {
         Route::patch('/bookings/{booking}/complete', [BookingController::class, 'complete']);
         Route::get('/bookings/{booking}/messages', [BookingMessageController::class, 'index']);
         Route::post('/bookings/{booking}/messages', [BookingMessageController::class, 'store']);
+
+        Route::middleware(EnsureUserRole::class.':admin')->group(function () {
+            Route::get('/admin/pricing-plans', [PricingPlanController::class, 'index']);
+            Route::post('/admin/pricing-plans', [PricingPlanController::class, 'store']);
+            Route::patch('/admin/pricing-plans/{pricingPlan}', [PricingPlanController::class, 'update']);
+            Route::delete('/admin/pricing-plans/{pricingPlan}', [PricingPlanController::class, 'destroy']);
+        });
 
         Route::middleware(EnsureUserRole::class.':worker')->group(function () {
             Route::get('/worker/services', [ServicePackageController::class, 'workerServices']);

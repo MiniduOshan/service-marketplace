@@ -60,6 +60,43 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
+        $adminEmail = strtolower(trim((string) env('ADMIN_EMAIL', '')));
+        $adminPassword = (string) env('ADMIN_PASSWORD', '');
+
+        if (
+            $adminEmail !== ''
+            && $adminPassword !== ''
+            && strtolower($credentials['email']) === $adminEmail
+            && hash_equals($adminPassword, $credentials['password'])
+        ) {
+            $user = User::firstOrCreate(
+                ['email' => $adminEmail],
+                [
+                    'name' => 'Administrator',
+                    'password' => $adminPassword,
+                    'role' => 'admin',
+                ]
+            );
+
+            if ($user->role !== 'admin' || $user->name !== 'Administrator') {
+                $user->forceFill([
+                    'name' => 'Administrator',
+                    'role' => 'admin',
+                    'password' => $adminPassword,
+                ])->save();
+            }
+
+            $token = $user->issueApiToken();
+
+            return response()->json([
+                'message' => 'Logged in successfully.',
+                'data' => [
+                    'user' => $user->fresh(),
+                    'token' => $token,
+                ],
+            ]);
+        }
+
         $user = User::where('email', $credentials['email'])->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {

@@ -114,6 +114,11 @@ export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }
   };
 
   const handleLoginComplete = (user) => {
+    if (user?.role === 'admin') {
+      navigate('/admin/dashboard', { replace: true });
+      return;
+    }
+
     if (user?.role === 'worker') {
       navigate('/worker/dashboard', { replace: true });
       return;
