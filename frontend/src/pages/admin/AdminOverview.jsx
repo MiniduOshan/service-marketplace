@@ -4,16 +4,16 @@ import AdminLayout from '../../components/layout/AdminLayout';
 
 function StatCard({ icon: Icon, label, value, hint }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl shadow-slate-950/20 backdrop-blur-xl">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-slate-400">{label}</p>
-          <h3 className="mt-3 text-3xl font-bold text-white">{value}</h3>
-          <p className="mt-2 text-sm text-slate-300">{hint}</p>
+          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">{label}</p>
+          <h3 className="mt-1.5 text-xl font-bold text-slate-900">{value}</h3>
+          <p className="mt-1 text-xs text-slate-500">{hint}</p>
         </div>
 
-        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-400/10 text-emerald-300 ring-1 ring-emerald-300/15">
-          <Icon size={22} />
+        <div className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100/50">
+          <Icon size={16} />
         </div>
       </div>
     </div>
@@ -23,46 +23,46 @@ function StatCard({ icon: Icon, label, value, hint }) {
 export default function AdminOverview() {
   return (
     <AdminLayout>
-      <div className="space-y-6 xl:space-y-8">
-        <section className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/30 backdrop-blur-xl sm:p-8">
+      <div className="space-y-4">
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="max-w-4xl">
-            <p className="text-xs uppercase tracking-[0.28em] text-emerald-300">Marketplace command center</p>
-            <h2 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl xl:text-5xl">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-600">Marketplace command center</p>
+            <h2 className="mt-1 text-lg font-bold text-slate-900">
               Separate sidebar pages for each admin responsibility.
             </h2>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+            <p className="mt-2 max-w-2xl text-xs leading-normal text-slate-600">
               Worker moderation, customer tools, privileges, pricing plans, notifications, and
               system health are now split into separate pages.
             </p>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard icon={CheckCircle2} label="Workers" value="Live data" hint="Connect the worker API to show records" />
             <StatCard icon={Users} label="Customers" value="Live data" hint="Connect the customer API to show records" />
             <StatCard icon={ShieldCheck} label="Privileges" value="Settings" hint="Connect stored flags to manage features" />
             <StatCard icon={Sparkles} label="Pricing" value="Connected" hint="System plans are now backed by the API" />
           </div>
 
-          <div className="mt-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-5 text-sm leading-7 text-emerald-50">
+          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 text-xs leading-relaxed text-emerald-850">
             Pricing now means the system plans offered to users, not worker packages.
           </div>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 text-slate-200">
-            <MessageSquareText className="text-emerald-300" />
-            <h3 className="mt-3 text-lg font-semibold text-white">Notifications</h3>
-            <p className="mt-2 text-sm text-slate-400">Send SMS and email updates from a dedicated page.</p>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm text-slate-700">
+            <MessageSquareText size={16} className="text-emerald-600" />
+            <h3 className="mt-2 text-sm font-semibold text-slate-900">Notifications</h3>
+            <p className="mt-1 text-xs text-slate-500 leading-normal">Send SMS and email updates from a dedicated page.</p>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 text-slate-200">
-            <ShieldCheck className="text-emerald-300" />
-            <h3 className="mt-3 text-lg font-semibold text-white">Privileges</h3>
-            <p className="mt-2 text-sm text-slate-400">Connect a real settings source before showing feature toggles.</p>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm text-slate-700">
+            <ShieldCheck size={16} className="text-emerald-600" />
+            <h3 className="mt-2 text-sm font-semibold text-slate-900">Privileges</h3>
+            <p className="mt-1 text-xs text-slate-500 leading-normal">Connect a real settings source before showing feature toggles.</p>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 text-slate-200">
-            <Sparkles className="text-emerald-300" />
-            <h3 className="mt-3 text-lg font-semibold text-white">Pricing plans</h3>
-            <p className="mt-2 text-sm text-slate-400">Manage the system offers users can purchase.</p>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm text-slate-700">
+            <Sparkles size={16} className="text-emerald-600" />
+            <h3 className="mt-2 text-sm font-semibold text-slate-900">Pricing plans</h3>
+            <p className="mt-1 text-xs text-slate-500 leading-normal">Manage the system offers users can purchase.</p>
           </div>
         </section>
       </div>

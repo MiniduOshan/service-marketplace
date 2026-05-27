@@ -43,101 +43,105 @@ export default function AdminLayout({ children }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-slate-50 text-slate-800">
       <div className="flex min-h-screen">
-        <aside className="hidden w-80 shrink-0 border-r border-white/10 bg-slate-950/95 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
-          <div className="border-b border-white/10 px-7 py-6">
+        <aside className="hidden w-64 shrink-0 border-r border-slate-200 bg-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
+          <div className="border-b border-slate-100 px-5 py-4">
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="flex items-center gap-3 text-left"
+              className="flex items-center gap-2.5 text-left"
             >
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/25">
-                <Blocks size={22} />
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/10">
+                <Blocks size={18} />
               </div>
               <div>
-                <p className="text-lg font-extrabold tracking-tight text-white">SkilledLK Admin</p>
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Web control center</p>
+                <p className="text-sm font-bold tracking-tight text-slate-900">SkilledLK Admin</p>
+                <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500">Web control center</p>
               </div>
             </button>
           </div>
 
-          <div className="border-b border-white/10 px-7 py-5">
-            <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Signed in as</p>
-            <div className="mt-2 flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-full bg-emerald-500 text-sm font-bold text-slate-950">
+          <div className="border-b border-slate-100 px-5 py-3">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400">Signed in as</p>
+            <div className="mt-1.5 flex items-center gap-2.5">
+              <div className="grid h-8 w-8 place-items-center rounded-full bg-emerald-600 text-xs font-bold text-white">
                 {displayName.slice(0, 2).toUpperCase()}
               </div>
               <div>
-                <p className="font-semibold text-white">{displayName}</p>
-                <p className="text-sm text-slate-400">Platform administrator</p>
+                <p className="text-xs font-semibold text-slate-900">{displayName}</p>
+                <p className="text-[10px] text-slate-500">Platform administrator</p>
               </div>
             </div>
           </div>
 
-          <nav className="flex-1 space-y-1 px-4 py-5">
+          <nav className="flex-1 space-y-1 px-3 py-3">
             {sidebarItems.map(({ path, name, icon: Icon }) => (
               <NavLink
                 key={path}
                 to={path}
                 className={({ isActive }) =>
-                  `flex items-center gap-4 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                  `flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition ${
                     isActive
-                      ? 'bg-emerald-400/10 text-white ring-1 ring-emerald-300/20'
-                      : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-100/50'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   }`
                 }
               >
-                <Icon size={18} className="text-emerald-300" />
-                {name}
+                {({ isActive }) => (
+                  <>
+                    <Icon size={15} className={isActive ? 'text-emerald-600' : 'text-slate-400'} />
+                    <span>{name}</span>
+                  </>
+                )}
               </NavLink>
             ))}
           </nav>
 
-          <div className="border-t border-white/10 px-5 py-5">
+          <div className="border-t border-slate-100 px-4 py-3.5">
             <button
               type="button"
               onClick={closeSession}
-              className="flex w-full items-center justify-center gap-3 rounded-2xl bg-white/5 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:bg-red-500/10 hover:text-red-200"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-50 border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-red-50 hover:text-red-600 hover:border-red-100"
             >
-              <LogOut size={18} />
+              <LogOut size={14} />
               Logout
             </button>
           </div>
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.12),_transparent_28%),linear-gradient(180deg,#020617_0%,#0f172a_42%,#111827_100%)]">
-          <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/85 backdrop-blur-xl">
-            <div className="flex h-[72px] items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-10">
-              <div className="flex items-center gap-3">
+        <div className="flex min-w-0 flex-1 flex-col bg-slate-50/50">
+          <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-md">
+            <div className="flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center gap-2.5">
                 <button
                   type="button"
                   onClick={() => setMobileMenuOpen((value) => !value)}
-                  className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-slate-200 lg:hidden"
+                  className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-600 lg:hidden"
                   aria-label="Open admin menu"
                 >
-                  {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+                  {mobileMenuOpen ? <X size={15} /> : <Menu size={15} />}
                 </button>
 
                 <div>
-                  <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Control room</p>
-                  <h1 className="text-lg font-bold text-white sm:text-xl">Admin Dashboard</h1>
+                  <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500">Control room</p>
+                  <h1 className="text-sm font-bold text-slate-900">Admin Dashboard</h1>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex items-center gap-2.5">
                 <button
                   type="button"
-                  className="hidden items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 md:inline-flex"
+                  className="hidden items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 md:inline-flex"
                 >
-                  <Bell size={16} />
+                  <Bell size={13} />
                   System alerts
                 </button>
 
                 <button
                   type="button"
                   onClick={() => navigate('/')}
-                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10"
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
                   View site
                 </button>
@@ -145,22 +149,22 @@ export default function AdminLayout({ children }) {
             </div>
 
             {mobileMenuOpen && (
-              <div className="border-t border-white/10 bg-slate-950 px-4 py-4 lg:hidden">
-                <nav className="grid gap-2 sm:grid-cols-2">
+              <div className="border-t border-slate-200 bg-white px-4 py-3 lg:hidden">
+                <nav className="grid gap-1.5 sm:grid-cols-2">
                   {sidebarItems.map(({ path, name, icon: Icon }) => (
                     <NavLink
                       key={path}
                       to={path}
                       onClick={() => setMobileMenuOpen(false)}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold ${
+                        `flex items-center gap-2.5 rounded-lg border px-3 py-2 text-xs font-semibold ${
                           isActive
-                            ? 'border-emerald-300/20 bg-emerald-400/10 text-white'
-                            : 'border-white/10 bg-white/5 text-slate-200'
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            : 'border-slate-200 bg-slate-50 text-slate-600'
                         }`
                       }
                     >
-                      <Icon size={17} className="text-emerald-300" />
+                      <Icon size={14} className="text-emerald-600" />
                       {name}
                     </NavLink>
                   ))}
@@ -168,9 +172,9 @@ export default function AdminLayout({ children }) {
                   <button
                     type="button"
                     onClick={closeSession}
-                    className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200"
+                    className="flex items-center gap-2.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700"
                   >
-                    <LogOut size={17} />
+                    <LogOut size={14} />
                     Logout
                   </button>
                 </nav>
@@ -178,7 +182,7 @@ export default function AdminLayout({ children }) {
             )}
           </header>
 
-          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 xl:px-10 xl:py-8">
+          <main className="flex-1 px-4 py-5 sm:px-6 lg:px-8 xl:py-6">
             {children}
           </main>
         </div>

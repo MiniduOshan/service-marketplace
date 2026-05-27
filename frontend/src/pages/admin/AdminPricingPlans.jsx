@@ -161,41 +161,43 @@ export default function AdminPricingPlans() {
 
   return (
     <AdminLayout>
-      <section className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/30 backdrop-blur-xl sm:p-8">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-400/10 text-emerald-300 ring-1 ring-emerald-300/15"><CircleDollarSign size={22} /></div>
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="mb-4 flex items-center gap-2.5">
+          <div className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100/50">
+            <CircleDollarSign size={18} />
+          </div>
           <div>
-            <h2 className="text-2xl font-bold text-white">Pricing Plans</h2>
-            <p className="text-sm text-slate-400">Add system pricing plans after the free usage period ends.</p>
+            <h2 className="text-sm font-bold text-slate-900">Pricing Plans</h2>
+            <p className="text-xs text-slate-500">Add system pricing plans after the free usage period ends.</p>
           </div>
         </div>
 
-        <div className="mb-5 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-5 text-sm leading-7 text-emerald-50">
+        <div className="mb-4 rounded-lg border border-emerald-250 bg-emerald-50 p-4 text-xs leading-relaxed text-emerald-800">
           <p className="font-semibold">Free usage</p>
-          <p className="mt-1 text-emerald-50/90">
+          <p className="mt-0.5 text-emerald-700">
             First months can stay free for everyone. If you do not add any pricing plan, users will keep full access and will not see a paid plan screen.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
-          <div className="grid gap-4 xl:grid-cols-2">
+        <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="grid gap-3 xl:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-200">Plan title</label>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Plan title</label>
               <input
                 type="text"
                 value={draft.title}
                 onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
                 placeholder="e.g. Pro"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-200">Billing cycle</label>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Billing cycle</label>
               <select
                 value={draft.billing}
                 onChange={(event) => setDraft((current) => ({ ...current, billing: event.target.value }))}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
               >
                 <option>Monthly</option>
                 <option>Quarterly</option>
@@ -204,34 +206,34 @@ export default function AdminPricingPlans() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-200">Plan description</label>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Plan description</label>
               <input
                 type="text"
                 value={draft.description}
                 onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}
                 placeholder="What this plan includes"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-200">Price</label>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Price</label>
               <input
                 type="number"
                 min="0"
                 value={draft.price}
                 onChange={(event) => setDraft((current) => ({ ...current, price: event.target.value }))}
                 placeholder="0"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-200">Status</label>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Status</label>
               <select
                 value={draft.status}
                 onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
               >
                 <option>Active</option>
                 <option>Popular</option>
@@ -242,41 +244,41 @@ export default function AdminPricingPlans() {
 
           </div>
 
-          <div className="mt-5">
-            <p className="mb-3 text-sm font-semibold text-slate-200">Included privileges</p>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4">
+            <p className="mb-2 text-xs font-semibold text-slate-700">Included privileges</p>
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {privilegeOptions.map((privilege) => {
                 const checked = draftPrivilegeSet.has(privilege.key);
 
                 return (
                   <label
                     key={privilege.key}
-                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium transition ${
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition cursor-pointer ${
                       checked
-                        ? 'border-emerald-300/20 bg-emerald-400/10 text-white'
-                        : 'border-white/10 bg-white/5 text-slate-300'
+                        ? 'border-emerald-250 bg-emerald-50 text-emerald-800'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                     }`}
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => handlePrivilegeToggle(privilege.key)}
-                      className="h-4 w-4 rounded border-slate-400 text-emerald-600 focus:ring-emerald-400"
+                      className="h-3.5 w-3.5 rounded border-slate-350 text-emerald-600 focus:ring-emerald-500"
                     />
                     <span>{privilege.label}</span>
-                    {checked ? <Check size={14} className="ml-auto text-emerald-300" /> : null}
+                    {checked ? <Check size={12} className="ml-auto text-emerald-600" /> : null}
                   </label>
                 );
               })}
             </div>
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-2.5">
             <button
               type="submit"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
             >
-              <RefreshCw size={14} />
+              <RefreshCw size={12} />
               {editingPlanId ? 'Update plan' : 'Add plan'}
             </button>
 
@@ -284,7 +286,7 @@ export default function AdminPricingPlans() {
               <button
                 type="button"
                 onClick={resetDraft}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10"
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 Cancel edit
               </button>
@@ -293,70 +295,71 @@ export default function AdminPricingPlans() {
         </form>
 
         {loading ? (
-          <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+          <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
             Loading pricing plans...
           </div>
         ) : null}
 
         {errorMessage ? (
-          <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-100">
+          <div className="mt-3 rounded-lg border border-red-200 bg-red-55 px-3 py-2 text-xs text-red-700">
             {errorMessage}
           </div>
         ) : null}
 
         {statusMessage ? (
-          <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+          <div className="mt-3 rounded-lg border border-emerald-250 bg-emerald-55 px-3 py-2 text-xs text-emerald-850">
             {statusMessage}
           </div>
         ) : null}
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
           {plans.map((plan) => (
-            <div key={plan.id} className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-white">{plan.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-400">{plan.description}</p>
+            <div key={plan.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-start justify-between gap-2.5">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900">{plan.title}</h3>
+                    <p className="mt-1 text-[11px] text-slate-500 leading-normal">{plan.description}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-semibold text-slate-600">{plan.status}</span>
+                  </div>
                 </div>
-                <div className="flex flex-col items-end gap-2">
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200">{plan.status}</span>
-                  <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-100">Available after free usage</span>
+
+                <div className="mt-3 flex items-center justify-between gap-2.5 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                  <span className="text-slate-400 font-medium">LKR</span>
+                  <span className="text-sm font-semibold text-slate-950">{Number(plan.price).toLocaleString()}</span>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {(plan.privileges || []).map((privilegeKey) => {
+                    const privilegeLabel = privilegeOptions.find((item) => item.key === privilegeKey)?.label || privilegeKey;
+                    return (
+                      <span key={privilegeKey} className="rounded-full border border-emerald-150 bg-emerald-50 px-2 py-0.5 text-[9px] font-medium text-emerald-700">
+                        {privilegeLabel}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
-                <span className="text-slate-400">LKR</span>
-                <span className="text-lg font-semibold text-white">{Number(plan.price).toLocaleString()}</span>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {(plan.privileges || []).map((privilegeKey) => {
-                  const privilegeLabel = privilegeOptions.find((item) => item.key === privilegeKey)?.label || privilegeKey;
-                  return (
-                    <span key={privilegeKey} className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-100">
-                      {privilegeLabel}
-                    </span>
-                  );
-                })}
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
-                <span>{plan.billing}</span>
-                <div className="flex flex-wrap gap-2">
+              <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+                <span className="font-medium">{plan.billing}</span>
+                <div className="flex flex-wrap gap-1.5">
                   <button
                     type="button"
                     onClick={() => handleEdit(plan)}
-                    className="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200"
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-50"
                   >
-                    <Edit3 size={14} />
+                    <Edit3 size={11} />
                     Edit
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDelete(plan.id)}
-                    className="inline-flex items-center gap-2 rounded-full bg-red-500/15 px-3 py-2 text-xs font-semibold text-red-200 ring-1 ring-red-300/15"
+                    className="inline-flex items-center gap-1 rounded-full bg-red-50 border border-red-200/50 px-2.5 py-1 text-[10px] font-semibold text-red-700 hover:bg-red-100"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={11} />
                     Delete
                   </button>
                 </div>
@@ -366,12 +369,12 @@ export default function AdminPricingPlans() {
         </div>
 
         {!loading && plans.length === 0 ? (
-          <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-5 text-sm leading-7 text-slate-300">
+          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed text-slate-500">
             No pricing plans added yet. Users stay on free access until you add one here.
           </div>
         ) : null}
 
-        <div className="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-5 text-sm leading-7 text-emerald-50">
+        <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-55 p-4 text-xs leading-relaxed text-emerald-800">
           These are system pricing plans sold to users. Leave this list empty to keep everyone on the free plan during the launch period.
         </div>
       </section>

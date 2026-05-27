@@ -11,41 +11,43 @@ export default function AdminWorkers() {
 
   return (
     <AdminLayout>
-      <section className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/30 backdrop-blur-xl sm:p-8">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-400/10 text-emerald-300 ring-1 ring-emerald-300/15"><ShieldCheck size={22} /></div>
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="mb-4 flex items-center gap-2.5">
+          <div className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100/50">
+            <ShieldCheck size={18} />
+          </div>
           <div>
-            <h2 className="text-2xl font-bold text-white">Monitor Workers</h2>
-            <p className="text-sm text-slate-400">Approve, suspend, or remove worker accounts.</p>
+            <h2 className="text-sm font-bold text-slate-900">Monitor Workers</h2>
+            <p className="text-xs text-slate-500">Approve, suspend, or remove worker accounts.</p>
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-white/10">
-          <div className="grid gap-4 bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 sm:grid-cols-[1.2fr_1fr_1fr_1fr] sm:px-6">
+        <div className="overflow-hidden rounded-lg border border-slate-200">
+          <div className="grid gap-4 bg-slate-50 border-b border-slate-200 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 sm:grid-cols-[1.2fr_1fr_1fr_1fr] sm:px-6">
             <span>Name</span><span>Category</span><span>City</span><span>Actions</span>
           </div>
 
-          <div className="divide-y divide-white/10 bg-slate-950/60">
+          <div className="divide-y divide-slate-100 bg-white">
             {workers.length > 0 ? (
               workers.map((worker) => (
-                <div key={worker.id} className="grid gap-4 px-4 py-4 sm:grid-cols-[1.2fr_1fr_1fr_1fr] sm:px-6">
+                <div key={worker.id} className="grid gap-4 px-4 py-3 sm:grid-cols-[1.2fr_1fr_1fr_1fr] sm:px-6">
                   <div>
-                    <p className="font-semibold text-white">{worker.name}</p>
-                    <p className="mt-1 text-sm text-slate-400">{worker.verification}</p>
+                    <p className="font-semibold text-xs text-slate-900">{worker.name}</p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">{worker.verification}</p>
                   </div>
-                  <div className="text-sm text-slate-300">{worker.category}</div>
-                  <div className="text-sm text-slate-300">{worker.city}</div>
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => updateWorker(worker.id, 'active', 'Verified')} className="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-300/15"><CheckCircle2 size={14} /> Approve</button>
-                    <button type="button" onClick={() => updateWorker(worker.id, 'review', 'Pending verification')} className="inline-flex items-center gap-2 rounded-full bg-amber-500/15 px-3 py-2 text-xs font-semibold text-amber-200 ring-1 ring-amber-300/15"><PauseCircle size={14} /> Hold</button>
-                    <button type="button" onClick={() => updateWorker(worker.id, 'removed', 'Removed by admin')} className="inline-flex items-center gap-2 rounded-full bg-red-500/15 px-3 py-2 text-xs font-semibold text-red-200 ring-1 ring-red-300/15"><Trash2 size={14} /> Remove</button>
+                  <div className="text-xs text-slate-600 self-center">{worker.category}</div>
+                  <div className="text-xs text-slate-600 self-center">{worker.city}</div>
+                  <div className="flex flex-wrap gap-1.5 self-center">
+                    <button type="button" onClick={() => updateWorker(worker.id, 'active', 'Verified')} className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/50 px-2.5 py-1 text-xs font-semibold text-emerald-700"><CheckCircle2 size={12} /> Approve</button>
+                    <button type="button" onClick={() => updateWorker(worker.id, 'review', 'Pending verification')} className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 hover:bg-amber-100 border border-amber-200/50 px-2.5 py-1 text-xs font-semibold text-amber-700"><PauseCircle size={12} /> Hold</button>
+                    <button type="button" onClick={() => updateWorker(worker.id, 'removed', 'Removed by admin')} className="inline-flex items-center gap-1.5 rounded-full bg-red-50 hover:bg-red-100 border border-red-200/50 px-2.5 py-1 text-xs font-semibold text-red-700"><Trash2 size={12} /> Remove</button>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="px-4 py-10 text-center sm:px-6">
-                <p className="text-sm font-semibold text-white">No live worker data connected.</p>
-                <p className="mt-2 text-sm text-slate-400">Connect the worker API to show real moderation records here.</p>
+              <div className="px-4 py-8 text-center sm:px-6">
+                <p className="text-xs font-semibold text-slate-800">No live worker data connected.</p>
+                <p className="mt-1 text-xs text-slate-500">Connect the worker API to show real moderation records here.</p>
               </div>
             )}
           </div>
