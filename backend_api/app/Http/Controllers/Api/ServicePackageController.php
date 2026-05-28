@@ -94,6 +94,7 @@ class ServicePackageController extends Controller
             'price' => ['required', 'numeric', 'min:0'],
             'duration_minutes' => ['nullable', 'integer', 'min:15'],
             'location_type' => ['nullable', 'string', 'max:50'],
+            'image_url' => ['nullable', 'string', 'max:2048'],
         ]);
 
         $servicePackage = ServicePackage::create([
@@ -105,6 +106,7 @@ class ServicePackageController extends Controller
             'price' => $validated['price'],
             'duration_minutes' => $validated['duration_minutes'] ?? null,
             'location_type' => $validated['location_type'] ?? 'onsite',
+            'image_url' => $validated['image_url'] ?? null,
             'is_active' => true,
         ]);
 
@@ -127,6 +129,7 @@ class ServicePackageController extends Controller
             'price' => ['sometimes', 'numeric', 'min:0'],
             'duration_minutes' => ['sometimes', 'nullable', 'integer', 'min:15'],
             'location_type' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'image_url' => ['sometimes', 'nullable', 'string', 'max:2048'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 

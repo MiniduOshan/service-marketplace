@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLanguage from '../../hooks/useLanguage';
 import {
@@ -13,7 +13,9 @@ import {
   User,
   Wrench,
   X,
+  Check,
 } from 'lucide-react';
+import { apiRequest } from '../../lib/api';
 
 const initialCustomerNotifications = [];
 
@@ -153,9 +155,48 @@ export default function CustomerNavbar({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [notificationExpanded, setNotificationExpanded] = useState(false);
-  const [notifications, setNotifications] = useState(
-    initialCustomerNotifications
-  );
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    const fetchNotifications = () => {
+      apiRequest('/auth/notifications')
+        .then((res) => {
+          const list = res.data || res;
+          if (Array.isArray(list)) {
+            setNotifications(list.map(n => {
+              let Icon = CalendarCheck;
+              let iconClassName = 'bg-blue-50 text-blue-700';
+              if (n.title.toLowerCase().includes('message') || n.type === 'message') {
+                Icon = MessageSquare;
+                iconClassName = 'bg-emerald-50 text-emerald-700';
+              } else if (n.title.toLowerCase().includes('cancel')) {
+                Icon = X;
+                iconClassName = 'bg-red-50 text-red-700';
+              } else if (n.title.toLowerCase().includes('complete')) {
+                Icon = Check;
+                iconClassName = 'bg-emerald-50 text-emerald-700';
+              }
+              
+              return {
+                id: n.id,
+                group: n.type === 'booking' ? 'Bookings' : 'System',
+                title: n.title,
+                message: n.message,
+                unread: !!n.unread,
+                time: new Date(n.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+                icon: Icon,
+                iconClassName: iconClassName
+              };
+            }));
+          }
+        })
+        .catch(err => console.error(err));
+    };
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -179,17 +220,22 @@ export default function CustomerNavbar({
   };
 
   function closeNotifications() {
+    setMobileMenuOpen(false);
     setNotificationOpen(false);
     setNotificationExpanded(false);
   }
 
   function markAllAsRead() {
-    setNotifications((current) =>
-      current.map((notification) => ({
-        ...notification,
-        unread: false,
-      }))
-    );
+    apiRequest('/auth/notifications/mark-read', { method: 'POST' })
+      .then(() => {
+        setNotifications((current) =>
+          current.map((notification) => ({
+            ...notification,
+            unread: false,
+          }))
+        );
+      })
+      .catch(err => console.error(err));
   }
 
   function toggleNotifications() {

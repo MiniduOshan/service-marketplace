@@ -34,6 +34,8 @@ import BookingPayment from './pages/booking/BookingPayment';
 import CancelBooking from './pages/booking/CancelBooking';
 import CustomerBookings from './pages/booking/CustomerBookings';
 
+import ProtectedRoute from './components/auth/ProtectedRoute';
+
 function App() {
   return (
     <Router>
@@ -53,31 +55,171 @@ function App() {
           <Route path="/cancel-booking/:id" element={<CancelBooking />} />
 
           {/* Customer Routes */}
-          <Route path="/customer/profile" element={<CustomerProfile />} />
-          <Route path="/customer/dashboard" element={<CustomerDashboard />} />
+          <Route
+            path="/customer/profile"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <CustomerProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <CustomerDashboard />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Admin Routes */}
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="/admin/dashboard" element={<AdminOverview />} />
-          <Route path="/admin/workers" element={<AdminWorkers />} />
-          <Route path="/admin/customers" element={<AdminCustomers />} />
-          <Route path="/admin/privileges" element={<AdminPrivileges />} />
-          <Route path="/admin/pricing-plans" element={<AdminPricingPlans />} />
-          <Route path="/admin/user-plans" element={<AdminUserPlans />} />
-          <Route path="/admin/credentials" element={<AdminCredentials />} />
-          <Route path="/admin/notifications" element={<AdminNotifications />} />
-          <Route path="/admin/system" element={<AdminSystemHealth />} />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminOverview />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/workers"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminWorkers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/customers"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminCustomers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/privileges"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminPrivileges />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/pricing-plans"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminPricingPlans />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/user-plans"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminUserPlans />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/credentials"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminCredentials />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/notifications"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminNotifications />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/system"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminSystemHealth />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Worker Routes */}
-          <Route path="/worker/register" element={<WorkerRegistration />} />
-          <Route path="/worker/dashboard" element={<WorkerDashboard />} />
-          <Route path="/worker/jobs" element={<WorkerJobs />} />
-          <Route path="/worker/earnings" element={<WorkerEarnings />} />
-          <Route path="/worker/messages" element={<WorkerMessages />} />
-          <Route path="/worker/profile" element={<WorkerProfile />} />
-          <Route path="/worker/reviews" element={<WorkerReviews />} />
-          <Route path="/worker/subscription" element={<WorkerSubscription />} />
-          <Route path="/worker/services" element={<WorkerServices />} />
+          <Route
+            path="/worker/register"
+            element={
+              <ProtectedRoute allowedRoles={['worker']}>
+                <WorkerRegistration />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/worker/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['worker']}>
+                <WorkerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/worker/jobs"
+            element={
+              <ProtectedRoute allowedRoles={['worker']}>
+                <WorkerJobs />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/worker/earnings"
+            element={
+              <ProtectedRoute allowedRoles={['worker']}>
+                <WorkerEarnings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/worker/messages"
+            element={
+              <ProtectedRoute allowedRoles={['worker']}>
+                <WorkerMessages />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/worker/profile"
+            element={
+              <ProtectedRoute allowedRoles={['worker']}>
+                <WorkerProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/worker/reviews"
+            element={
+              <ProtectedRoute allowedRoles={['worker']}>
+                <WorkerReviews />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/worker/subscription"
+            element={
+              <ProtectedRoute allowedRoles={['worker']}>
+                <WorkerSubscription />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/worker/services"
+            element={
+              <ProtectedRoute allowedRoles={['worker']}>
+                <WorkerServices />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Auth routes render the landing page behind the popup */}
           <Route path="/login" element={<LandingPage />} />

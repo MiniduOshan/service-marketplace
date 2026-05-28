@@ -42,6 +42,8 @@ class BookingController extends Controller
             'scheduled_at' => ['required', 'date', 'after:now'],
             'address' => ['required', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
+            'payment_option' => ['nullable', 'string', 'in:advance,full,after'],
+            'advance_paid' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $servicePackage = ServicePackage::query()->whereKey($validated['service_package_id'])->firstOrFail();
@@ -55,6 +57,17 @@ class BookingController extends Controller
             'notes' => isset($validated['notes']) ? strip_tags($validated['notes']) : null,
             'total_price' => $servicePackage->price,
             'status' => 'pending',
+            'payment_option' => $validated['payment_option'] ?? 'after',
+            'advance_paid' => $validated['advance_paid'] ?? 0.00,
+            'payout_status' => 'pending',
+        ]);
+
+        \App\Models\Notification::create([
+            'user_id' => $booking->worker_id,
+            'title' => 'New Booking Request',
+            'message' => "You have a new booking request from {$user->name} for {$servicePackage->title}.",
+            'type' => 'booking',
+            'related_id' => $booking->id,
         ]);
 
         return response()->json([
@@ -73,6 +86,15 @@ class BookingController extends Controller
             'status' => 'cancelled',
         ]);
 
+        $recipientId = ($user->id === $booking->customer_id) ? $booking->worker_id : $booking->customer_id;
+        \App\Models\Notification::create([
+            'user_id' => $recipientId,
+            'title' => 'Booking Cancelled',
+            'message' => "Booking #{$booking->id} has been cancelled by {$user->name}.",
+            'type' => 'booking',
+            'related_id' => $booking->id,
+        ]);
+
         return response()->json([
             'message' => 'Booking cancelled successfully.',
             'data' => $booking->fresh()->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
@@ -89,6 +111,14 @@ class BookingController extends Controller
             'status' => 'confirmed',
         ]);
 
+        \App\Models\Notification::create([
+            'user_id' => $booking->customer_id,
+            'title' => 'Booking Confirmed',
+            'message' => "Your booking request for {$booking->servicePackage->title} has been accepted by {$user->name}.",
+            'type' => 'booking',
+            'related_id' => $booking->id,
+        ]);
+
         return response()->json([
             'message' => 'Booking accepted successfully.',
             'data' => $booking->fresh()->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
@@ -101,7 +131,7 @@ class BookingController extends Controller
 
         abort_unless($user && $user->id === $booking->worker_id, 403, 'Only the assigned worker can mark this booking as completed.');
 
-        DB::transaction(function () use ($booking): void {
+        DB::transaction(function () use ($booking, $user): void {
             $booking->update([
                 'status' => 'completed',
             ]);
@@ -111,10 +141,34 @@ class BookingController extends Controller
                 'balance' => 0.00,
             ]);
             $wallet->increment('balance', $booking->total_price);
+
+            \App\Models\Notification::create([
+                'user_id' => $booking->customer_id,
+                'title' => 'Booking Completed',
+                'message' => "Your service for {$booking->servicePackage->title} has been marked as completed by {$user->name}.",
+                'type' => 'booking',
+                'related_id' => $booking->id,
+            ]);
         });
 
         return response()->json([
             'message' => 'Booking completed successfully.',
+            'data' => $booking->fresh()->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
+        ]);
+    }
+
+    public function settle(Request $request, Booking $booking): JsonResponse
+    {
+        $user = $request->user();
+
+        abort_unless($user && ($user->id === $booking->worker_id || $user->role === 'admin'), 403, 'Unauthorized.');
+
+        $booking->update([
+            'payout_status' => 'settled',
+        ]);
+
+        return response()->json([
+            'message' => 'Payout settled successfully.',
             'data' => $booking->fresh()->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
         ]);
     }

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ServiceCategoryController;
 use App\Http\Controllers\Api\ServicePackageController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\ReviewController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Middleware\AuthenticateApiToken;
 use App\Http\Middleware\EnsureUserRole;
 use Illuminate\Support\Facades\Route;
@@ -47,27 +48,13 @@ Route::middleware('throttle:api')->group(function () {
             Route::patch('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
             Route::patch('/bookings/{booking}/accept', [BookingController::class, 'accept']);
             Route::patch('/bookings/{booking}/complete', [BookingController::class, 'complete']);
+            Route::patch('/bookings/{booking}/settle', [BookingController::class, 'settle']);
             Route::get('/bookings/{booking}/messages', [BookingMessageController::class, 'index']);
             Route::post('/bookings/{booking}/messages', [BookingMessageController::class, 'store']);
             Route::post('/bookings/{booking}/reviews', [ReviewController::class, 'store']);
-
-            Route::middleware(EnsureUserRole::class.':admin')->group(function () {
-                Route::get('/admin/pricing-plans', [PricingPlanController::class, 'index']);
-                Route::post('/admin/pricing-plans', [PricingPlanController::class, 'store']);
-                Route::patch('/admin/pricing-plans/{pricingPlan}', [PricingPlanController::class, 'update']);
-                Route::delete('/admin/pricing-plans/{pricingPlan}', [PricingPlanController::class, 'destroy']);
-                
-                Route::get('/admin/workers', [AdminController::class, 'workers']);
-                Route::patch('/admin/workers/{id}', [AdminController::class, 'updateWorker']);
-                Route::get('/admin/customers', [AdminController::class, 'customers']);
-                Route::patch('/admin/customers/{id}', [AdminController::class, 'updateCustomer']);
-                Route::get('/admin/privileges', [AdminController::class, 'privileges']);
-                Route::post('/admin/privileges/{key}/toggle', [AdminController::class, 'togglePrivilege']);
-                Route::get('/admin/system/health', [AdminController::class, 'systemHealth']);
-                Route::post('/admin/notifications/send', [AdminController::class, 'sendNotification']);
-                Route::post('/admin/credentials', [AdminController::class, 'saveCredentials']);
-                Route::patch('/admin/users/{id}/pricing-plan', [AdminController::class, 'assignPricingPlan']);
-            });
+            
+            Route::get('/notifications', [NotificationController::class, 'index']);
+            Route::post('/notifications/mark-read', [NotificationController::class, 'markAllRead']);
 
             Route::middleware(EnsureUserRole::class.':worker')->group(function () {
                 Route::get('/worker/services', [ServicePackageController::class, 'workerServices']);
@@ -75,6 +62,26 @@ Route::middleware('throttle:api')->group(function () {
                 Route::post('/worker/services', [ServicePackageController::class, 'store']);
                 Route::patch('/worker/services/{servicePackage}', [ServicePackageController::class, 'update']);
             });
+        });
+    });
+
+    Route::middleware(AuthenticateApiToken::class)->group(function () {
+        Route::middleware(EnsureUserRole::class.':admin')->group(function () {
+            Route::get('/admin/pricing-plans', [PricingPlanController::class, 'index']);
+            Route::post('/admin/pricing-plans', [PricingPlanController::class, 'store']);
+            Route::patch('/admin/pricing-plans/{pricingPlan}', [PricingPlanController::class, 'update']);
+            Route::delete('/admin/pricing-plans/{pricingPlan}', [PricingPlanController::class, 'destroy']);
+            
+            Route::get('/admin/workers', [AdminController::class, 'workers']);
+            Route::patch('/admin/workers/{id}', [AdminController::class, 'updateWorker']);
+            Route::get('/admin/customers', [AdminController::class, 'customers']);
+            Route::patch('/admin/customers/{id}', [AdminController::class, 'updateCustomer']);
+            Route::get('/admin/privileges', [AdminController::class, 'privileges']);
+            Route::post('/admin/privileges/{key}/toggle', [AdminController::class, 'togglePrivilege']);
+            Route::get('/admin/system/health', [AdminController::class, 'systemHealth']);
+            Route::post('/admin/notifications/send', [AdminController::class, 'sendNotification']);
+            Route::post('/admin/credentials', [AdminController::class, 'saveCredentials']);
+            Route::patch('/admin/users/{id}/pricing-plan', [AdminController::class, 'assignPricingPlan']);
         });
     });
 });
