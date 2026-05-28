@@ -14,12 +14,14 @@ import {
   MessagesSquare,
   Settings,
   Star,
+  Wrench,
 } from 'lucide-react';
 import CustomerFooter from './CustomerFooter';
 
 const sidebarItems = [
   { name: 'Dashboard', icon: LayoutGrid, path: '/worker/dashboard' },
   { name: 'My Jobs', icon: BriefcaseBusiness, path: '/worker/jobs' },
+  { name: 'My Services', icon: Wrench, path: '/worker/services' },
   { name: 'Earnings', icon: CircleDollarSign, path: '/worker/earnings' },
   { name: 'Messages', icon: MessagesSquare, path: '/worker/messages' },
   { name: 'Subscription', icon: Settings, path: '/worker/subscription' },

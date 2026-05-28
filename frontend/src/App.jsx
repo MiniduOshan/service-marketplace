@@ -22,8 +22,9 @@ import WorkerEarnings from './pages/worker/WorkerEarnings';
 import WorkerMessages from './pages/worker/WorkerMessages';
 import WorkerProfile from './pages/worker/WorkerProfile';
 import WorkerPublicProfile from './pages/worker/WorkerPublicProfile';
-import WorkerReviews from './pages/worker/WorkerReviews';
 import WorkerSubscription from './pages/worker/WorkerSubscription';
+import WorkerServices from './pages/worker/WorkerServices';
+import WorkerReviews from './pages/worker/WorkerReviews';
 import WorkerRegistration from './pages/auth/WorkerRegistration';
 
 import ChatPage from './pages/chat/ChatPage';
@@ -76,6 +77,7 @@ function App() {
           <Route path="/worker/profile" element={<WorkerProfile />} />
           <Route path="/worker/reviews" element={<WorkerReviews />} />
           <Route path="/worker/subscription" element={<WorkerSubscription />} />
+          <Route path="/worker/services" element={<WorkerServices />} />
 
           {/* Auth routes render the landing page behind the popup */}
           <Route path="/login" element={<LandingPage />} />

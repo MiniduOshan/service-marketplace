@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
@@ -19,9 +19,10 @@ import {
   UploadCloud,
   User,
   X,
+  Pencil,
 } from 'lucide-react';
 import CustomerFooter from '../../components/layout/CustomerFooter';
-import { getStoredSessionUser } from '../../lib/api';
+import { getStoredSessionUser, apiRequest } from '../../lib/api';
 
 const serviceCategories = [
   'Painting',
@@ -737,25 +738,149 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
   const [agreedTerms, setAgreedTerms] = useState(isEditMode);
   const [authenticDocs, setAuthenticDocs] = useState(isEditMode);
   const [customPackages, setCustomPackages] = useState([]);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newPkgName, setNewPkgName] = useState('');
+  const [newPkgPrice, setNewPkgPrice] = useState('');
+  const [newPkgDesc, setNewPkgDesc] = useState('');
 
-  function addCustomPackage() {
-    const name = prompt("Enter package name:");
-    if (!name) return;
-    const price = prompt("Enter package price (e.g. LKR 10,000):");
-    if (!price) return;
-    const description = prompt("Enter package description:");
-    if (!description) return;
+  // Editing state variables
+  const [editingPkgId, setEditingPkgId] = useState(null);
+  const [editPkgName, setEditPkgName] = useState('');
+  const [editPkgPrice, setEditPkgPrice] = useState('');
+  const [editPkgDesc, setEditPkgDesc] = useState('');
 
-    setCustomPackages((current) => [
-      ...current,
-      {
-        id: Date.now(),
-        title: name,
-        price: price,
-        description: description,
-        active: true,
-      },
-    ]);
+  // Load existing packages if in Edit Mode
+  useEffect(() => {
+    if (isEditMode) {
+      apiRequest('/auth/worker/services')
+        .then((res) => {
+          const pkgs = res.data || res;
+          if (Array.isArray(pkgs)) {
+            setCustomPackages(pkgs.map(p => ({
+              id: p.id,
+              title: p.title,
+              price: `LKR ${parseFloat(p.price).toLocaleString()}`,
+              description: p.description,
+              active: !!p.is_active,
+            })));
+          }
+        })
+        .catch(err => console.error("Failed to load packages", err));
+    }
+  }, [isEditMode]);
+
+  async function saveCustomPackage() {
+    const name = newPkgName.trim();
+    const rawPrice = newPkgPrice.replace(/[^0-9.]/g, '');
+    const priceVal = parseFloat(rawPrice);
+    const description = newPkgDesc.trim();
+
+    if (!name || isNaN(priceVal) || !description) return;
+
+    if (isEditMode) {
+      try {
+        const currentUser = getStoredSessionUser();
+        const res = await apiRequest('/auth/worker/services', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: name,
+            price: priceVal,
+            description: description,
+            service_category_id: currentUser?.primary_service_category_id || 1,
+            duration_minutes: 60,
+            location_type: 'onsite'
+          })
+        });
+        const newPkg = res.data || res;
+        setCustomPackages((current) => [
+          ...current,
+          {
+            id: newPkg.id,
+            title: newPkg.title,
+            price: `LKR ${parseFloat(newPkg.price).toLocaleString()}`,
+            description: newPkg.description,
+            active: !!newPkg.is_active,
+          },
+        ]);
+      } catch (err) {
+        alert(err.message || 'Failed to save package.');
+        return;
+      }
+    } else {
+      setCustomPackages((current) => [
+        ...current,
+        {
+          id: Date.now(),
+          title: name,
+          price: `LKR ${priceVal.toLocaleString()}`,
+          description: description,
+          active: true,
+        },
+      ]);
+    }
+
+    // Reset input fields and close form
+    setNewPkgName('');
+    setNewPkgPrice('');
+    setNewPkgDesc('');
+    setIsAdding(false);
+  }
+
+  async function removeCustomPackage(id) {
+    if (isEditMode) {
+      try {
+        // Toggle is_active to false in backend instead of deleting
+        await apiRequest(`/auth/worker/services/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ is_active: false })
+        });
+      } catch (err) {
+        alert(err.message || 'Failed to remove package.');
+        return;
+      }
+    }
+    setCustomPackages((current) => current.filter((pkg) => pkg.id !== id));
+  }
+
+  function startEditing(pkg) {
+    setEditingPkgId(pkg.id);
+    setEditPkgName(pkg.title);
+    setEditPkgPrice(pkg.price);
+    setEditPkgDesc(pkg.description);
+  }
+
+  async function saveEditedPackage() {
+    const name = editPkgName.trim();
+    const rawPrice = editPkgPrice.replace(/[^0-9.]/g, '');
+    const priceVal = parseFloat(rawPrice);
+    const description = editPkgDesc.trim();
+
+    if (!name || isNaN(priceVal) || !description) return;
+
+    if (isEditMode) {
+      try {
+        await apiRequest(`/auth/worker/services/${editingPkgId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            title: name,
+            price: priceVal,
+            description: description
+          })
+        });
+      } catch (err) {
+        alert(err.message || 'Failed to save edits.');
+        return;
+      }
+    }
+
+    setCustomPackages((current) =>
+      current.map((pkg) =>
+        pkg.id === editingPkgId
+          ? { ...pkg, title: name, price: `LKR ${priceVal.toLocaleString()}`, description: description }
+          : pkg
+      )
+    );
+    setEditingPkgId(null);
   }
 
   return (
@@ -791,21 +916,163 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
             </div>
           </div>
 
-          <div className="rounded-xl border border-emerald-900/20 bg-white p-6 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
-              Add package
-            </p>
+          {/* Render added custom packages */}
+          {customPackages.map((pkg) => {
+            const isEditing = editingPkgId === pkg.id;
 
-            <button
-              type="button"
-              onClick={addCustomPackage}
-              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-700 px-5 py-3 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
-            >
-              <Plus size={18} />
-              More packages
-            </button>
-          </div>
+            if (isEditing) {
+              return (
+                <div key={pkg.id} className="rounded-xl border border-emerald-600 bg-white p-6 shadow-sm">
+                  <h3 className="text-lg font-bold text-slate-950 mb-4">Edit Custom Package</h3>
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <Field label="Package Name">
+                      <Input 
+                        value={editPkgName} 
+                        onChange={(e) => setEditPkgName(e.target.value)} 
+                        placeholder="e.g. Premium Full House Painting" 
+                      />
+                    </Field>
+
+                    <Field label="Price">
+                      <Input 
+                        value={editPkgPrice} 
+                        onChange={(e) => setEditPkgPrice(e.target.value)} 
+                        placeholder="e.g. LKR 45,000" 
+                      />
+                    </Field>
+
+                    <div className="sm:col-span-2">
+                      <Field label="Description">
+                        <TextArea 
+                          value={editPkgDesc} 
+                          onChange={(e) => setEditPkgDesc(e.target.value)} 
+                          placeholder="Describe what services and benefits are included in this package..." 
+                        />
+                      </Field>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 flex gap-3 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setEditingPkgId(null)}
+                      className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={saveEditedPackage}
+                      disabled={!editPkgName.trim() || !editPkgPrice.trim() || !editPkgDesc.trim()}
+                      className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div key={pkg.id} className="relative rounded-xl border border-emerald-600 bg-emerald-50/50 p-6 shadow-sm">
+                <div className="absolute right-4 top-4 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => startEditing(pkg)}
+                    className="text-slate-400 hover:text-emerald-700 transition"
+                    aria-label="Edit package"
+                  >
+                    <Pencil size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeCustomPackage(pkg.id)}
+                    className="text-slate-400 hover:text-red-600 transition"
+                    aria-label="Remove package"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="flex justify-between items-start">
+                  <h3 className="font-bold text-slate-950 text-lg mr-14">{pkg.title}</h3>
+                  <span className="text-xl font-extrabold text-emerald-700 mr-8">{pkg.price}</span>
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600 max-w-[90%]">{pkg.description}</p>
+              </div>
+            );
+          })}
+
+
+          {/* Inline Form to add a new custom package */}
+          {isAdding && (
+            <div className="rounded-xl border border-dashed border-emerald-700 bg-emerald-50/30 p-6 shadow-sm animate-fadeIn">
+              <h3 className="text-lg font-bold text-slate-950 mb-4">New Custom Package</h3>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="Package Name">
+                  <Input 
+                    value={newPkgName} 
+                    onChange={(e) => setNewPkgName(e.target.value)} 
+                    placeholder="e.g. Premium Full House Painting" 
+                  />
+                </Field>
+
+                <Field label="Price">
+                  <Input 
+                    value={newPkgPrice} 
+                    onChange={(e) => setNewPkgPrice(e.target.value)} 
+                    placeholder="e.g. LKR 45,000" 
+                  />
+                </Field>
+
+                <div className="sm:col-span-2">
+                  <Field label="Description">
+                    <TextArea 
+                      value={newPkgDesc} 
+                      onChange={(e) => setNewPkgDesc(e.target.value)} 
+                      placeholder="Describe what services and benefits are included in this package..." 
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="mt-5 flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsAdding(false)}
+                  className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveCustomPackage}
+                  disabled={!newPkgName.trim() || !newPkgPrice.trim() || !newPkgDesc.trim()}
+                  className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Save Package
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!isAdding && (
+            <div className="rounded-xl border border-emerald-900/20 bg-white p-6 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
+                Add package
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setIsAdding(true)}
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-700 px-5 py-3 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
+              >
+                <Plus size={18} />
+                More packages
+              </button>
+            </div>
+          )}
         </section>
+
 
         <aside className="space-y-6">
           <div className="rounded-xl border border-emerald-900/20 bg-white p-6 shadow-sm">
