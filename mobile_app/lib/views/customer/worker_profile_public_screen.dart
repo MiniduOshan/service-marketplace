@@ -13,6 +13,7 @@ class WorkerProfilePublicScreen extends StatefulWidget {
 class _WorkerProfilePublicScreenState extends State<WorkerProfilePublicScreen> {
   static const Color primaryGreen = Color(0xFF006D44);
   List<Map<String, dynamic>> _services = [];
+  List<Map<String, dynamic>> _reviews = [];
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -20,11 +21,11 @@ class _WorkerProfilePublicScreenState extends State<WorkerProfilePublicScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchServices();
+      _fetchData();
     });
   }
 
-  Future<void> _fetchServices() async {
+  Future<void> _fetchData() async {
     final worker = ModalRoute.of(context)!.settings.arguments as Worker?;
     if (worker == null) {
       setState(() => _isLoading = false);
@@ -33,9 +34,11 @@ class _WorkerProfilePublicScreenState extends State<WorkerProfilePublicScreen> {
 
     try {
       final services = await ApiClient.instance.getServices(workerId: worker.id);
+      final reviews = await ApiClient.instance.getWorkerReviews(worker.id);
       if (mounted) {
         setState(() {
           _services = services;
+          _reviews = reviews;
           _isLoading = false;
         });
       }
@@ -286,15 +289,83 @@ class _WorkerProfilePublicScreenState extends State<WorkerProfilePublicScreen> {
   Widget _buildReviews(Worker worker) {
     return Padding(
       padding: const EdgeInsets.all(20),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text("Ratings & Reviews", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 10),
-        Row(children: [
-          Text("${worker.rating}", style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 20),
-          Expanded(child: Text("⭐⭐⭐⭐⭐\n${worker.reviewCount} reviews")),
-        ]),
-      ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Ratings & Reviews", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Text(
+                worker.rating.toStringAsFixed(1),
+                style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: List.generate(5, (index) => Icon(
+                        index < worker.rating.round() ? Icons.star : Icons.star_border,
+                        color: Colors.amber,
+                        size: 20,
+                      )),
+                    ),
+                    const SizedBox(height: 4),
+                    Text("${worker.reviewCount} reviews"),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (_reviews.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Divider(),
+            const SizedBox(height: 10),
+            const Text("Latest Reviews", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 12),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _reviews.length,
+              separatorBuilder: (context, index) => const Divider(height: 24),
+              itemBuilder: (context, index) {
+                final r = _reviews[index];
+                final rating = r['rating'] as int? ?? 5;
+                final comment = r['comment']?.toString() ?? '';
+                final customerName = r['customer']?['name']?.toString() ?? 'Customer';
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(customerName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Row(
+                          children: List.generate(5, (starIdx) => Icon(
+                            starIdx < rating ? Icons.star : Icons.star_border,
+                            color: Colors.amber,
+                            size: 14,
+                          )),
+                        ),
+                      ],
+                    ),
+                    if (comment.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        comment,
+                        style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
+          ],
+        ],
+      ),
     );
   }
 

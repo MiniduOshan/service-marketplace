@@ -1,18 +1,31 @@
 import React, { useState } from 'react';
 import { ArrowUpRight, Mail, MessageCircle, Smartphone } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminLayout';
+import { apiRequest } from '../../lib/api';
 
 export default function AdminNotifications() {
   const [form, setForm] = useState({ channel: 'sms', audience: 'all', subject: '', message: '' });
   const [statusMessage, setStatusMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const sendNotification = (event) => {
+  const sendNotification = async (event) => {
     event.preventDefault();
     if (!form.message.trim()) {
       setStatusMessage('Notification message cannot be empty.');
       return;
     }
-    setStatusMessage(`${form.channel.toUpperCase()} notification prepared for ${form.audience}.`);
+    setErrorMessage('');
+    setStatusMessage('');
+    try {
+      const response = await apiRequest('/admin/notifications/send', {
+        method: 'POST',
+        body: JSON.stringify(form),
+      });
+      setStatusMessage(response.message || 'Notification sent successfully.');
+      setForm({ channel: 'sms', audience: 'all', subject: '', message: '' });
+    } catch (error) {
+      setErrorMessage(error.message || 'Failed to send notification.');
+    }
   };
 
   return (
@@ -43,6 +56,12 @@ export default function AdminNotifications() {
           <input type="text" value={form.message} onChange={(event) => setForm((current) => ({ ...current, message: event.target.value }))} placeholder="Message body" className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" />
           <button type="submit" className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-sky-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-sky-700"><MessageCircle size={14} /> Send</button>
         </form>
+
+        {errorMessage ? (
+          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            {errorMessage}
+          </div>
+        ) : null}
 
         {statusMessage ? <div className="mt-3 rounded-lg border border-emerald-250 bg-emerald-50 px-3 py-2 text-xs text-emerald-850">{statusMessage}</div> : null}
 

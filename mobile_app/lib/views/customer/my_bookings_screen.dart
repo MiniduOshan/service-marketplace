@@ -174,6 +174,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     final address = booking['address']?.toString() ?? '';
     final totalPrice = booking['total_price']?.toString() ?? '0';
 
+    final review = booking['review'] as Map<String, dynamic>?;
+    final rating = review?['rating'] as int?;
+    final comment = review?['comment']?.toString();
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -199,6 +203,45 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
           Text(scheduledAt, style: const TextStyle(color: Colors.grey)),
           const SizedBox(height: 8),
           Text(address, style: const TextStyle(color: Colors.grey)),
+          if (review != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Row(
+                        children: List.generate(5, (index) => Icon(
+                          index < (rating ?? 5) ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                          size: 16,
+                        )),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '$rating/5 Rating',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  if (comment != null && comment.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      '"$comment"',
+                      style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey.shade700, fontSize: 13),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -215,6 +258,21 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       }),
                       child: const Text('Chat', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                     ),
+                  if (status == 'completed') ...[
+                    if (review != null)
+                      const Row(
+                        children: [
+                          Icon(Icons.check_circle_outline, color: Colors.green, size: 14),
+                          SizedBox(width: 4),
+                          Text('Feedback Given', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                        ],
+                      )
+                    else
+                      TextButton(
+                        onPressed: () => _showReviewDialog(bookingId),
+                        child: const Text('Rate & Review', style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold)),
+                      ),
+                  ],
                   if (status != 'completed' && status != 'cancelled')
                     TextButton(
                       onPressed: () => _cancelBooking(bookingId),
@@ -228,6 +286,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       ),
     );
   }
+
 
   Widget _statusBadge(String status) {
     Color bg;
@@ -266,6 +325,109 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
       child: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.bold, fontSize: 12)),
+    );
+  }
+
+  Future<void> _showReviewDialog(String bookingId) async {
+    int rating = 5;
+    final commentController = TextEditingController();
+    bool submitting = false;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('Give Feedback', style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Rating', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        final starValue = index + 1;
+                        return IconButton(
+                          icon: Icon(
+                            starValue <= rating ? Icons.star : Icons.star_border,
+                            color: Colors.amber,
+                            size: 32,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              rating = starValue;
+                            });
+                          },
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Review Comment', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: commentController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: 'Tell us about your experience...',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: submitting ? null : () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryGreen,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: submitting
+                      ? null
+                      : () async {
+                          setState(() {
+                            submitting = true;
+                          });
+                          try {
+                            await ApiClient.instance.submitReview(
+                              bookingId: bookingId,
+                              rating: rating,
+                              comment: commentController.text.trim().isEmpty ? null : commentController.text.trim(),
+                              token: authController.sessionToken,
+                            );
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Feedback submitted successfully!')),
+                              );
+                            }
+                            await _loadBookings();
+                          } catch (error) {
+                            setState(() {
+                              submitting = false;
+                            });
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+                              );
+                            }
+                          }
+                        },
+                  child: Text(submitting ? 'Submitting...' : 'Submit', style: const TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

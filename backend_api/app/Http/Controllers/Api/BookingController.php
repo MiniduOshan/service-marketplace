@@ -16,7 +16,7 @@ class BookingController extends Controller
         $user = $request->user();
 
         $bookings = Booking::query()
-            ->with(['servicePackage.category', 'worker:id,name,phone', 'customer:id,name,phone'])
+            ->with(['servicePackage.category', 'worker:id,name,phone', 'customer:id,name,phone', 'review'])
             ->where(function ($query) use ($user): void {
                 $query->where('customer_id', $user->id)
                     ->orWhere('worker_id', $user->id);

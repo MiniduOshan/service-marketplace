@@ -1,8 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminLayout';
+import { apiRequest } from '../../lib/api';
 
 export default function AdminSystemHealth() {
+  const [healthData, setHealthData] = useState({
+    db_status: 'Checking...',
+    pricing_count: 0,
+    bookings_count: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadHealth() {
+      try {
+        const response = await apiRequest('/admin/system/health');
+        if (response.data) {
+          setHealthData(response.data);
+        }
+      } catch (error) {
+        setHealthData((prev) => ({
+          ...prev,
+          db_status: 'Unreachable',
+        }));
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadHealth();
+  }, []);
+
   return (
     <AdminLayout>
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
@@ -18,19 +45,21 @@ export default function AdminSystemHealth() {
 
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Chat availability</p>
-            <p className="mt-1.5 text-xs font-bold text-slate-900">Not connected</p>
-            <p className="mt-1 text-xs text-slate-500 leading-normal">Wire a live metrics source before showing service status here.</p>
+            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Database Status</p>
+            <p className="mt-1.5 text-xs font-bold text-slate-900">{healthData.db_status}</p>
+            <p className="mt-1 text-xs text-slate-500 leading-normal">
+              {healthData.db_status === 'Connected' ? 'MySQL database is working and reachable.' : 'Database connection error. Check server logs.'}
+            </p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Pricing plans</p>
-            <p className="mt-1.5 text-xs font-bold text-slate-900">Connected</p>
-            <p className="mt-1 text-xs text-slate-500 leading-normal">System pricing now persists through the API.</p>
+            <p className="mt-1.5 text-xs font-bold text-slate-900">{loading ? '...' : `${healthData.pricing_count} Active`}</p>
+            <p className="mt-1 text-xs text-slate-500 leading-normal">System plans saved and active in the database store.</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Mobile app controls</p>
-            <p className="mt-1.5 text-xs font-bold text-slate-900">No sample data</p>
-            <p className="mt-1 text-xs text-slate-500 leading-normal">The admin dashboard stays web-only but no longer shows sample status values.</p>
+            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Bookings Count</p>
+            <p className="mt-1.5 text-xs font-bold text-slate-900">{loading ? '...' : healthData.bookings_count}</p>
+            <p className="mt-1 text-xs text-slate-500 leading-normal">Total client bookings currently persisted in DB.</p>
           </div>
         </div>
       </section>

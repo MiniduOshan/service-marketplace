@@ -30,6 +30,13 @@ import {
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
 import { apiRequest, getStoredSessionUser, storeSession, clearSession } from '../../lib/api';
+import {
+  apiRequest,
+  clearSession,
+  getStoredSessionToken,
+  getStoredSessionUser,
+  storeSession,
+} from '../../lib/api';
 
 const initialAddresses = [];
 
@@ -243,7 +250,7 @@ export default function CustomerProfile() {
         const latestUser = meRes.data?.user || meRes.data || meRes;
         if (latestUser) {
           setSessionUser(latestUser);
-          storeSession(localStorage.getItem('skilledlk_token'), latestUser);
+          storeSession(getStoredSessionToken(), latestUser);
         }
       } catch (err) {
         console.error('Failed to load user info:', err);
@@ -428,7 +435,7 @@ export default function CustomerProfile() {
       const updatedUser = response?.data?.user || response?.data || response;
       if (updatedUser) {
         setSessionUser(updatedUser);
-        storeSession(localStorage.getItem('skilledlk_token'), updatedUser);
+        storeSession(getStoredSessionToken(), updatedUser);
 
         const freshForm = {
           name: updatedUser.name?.trim() || '',

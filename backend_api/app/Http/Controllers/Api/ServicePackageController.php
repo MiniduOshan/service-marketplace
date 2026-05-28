@@ -13,7 +13,14 @@ class ServicePackageController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = ServicePackage::query()
-            ->with(['category', 'worker:id,name,role,primary_service_category_id,phone_verified_at'])
+            ->with([
+                'category',
+                'worker' => function ($q) {
+                    $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at')
+                      ->withAvg('workerReviews as average_rating', 'rating')
+                      ->withCount('workerReviews as reviews_count');
+                }
+            ])
             ->where('is_active', true)
             ->latest();
 
@@ -32,7 +39,10 @@ class ServicePackageController extends Controller
 
             $query->where(function ($serviceQuery) use ($search): void {
                 $serviceQuery->where('title', 'like', '%'.$search.'%')
-                    ->orWhere('description', 'like', '%'.$search.'%');
+                    ->orWhere('description', 'like', '%'.$search.'%')
+                    ->orWhereHas('worker', function ($workerQuery) use ($search): void {
+                        $workerQuery->where('name', 'like', '%'.$search.'%');
+                    });
             });
         }
 
@@ -44,7 +54,14 @@ class ServicePackageController extends Controller
     public function show(ServicePackage $servicePackage): JsonResponse
     {
         return response()->json([
-            'data' => $servicePackage->load(['category', 'worker:id,name,role,primary_service_category_id,phone_verified_at']),
+            'data' => $servicePackage->load([
+                'category',
+                'worker' => function ($q) {
+                    $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at')
+                      ->withAvg('workerReviews as average_rating', 'rating')
+                      ->withCount('workerReviews as reviews_count');
+                }
+            ]),
         ]);
     }
 

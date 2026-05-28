@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useLanguage from '../../hooks/useLanguage';
 import {
   Bell,
   CalendarCheck,
@@ -23,6 +24,7 @@ function CustomerNotificationPanel({
   onMarkAllAsRead,
   onClose,
 }) {
+  const { t } = useLanguage();
   const visibleNotifications = expanded
     ? notifications
     : notifications.slice(0, 4);
@@ -58,7 +60,7 @@ function CustomerNotificationPanel({
         }`}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4">
-          <h2 className="text-xl font-bold text-slate-950">Notifications</h2>
+          <h2 className="text-xl font-bold text-slate-950">{t.notifications}</h2>
 
           <button
             type="button"
@@ -70,7 +72,7 @@ function CustomerNotificationPanel({
                 : 'cursor-not-allowed text-slate-300'
             }`}
           >
-            Mark all as read
+            {t.mark_all_read}
           </button>
         </div>
 
@@ -133,7 +135,7 @@ function CustomerNotificationPanel({
           onClick={onToggleExpanded}
           className="w-full shrink-0 border-t border-slate-100 px-5 py-4 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
         >
-          {expanded ? 'Show less notifications' : 'See all notifications'}
+          {expanded ? t.show_less_notif : t.see_all_notif}
         </button>
       </div>
     </>
@@ -156,6 +158,7 @@ export default function CustomerNavbar({
   );
 
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const unreadCount = useMemo(
     () => notifications.filter((notification) => notification.unread).length,
@@ -163,9 +166,9 @@ export default function CustomerNavbar({
   );
 
   const navLinks = [
-    { label: 'Home', href: '/customer/dashboard', key: 'home' },
-    { label: 'Search', href: '/search', key: 'search' },
-    { label: 'Bookings', href: '/bookings', key: 'bookings' },
+    { label: t.home, href: '/customer/dashboard', key: 'home' },
+    { label: t.search_nav, href: '/search', key: 'search' },
+    { label: t.bookings, href: '/bookings', key: 'bookings' },
   ];
 
   const goTo = (href) => {
@@ -220,7 +223,7 @@ export default function CustomerNavbar({
                   type="text"
                   value={serviceValue}
                   onChange={(e) => onServiceChange?.(e.target.value)}
-                  placeholder="What service do you need?"
+                  placeholder={t.search_hint}
                   className="w-full min-w-0 bg-transparent text-sm font-medium text-slate-700 outline-none placeholder:text-slate-400"
                 />
               </div>
@@ -231,7 +234,7 @@ export default function CustomerNavbar({
                   type="text"
                   value={locationValue}
                   onChange={(e) => onLocationChange?.(e.target.value)}
-                  placeholder="Location"
+                  placeholder={t.location}
                   className="w-full min-w-0 bg-transparent text-sm font-medium text-slate-700 outline-none placeholder:text-slate-400"
                 />
               </div>
@@ -284,7 +287,7 @@ export default function CustomerNavbar({
                   ? 'bg-emerald-50 text-emerald-700'
                   : 'text-slate-700 hover:bg-slate-100 hover:text-emerald-700'
               }`}
-              aria-label="Notifications"
+              aria-label={t.notifications}
             >
               <Bell size={22} strokeWidth={1.9} />
 
@@ -297,7 +300,7 @@ export default function CustomerNavbar({
               type="button"
               onClick={() => goTo('/chat')}
               className="cursor-pointer text-slate-700 transition hover:text-emerald-700"
-              aria-label="Messages"
+              aria-label={t.messages}
             >
               <MessageSquare size={22} strokeWidth={1.9} />
             </button>
@@ -306,7 +309,7 @@ export default function CustomerNavbar({
               type="button"
               onClick={() => goTo('/customer/profile')}
               className="flex h-10 w-10 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-emerald-700 text-white shadow-sm transition hover:bg-emerald-800"
-              aria-label="Profile"
+              aria-label={t.profile}
             >
               <User size={20} />
             </button>
@@ -316,7 +319,7 @@ export default function CustomerNavbar({
             type="button"
             className="ml-auto flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-slate-200 text-slate-700 lg:hidden"
             onClick={() => setMobileMenuOpen((prev) => !prev)}
-            aria-label="Toggle menu"
+            aria-label={t.toggle_menu}
           >
             {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
@@ -330,7 +333,7 @@ export default function CustomerNavbar({
                 type="text"
                 value={serviceValue}
                 onChange={(e) => onServiceChange?.(e.target.value)}
-                placeholder="What service do you need?"
+                placeholder={t.search_hint}
                 className="w-full bg-transparent text-sm font-medium text-slate-700 outline-none placeholder:text-slate-400"
               />
             </div>
@@ -341,7 +344,7 @@ export default function CustomerNavbar({
                 type="text"
                 value={locationValue}
                 onChange={(e) => onLocationChange?.(e.target.value)}
-                placeholder="Location"
+                placeholder={t.location}
                 className="w-full bg-transparent text-sm font-medium text-slate-700 outline-none placeholder:text-slate-400"
               />
             </div>
@@ -380,7 +383,7 @@ export default function CustomerNavbar({
                     ? 'bg-emerald-50 text-emerald-700'
                     : 'text-slate-700'
                 }`}
-                aria-label="Notifications"
+                aria-label={t.notifications}
               >
                 <Bell size={20} />
 
@@ -393,7 +396,7 @@ export default function CustomerNavbar({
                 type="button"
                 onClick={() => goTo('/chat')}
                 className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-slate-200 text-slate-700"
-                aria-label="Messages"
+                aria-label={t.messages}
               >
                 <MessageSquare size={20} />
               </button>
@@ -402,7 +405,7 @@ export default function CustomerNavbar({
                 type="button"
                 onClick={() => goTo('/customer/profile')}
                 className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-emerald-700 text-white"
-                aria-label="Profile"
+                aria-label={t.profile}
               >
                 <User size={19} />
               </button>

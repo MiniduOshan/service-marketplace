@@ -336,7 +336,7 @@ function PendingBookingCard({ booking, onAccept, onDecline, onCancel, onViewDeta
   );
 }
 
-function CompletedBookingCard({ booking, onViewDetails }) {
+function CompletedBookingCard({ booking, onViewDetails, onLeaveFeedback }) {
   return (
     <article className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm sm:p-6">
       <div className="grid gap-5 lg:grid-cols-[360px_minmax(260px,1fr)_190px] lg:items-center 2xl:grid-cols-[430px_minmax(320px,1fr)_260px]">
@@ -353,16 +353,18 @@ function CompletedBookingCard({ booking, onViewDetails }) {
 
             <p className="mt-1 text-base text-slate-500">#{booking.id}</p>
 
-            <div className="mt-3 flex text-amber-400">
-              {Array.from({ length: booking.rating || 5 }).map((_, index) => (
-                <Star
-                  key={index}
-                  size={15}
-                  fill="currentColor"
-                  strokeWidth={0}
-                />
-              ))}
-            </div>
+            {booking.rawBooking?.review && (
+              <div className="mt-3 flex text-amber-400">
+                {Array.from({ length: booking.rawBooking.review.rating }).map((_, index) => (
+                  <Star
+                    key={index}
+                    size={15}
+                    fill="currentColor"
+                    strokeWidth={0}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -378,7 +380,7 @@ function CompletedBookingCard({ booking, onViewDetails }) {
           </div>
         </div>
 
-        <div className="flex lg:justify-end gap-2">
+        <div className="flex lg:justify-end gap-2 items-center">
           <button
             type="button"
             onClick={() => onViewDetails(booking)}
@@ -386,6 +388,22 @@ function CompletedBookingCard({ booking, onViewDetails }) {
           >
             View Details
           </button>
+          
+          {booking.rawBooking?.review ? (
+            <span className="inline-flex items-center gap-1 text-xs text-slate-500 font-semibold px-4 py-2.5">
+              <CheckCircle2 size={14} className="text-emerald-600" /> Feedback Given
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onLeaveFeedback(booking)}
+              className="inline-flex h-11 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 px-4 text-base font-medium text-emerald-700 transition hover:bg-emerald-100"
+            >
+              <Star size={17} />
+              Rate & Review
+            </button>
+          )}
+
           <button
             type="button"
             className="inline-flex h-11 min-w-32 cursor-pointer items-center justify-center gap-2 rounded-lg border border-emerald-700 bg-white px-6 text-base font-medium text-emerald-700 transition hover:bg-emerald-50"
@@ -504,7 +522,7 @@ function DeclinedBookingCard({ booking, onViewDetails }) {
   );
 }
 
-function BookingCard({ booking, onAccept, onDecline, onCancel, onComplete, onViewDetails }) {
+function BookingCard({ booking, onAccept, onDecline, onCancel, onComplete, onViewDetails, onLeaveFeedback }) {
   if (booking.status === 'active' || booking.status === 'confirmed' || booking.status === 'assigned' || booking.status === 'in-progress' || booking.status === 'in_progress') {
     return <ActiveBookingCard booking={booking} onComplete={onComplete} onViewDetails={onViewDetails} />;
   }
@@ -512,7 +530,7 @@ function BookingCard({ booking, onAccept, onDecline, onCancel, onComplete, onVie
     return <PendingBookingCard booking={booking} onAccept={onAccept} onDecline={onDecline} onCancel={onCancel} onViewDetails={onViewDetails} />;
   }
   if (booking.status === 'completed') {
-    return <CompletedBookingCard booking={booking} onViewDetails={onViewDetails} />;
+    return <CompletedBookingCard booking={booking} onViewDetails={onViewDetails} onLeaveFeedback={onLeaveFeedback} />;
   }
   if (booking.status === 'declined') {
     return <DeclinedBookingCard booking={booking} onViewDetails={onViewDetails} />;
@@ -618,11 +636,105 @@ function BookingDetailModal({ booking, onClose }) {
   );
 }
 
+function FeedbackModal({ booking, onClose, onSubmit }) {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await onSubmit(booking.id, rating, comment);
+      onClose();
+    } catch (err) {
+      alert(err.message || 'Failed to submit feedback.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl transition-all">
+        <div className="flex items-center justify-between border-b border-slate-100 bg-emerald-800 px-6 py-4 text-white">
+          <h3 className="text-lg font-bold">Give Feedback</h3>
+          <button onClick={onClose} className="rounded-full p-1 hover:bg-emerald-700/50 transition cursor-pointer text-white">
+            <X size={20} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-700">Rating</label>
+            <div className="flex gap-2 mt-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  type="button"
+                  key={star}
+                  onClick={() => setRating(star)}
+                  className="focus:outline-none transition transform hover:scale-110"
+                >
+                  <Star
+                    size={28}
+                    className={star <= rating ? 'fill-amber-400 text-amber-400' : 'text-slate-350'}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700">Review Comment</label>
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Tell us about your experience..."
+              className="mt-2 w-full rounded-lg border border-slate-350 bg-white p-3 text-sm text-slate-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              rows={4}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 transition cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-lg bg-emerald-700 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-800 transition cursor-pointer disabled:opacity-50"
+            >
+              {submitting ? 'Submitting...' : 'Submit Feedback'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function CustomerBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [detailBooking, setDetailBooking] = useState(null);
+  const [feedbackBooking, setFeedbackBooking] = useState(null);
+
+  const handleFeedbackSubmit = async (bookingId, rating, comment) => {
+    try {
+      await apiRequest(`/auth/bookings/${bookingId}/reviews`, {
+        method: 'POST',
+        body: JSON.stringify({ rating, comment }),
+      });
+      alert('Feedback submitted successfully!');
+      loadBookings();
+    } catch (err) {
+      alert(err.message || 'Failed to submit feedback.');
+    }
+  };
 
   const loadBookings = async () => {
     try {
@@ -787,6 +899,7 @@ export default function CustomerBookings() {
                     onCancel={handleCancel}
                     onComplete={handleComplete}
                     onViewDetails={setDetailBooking}
+                    onLeaveFeedback={setFeedbackBooking}
                   />
                 ))
               ) : (
@@ -809,6 +922,14 @@ export default function CustomerBookings() {
         booking={detailBooking}
         onClose={() => setDetailBooking(null)}
       />
+
+      {feedbackBooking && (
+        <FeedbackModal
+          booking={feedbackBooking}
+          onClose={() => setFeedbackBooking(null)}
+          onSubmit={handleFeedbackSubmit}
+        />
+      )}
 
       <CustomerFooter />
     </div>

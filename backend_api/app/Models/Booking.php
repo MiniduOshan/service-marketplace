@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
 class Booking extends Model
 {
     use HasFactory;
@@ -48,5 +50,10 @@ class Booking extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(BookingMessage::class);
+    }
+
+    public function review(): HasOne
+    {
+        return $this->hasOne(Review::class);
     }
 }

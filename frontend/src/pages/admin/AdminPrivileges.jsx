@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminLayout';
+import { apiRequest } from '../../lib/api';
 
 function Toggle({ checked, onChange }) {
   return (
@@ -12,9 +13,34 @@ function Toggle({ checked, onChange }) {
 
 export default function AdminPrivileges() {
   const [privileges, setPrivileges] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const togglePrivilege = (key) => {
-    setPrivileges((current) => current.map((privilege) => (privilege.key === key ? { ...privilege, enabled: !privilege.enabled } : privilege)));
+  const loadPrivileges = async () => {
+    setLoading(true);
+    try {
+      const response = await apiRequest('/admin/privileges');
+      setPrivileges(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      setErrorMessage(error.message || 'Failed to load privilege settings.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPrivileges();
+  }, []);
+
+  const togglePrivilege = async (key) => {
+    try {
+      const response = await apiRequest(`/admin/privileges/${key}/toggle`, {
+        method: 'POST',
+      });
+      setPrivileges(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      setErrorMessage(error.message || 'Failed to update privilege.');
+    }
   };
 
   return (
@@ -30,29 +56,40 @@ export default function AdminPrivileges() {
           </div>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-2">
-          {privileges.length > 0 ? (
-            privileges.map((privilege) => (
-              <div key={privilege.key} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-xs font-semibold text-slate-900">{privilege.label}</h3>
-                    <p className="mt-1 text-xs leading-normal text-slate-500">{privilege.description}</p>
+        {errorMessage && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-55 px-3 py-2 text-xs text-red-700">
+            {errorMessage}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 text-center text-xs text-slate-500">
+            Loading privilege settings...
+          </div>
+        ) : (
+          <div className="grid gap-4 xl:grid-cols-2">
+            {privileges.length > 0 ? (
+              privileges.map((privilege) => (
+                <div key={privilege.key} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-xs font-semibold text-slate-900">{privilege.label}</h3>
+                      <p className="mt-1 text-xs leading-normal text-slate-500">{privilege.description}</p>
+                    </div>
+                    <Toggle checked={privilege.enabled} onChange={() => togglePrivilege(privilege.key)} />
                   </div>
-                  <Toggle checked={privilege.enabled} onChange={() => togglePrivilege(privilege.key)} />
+                  <div className="mt-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                    {privilege.enabled ? 'Visible on web and mobile' : 'Hidden from users'}
+                  </div>
                 </div>
-                <div className="mt-3 text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                  {privilege.enabled ? 'Visible on web and mobile' : 'Hidden from users'}
-                </div>
+              ))
+            ) : (
+              <div className="rounded-xl border border-slate-200 bg-slate-55 p-6 text-center xl:col-span-2">
+                <p className="text-xs font-semibold text-slate-800">No privilege settings defined.</p>
               </div>
-            ))
-          ) : (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center xl:col-span-2">
-              <p className="text-xs font-semibold text-slate-800">No live privilege settings connected.</p>
-              <p className="mt-1 text-xs text-slate-500">Connect the privilege settings source to manage feature flags here.</p>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </section>
     </AdminLayout>
   );

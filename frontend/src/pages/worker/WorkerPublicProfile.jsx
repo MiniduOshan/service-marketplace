@@ -8,6 +8,7 @@ import {
   MessageSquareText,
   Phone,
   UserRound,
+  Star,
 } from 'lucide-react';
 
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
@@ -36,6 +37,7 @@ export default function WorkerPublicProfile() {
 
   const [services, setServices] = useState([]);
   const [workerInfo, setWorkerInfo] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -50,6 +52,12 @@ export default function WorkerPublicProfile() {
           const primaryPackage = packages[0];
           setWorkerInfo(primaryPackage.worker);
         }
+        try {
+          const reviewsRes = await apiRequest(`/workers/${id}/reviews`);
+          setReviews(reviewsRes.data?.data || reviewsRes.data || reviewsRes || []);
+        } catch (_) {
+          setReviews([]);
+        }
         setLoading(false);
       } catch (err) {
         setError(err.message || 'Failed to load worker profile.');
@@ -58,6 +66,11 @@ export default function WorkerPublicProfile() {
     }
     fetchWorkerData();
   }, [id]);
+
+  const reviewsCount = reviews.length;
+  const averageRating = reviewsCount > 0
+    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviewsCount).toFixed(1)
+    : null;
 
   const handleBookNow = (serviceId, serviceTitle, priceLabel) => {
     navigate('/book/details', {
@@ -145,6 +158,13 @@ export default function WorkerPublicProfile() {
               <span className="rounded bg-amber-400 px-2 py-1 text-[9px] font-bold uppercase text-slate-900">
                 Featured
               </span>
+
+              {averageRating && (
+                <span className="inline-flex items-center gap-1 rounded bg-amber-500 px-2 py-1 text-[9px] font-bold text-white uppercase tracking-wide">
+                  <Star size={11} fill="currentColor" strokeWidth={0} />
+                  {averageRating} ({reviewsCount})
+                </span>
+              )}
             </div>
           </div>
         </section>
@@ -236,6 +256,60 @@ export default function WorkerPublicProfile() {
                   </div>
                 </div>
               </div>
+            </SectionCard>
+
+            <SectionCard title="Ratings & Reviews">
+              {reviews.length === 0 ? (
+                <p className="text-sm text-slate-500">No reviews yet for this worker.</p>
+              ) : (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-4">
+                    <div className="text-4xl font-extrabold text-slate-950">{averageRating}</div>
+                    <div>
+                      <div className="flex text-amber-400">
+                        {Array.from({ length: 5 }).map((_, idx) => (
+                          <Star
+                            key={idx}
+                            size={18}
+                            fill={idx < Math.round(parseFloat(averageRating)) ? "currentColor" : "none"}
+                            className={idx < Math.round(parseFloat(averageRating)) ? "text-amber-400" : "text-slate-200"}
+                          />
+                        ))}
+                      </div>
+                      <p className="mt-1 text-sm text-slate-500">Based on {reviewsCount} {reviewsCount === 1 ? 'review' : 'reviews'}</p>
+                    </div>
+                  </div>
+
+                  <hr className="border-slate-100" />
+
+                  <div className="divide-y divide-slate-100">
+                    {reviews.map((review) => (
+                      <div key={review.id} className="py-4 first:pt-0 last:pb-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-800 text-sm">
+                            {review.customer?.name || 'Customer'}
+                          </span>
+                          <div className="flex text-amber-400">
+                            {Array.from({ length: 5 }).map((_, idx) => (
+                              <Star
+                                key={idx}
+                                size={13}
+                                fill={idx < review.rating ? "currentColor" : "none"}
+                                className={idx < review.rating ? "text-amber-400" : "text-slate-200"}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        {review.comment && (
+                          <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                            {review.comment}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </SectionCard>
           </div>
 

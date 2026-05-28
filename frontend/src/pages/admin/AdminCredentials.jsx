@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { KeyRound, RefreshCw, ShieldCheck } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminLayout';
+import { apiRequest } from '../../lib/api';
 
 export default function AdminCredentials() {
   const [form, setForm] = useState({
@@ -12,10 +13,21 @@ export default function AdminCredentials() {
     webhookSecret: '',
   });
   const [statusMessage, setStatusMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handleSave = (event) => {
+  const handleSave = async (event) => {
     event.preventDefault();
-    setStatusMessage('Credentials captured in the dashboard UI. Connect this page to the backend settings store to persist them securely.');
+    setErrorMessage('');
+    setStatusMessage('');
+    try {
+      const response = await apiRequest('/admin/credentials', {
+        method: 'POST',
+        body: JSON.stringify(form),
+      });
+      setStatusMessage(response.message || 'Credentials saved securely.');
+    } catch (error) {
+      setErrorMessage(error.message || 'Failed to save credentials.');
+    }
   };
 
   return (
@@ -118,13 +130,19 @@ export default function AdminCredentials() {
           </div>
         </form>
 
+        {errorMessage ? (
+          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            {errorMessage}
+          </div>
+        ) : null}
+
         {statusMessage ? (
           <div className="mt-3 rounded-lg border border-emerald-250 bg-emerald-50 px-3 py-2 text-xs text-emerald-850">
             {statusMessage}
           </div>
         ) : null}
 
-        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-normal text-slate-500">
+        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-normal text-slate-550">
           Keep these values out of the public repo by storing them in environment variables or a secure admin settings table on the backend. This page is only the web UI for changing them regularly.
         </div>
       </section>

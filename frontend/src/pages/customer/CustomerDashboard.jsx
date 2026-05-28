@@ -22,6 +22,7 @@ import {
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
 import { getStoredSessionUser, apiRequest } from '../../lib/api';
+import useLanguage from '../../hooks/useLanguage';
 
 const categories = [
   {
@@ -95,6 +96,7 @@ function CategoryCard({ item, onSelect }) {
 
 function ProfessionalCard({ professional }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   return (
     <div
@@ -111,7 +113,7 @@ function ProfessionalCard({ professional }) {
         {professional.verified && (
           <div className="flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1 text-[11px] font-bold uppercase text-emerald-700">
             <BadgeCheck size={13} />
-            Verified
+            {t.verified}
           </div>
         )}
       </div>
@@ -137,7 +139,7 @@ function ProfessionalCard({ professional }) {
         <span className="h-4 w-px bg-slate-300" />
 
         <div>
-          <p className="leading-tight text-slate-600">Starting at</p>
+          <p className="leading-tight text-slate-600">{t.starting_at}</p>
           <p className="font-bold text-emerald-700">{professional.price}</p>
         </div>
       </div>
@@ -149,7 +151,7 @@ function ProfessionalCard({ professional }) {
         }}
         className="mt-6 w-full rounded-md bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
       >
-        Book Now
+        {t.book_now}
       </button>
     </div>
   );
@@ -190,6 +192,7 @@ export default function CustomerDashboard() {
   const navigate = useNavigate();
   const currentUser = getStoredSessionUser();
   const customerName = currentUser?.name?.trim();
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (!currentUser) {
@@ -199,6 +202,8 @@ export default function CustomerDashboard() {
 
   const [servicesList, setServicesList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState('');
+  const [locationText, setLocationText] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -218,7 +223,16 @@ export default function CustomerDashboard() {
             'bg-teal-100',
             'bg-purple-100',
           ];
-          const mapped = services.map((service, idx) => {
+          const seenWorkers = new Set();
+          const uniqueServices = [];
+          for (const s of services) {
+            const wId = s.worker?.id || s.user_id || '1';
+            if (!seenWorkers.has(wId)) {
+              seenWorkers.add(wId);
+              uniqueServices.push(s);
+            }
+          }
+          const mapped = uniqueServices.map((service, idx) => {
             const workerName = service.worker?.name || 'Verified Pro';
             const initials = workerName
               .split(' ')
@@ -231,17 +245,23 @@ export default function CustomerDashboard() {
               'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=800&q=80',
               'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80',
             ];
+            const rating = service.worker?.average_rating !== null && service.worker?.average_rating !== undefined
+              ? parseFloat(service.worker.average_rating).toFixed(1)
+              : '0.0';
+            const reviewsCount = service.worker?.reviews_count !== null && service.worker?.reviews_count !== undefined
+              ? parseInt(service.worker.reviews_count, 10)
+              : 0;
             return {
               id: service.worker?.id || '1',
               initials,
               name: workerName,
               role: service.title || 'Service Expert',
-              rating: '4.8',
+              rating,
               distance: `${(1.2 + idx * 0.7).toFixed(1)} km`,
               price: `LKR ${parseFloat(service.price).toLocaleString()}`,
               verified: !!service.worker?.phone_verified_at,
               avatarBg: bgColors[idx % bgColors.length],
-              reviews: `${24 + idx * 7} reviews`,
+              reviews: `${reviewsCount} reviews`,
               image: defaultImages[idx % defaultImages.length],
             };
           });
@@ -269,6 +289,18 @@ export default function CustomerDashboard() {
     navigate(`/search${query}`);
   };
 
+  const handleSearch = () => {
+    const params = [];
+    if (searchText.trim()) {
+      params.push(`search=${encodeURIComponent(searchText.trim())}`);
+    }
+    if (locationText.trim()) {
+      params.push(`location=${encodeURIComponent(locationText.trim())}`);
+    }
+    const query = params.length > 0 ? `?${params.join('&')}` : '';
+    navigate(`/search${query}`);
+  };
+
   const topPick = servicesList.length > 0 ? servicesList[0] : null;
   const topRated = servicesList.slice(0, 4);
   const featuredList = servicesList.length > 4 ? servicesList.slice(4, 7) : servicesList.slice(1, 4);
@@ -283,7 +315,7 @@ export default function CustomerDashboard() {
           <div className="dashboard-shell py-14 sm:py-16 md:py-20 xl:py-24">
             <div className="mx-auto max-w-5xl text-center">
               <h1 className="text-[clamp(1.75rem,2.3vw,3.5rem)] font-bold leading-tight tracking-tight text-slate-950">
-                {customerName ? `Good morning, ${customerName}!` : 'Find the best skilled professionals in Sri Lanka'}
+                {customerName ? `${t.good_morning}, ${customerName}!` : t.find_skilled}
               </h1>
 
               <div className="mx-auto mt-8 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm 2xl:mt-10">
@@ -292,7 +324,10 @@ export default function CustomerDashboard() {
                     <Search size={24} className="shrink-0 text-emerald-700" />
                     <input
                       type="text"
-                      placeholder="What service do you need?"
+                      placeholder={t.search_hint}
+                      value={searchText}
+                      onChange={(e) => setSearchText(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                       className="w-full bg-transparent text-base text-slate-700 outline-none placeholder:text-slate-400"
                     />
                   </div>
@@ -301,25 +336,32 @@ export default function CustomerDashboard() {
                     <MapPin size={23} className="shrink-0 text-emerald-700" />
                     <input
                       type="text"
-                      placeholder="Colombo, Sri Lanka"
+                      placeholder={t.search_location}
+                      value={locationText}
+                      onChange={(e) => setLocationText(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                       className="w-full bg-transparent text-base text-slate-700 outline-none placeholder:text-slate-400"
                     />
                   </div>
 
                   <div className="p-1.5">
-                    <button className="h-full min-h-[58px] w-full rounded-lg bg-emerald-700 px-8 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-emerald-800">
-                      Search
+                    <button
+                      onClick={handleSearch}
+                      className="h-full min-h-[58px] w-full rounded-lg bg-emerald-700 px-8 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-emerald-800"
+                    >
+                      {t.search}
                     </button>
                   </div>
                 </div>
               </div>
 
               <div className="mt-7 flex flex-wrap items-center justify-center gap-3 text-sm">
-                <span className="font-semibold text-slate-600">Popular:</span>
+                <span className="font-semibold text-slate-600">{t.popular}:</span>
 
-                {['Plumbing', 'Electrician', 'Masonry'].map((tag) => (
+                {['Plumbing', 'Electrical', 'Masonry'].map((tag) => (
                   <button
                     key={tag}
+                    onClick={() => handleCategorySelect(tag)}
                     className="rounded-full bg-emerald-50 px-4 py-1.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
                   >
                     {tag}
@@ -334,9 +376,9 @@ export default function CustomerDashboard() {
         <section className="dashboard-shell py-14 sm:py-16 md:py-20">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-slate-950">Explore Categories</h2>
+              <h2 className="text-2xl font-bold text-slate-950">{t.explore_categories}</h2>
               <p className="mt-1 text-base text-slate-600">
-                Browse through our wide range of services
+                {t.explore_sub}
               </p>
             </div>
 
@@ -344,7 +386,7 @@ export default function CustomerDashboard() {
               href="/search"
               className="text-sm font-bold text-emerald-700 transition hover:text-emerald-800"
             >
-              View All Categories
+              {t.view_all}
             </a>
           </div>
 
@@ -362,11 +404,11 @@ export default function CustomerDashboard() {
         {/* Top Rated Professionals */}
         <section className="dashboard-shell py-14 sm:py-16 md:py-20">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-slate-950">Top Rated Professionals</h2>
+            <h2 className="text-2xl font-bold text-slate-950">{t.top_rated}</h2>
           </div>
 
           {loading ? (
-            <div className="mt-10 text-center text-slate-500 py-10">Loading professionals...</div>
+            <div className="mt-10 text-center text-slate-500 py-10">Loading...</div>
           ) : servicesList.length === 0 ? (
             <div className="mt-10 rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
               <p className="text-base font-medium text-slate-600">No professionals available at the moment.</p>
@@ -383,7 +425,7 @@ export default function CustomerDashboard() {
         {/* Featured Professionals */}
         {!loading && servicesList.length > 0 && (
           <section className="dashboard-shell py-14 sm:py-16 md:py-20">
-            <h2 className="text-2xl font-bold text-slate-950">Featured Professionals</h2>
+            <h2 className="text-2xl font-bold text-slate-950">{t.featured} Professionals</h2>
 
             <div className="mt-10 grid grid-cols-1 gap-7 lg:grid-cols-[1fr_430px] 2xl:grid-cols-[1fr_520px]">
               {/* Main Featured Card */}
@@ -408,7 +450,7 @@ export default function CustomerDashboard() {
                       </h3>
 
                       <p className="mt-2 text-sm font-bold text-emerald-700">
-                        {topPick.role} • Verified Pro
+                        {topPick.role} • {t.verified}
                       </p>
 
                       <p className="mt-7 max-w-xl text-lg leading-8 text-slate-600">
@@ -421,14 +463,14 @@ export default function CustomerDashboard() {
                           onClick={() => navigate(`/worker/${topPick.id}`)}
                           className="rounded-md bg-emerald-700 px-10 py-4 text-sm font-bold text-white transition hover:bg-emerald-800"
                         >
-                          Book Now
+                          {t.book_now}
                         </button>
 
                         <button
                           onClick={() => navigate(`/worker/${topPick.id}`)}
                           className="rounded-md border border-emerald-700 px-10 py-4 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
                         >
-                          View Profile
+                          {t.view_profile}
                         </button>
                       </div>
                     </div>

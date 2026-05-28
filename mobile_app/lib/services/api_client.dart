@@ -254,6 +254,12 @@ class ApiClient {
     return patchJson('/auth/bookings/$bookingId/complete', token: token);
   }
 
+  Future<List<Map<String, dynamic>>> getWorkerReviews(String workerId) async {
+    final payload = await getJson('/workers/$workerId/reviews');
+    return List<Map<String, dynamic>>.from(payload['data'] as List<dynamic>);
+  }
+
+
   Future<List<Map<String, dynamic>>> getBookingMessages({
     required String bookingId,
     String? token,
@@ -321,6 +327,23 @@ class ApiClient {
     if (phone != null) body['phone'] = phone;
     return postJson('/auth/profile', token: token, body: body);
   }
+
+  Future<Map<String, dynamic>> submitReview({
+    required String bookingId,
+    required int rating,
+    String? comment,
+    String? token,
+  }) {
+    return postJson(
+      '/auth/bookings/$bookingId/reviews',
+      token: token,
+      body: {
+        'rating': rating,
+        'comment': comment,
+      },
+    );
+  }
+
 
   Map<String, dynamic> _decodeResponse(http.Response response) {
     final responseBody = response.body.trim();

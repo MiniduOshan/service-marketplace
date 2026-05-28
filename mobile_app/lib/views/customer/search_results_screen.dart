@@ -70,24 +70,33 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
               ? service['worker']['id']?.toString() ?? service['user_id']?.toString() ?? '1'
               : service['user_id']?.toString() ?? '1';
 
-          return Worker(
-            id: workerId,
-            servicePackageId: service['id'].toString(),
-            name: workerName,
-            specialty: service['title']?.toString() ?? 'Service',
-            category: categoryName,
-            location: 'Colombo',
-            rating: 4.8,
-            reviewCount: 120,
-            experience: 6,
-            distance: 4.0,
-            startingPrice: service['price']?.toString() ?? '0',
-            priceUnit: 'service',
-            initial: workerName.isNotEmpty ? workerName[0].toUpperCase() : 'S',
-            isVerified: service['worker'] is Map<String, dynamic> && service['worker']['phone_verified_at'] != null,
-            isPro: service['worker'] is Map<String, dynamic> && service['worker']['phone_verified_at'] != null,
-          );
-        }).toList();
+        final rawRating = service['worker'] is Map<String, dynamic>
+            ? service['worker']['average_rating']
+            : null;
+        final rawReviewCount = service['worker'] is Map<String, dynamic>
+            ? service['worker']['reviews_count']
+            : null;
+        final double rating = rawRating != null ? double.tryParse(rawRating.toString()) ?? 5.0 : 5.0;
+        final int reviewCount = rawReviewCount != null ? int.tryParse(rawReviewCount.toString()) ?? 0 : 0;
+
+        return Worker(
+          id: workerId,
+          servicePackageId: service['id'].toString(),
+          name: workerName,
+          specialty: service['title']?.toString() ?? 'Service',
+          category: categoryName,
+          location: 'Colombo',
+          rating: rating,
+          reviewCount: reviewCount,
+          experience: 6,
+          distance: 4.0,
+          startingPrice: service['price']?.toString() ?? '0',
+          priceUnit: 'service',
+          initial: workerName.isNotEmpty ? workerName[0].toUpperCase() : 'S',
+          isVerified: service['worker'] is Map<String, dynamic> && service['worker']['phone_verified_at'] != null,
+          isPro: service['worker'] is Map<String, dynamic> && service['worker']['phone_verified_at'] != null,
+        );
+      }).toList();
 
         _isLoading = false;
         _errorMessage = null;

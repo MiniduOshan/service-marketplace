@@ -22,6 +22,7 @@ import CustomerFooter from '../../components/layout/CustomerFooter';
 import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 import { apiRequest, getStoredSessionUser } from '../../lib/api';
+import useLanguage from '../../hooks/useLanguage';
 
 const workers = [
   {
@@ -207,6 +208,15 @@ function FilterPanel({
   mobile = false,
   onClose,
 }) {
+  const { t } = useLanguage();
+
+  const distanceOptions = [
+    { label: t.within_5km, value: '5' },
+    { label: t.within_10km, value: '10' },
+    { label: t.within_20km, value: '20' },
+    { label: t.any_distance, value: 'any' },
+  ];
+
   return (
     <aside
       className={`bg-white ${
@@ -218,10 +228,10 @@ function FilterPanel({
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-950 lg:text-xl">
-            Filters
+            {t.filters}
           </h2>
           <p className="mt-1 text-sm text-slate-500 lg:text-xs">
-            Refine your search
+            {t.refine_search}
           </p>
         </div>
 
@@ -240,18 +250,18 @@ function FilterPanel({
         <div>
           <h3 className="mb-4 flex items-center gap-2 text-sm font-bold text-emerald-700">
             <Briefcase size={15} />
-            Price Range
+            {t.price_range}
           </h3>
 
           <div className="space-y-3">
             <CheckboxRow
-              label="Under LKR 5,000"
+              label={t.under_5000}
               checked={filters.under5000}
               onChange={() => updateFilter('under5000', !filters.under5000)}
             />
 
             <CheckboxRow
-              label="LKR 5,000 - 15,000"
+              label={t.between_5000_15000}
               checked={filters.between5000And15000}
               onChange={() =>
                 updateFilter(
@@ -266,7 +276,7 @@ function FilterPanel({
         <div>
           <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-slate-500">
             <Star size={15} />
-            Ratings
+            {t.ratings}
           </h3>
 
           <CheckboxRow
@@ -280,7 +290,7 @@ function FilterPanel({
         <div>
           <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-slate-500">
             <Navigation size={15} />
-            Distance
+            {t.distance}
           </h3>
 
           <div className="relative">
@@ -306,11 +316,11 @@ function FilterPanel({
         <div>
           <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-slate-500">
             <ShieldCheck size={15} />
-            Verified Status
+            {t.verified_status}
           </h3>
 
           <CheckboxRow
-            label="Verified Workers Only"
+            label={t.verified_only}
             checked={filters.verifiedOnly}
             onChange={() => updateFilter('verifiedOnly', !filters.verifiedOnly)}
           />
@@ -319,7 +329,7 @@ function FilterPanel({
         <div>
           <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-slate-500">
             <SlidersHorizontal size={15} />
-            Categories
+            {t.categories}
           </h3>
 
           <div className="space-y-2">
@@ -353,7 +363,7 @@ function FilterPanel({
           onClick={clearFilters}
           className="h-12 w-full rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-500 transition hover:border-emerald-700 hover:text-emerald-700"
         >
-          Clear All Filters
+          {t.clear_all_filters}
         </button>
       </div>
     </aside>
@@ -375,6 +385,7 @@ function FilterChip({ label, onRemove }) {
 
 function WorkerCard({ worker }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   return (
     <article
@@ -403,17 +414,17 @@ function WorkerCard({ worker }) {
               {worker.verified ? (
                 <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
                   <BadgeCheck size={12} />
-                  Verified
+                  {t.verified}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-red-700">
-                  Unverified Worker
+                  {t.unverified}
                 </span>
               )}
 
               {worker.featured && (
                 <span className="rounded bg-amber-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-orange-600">
-                  Featured
+                  {t.featured}
                 </span>
               )}
             </div>
@@ -441,19 +452,28 @@ function WorkerCard({ worker }) {
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-              <span className="tracking-tight text-amber-400">★★★★★</span>
+              <div className="flex text-amber-400">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Star
+                    key={index}
+                    size={14}
+                    fill={index < Math.round(worker.rating) ? "currentColor" : "none"}
+                    className={index < Math.round(worker.rating) ? "text-amber-400" : "text-slate-300"}
+                  />
+                ))}
+              </div>
               <span className="font-semibold text-slate-700">
                 {worker.rating.toFixed(1)}
               </span>
               <span className="font-medium text-slate-400">
-                ({worker.reviews} reviews)
+                ({worker.reviews} {t.reviews_label})
               </span>
             </div>
           </div>
         </div>
 
         <div className="w-full shrink-0 text-left md:w-44 md:text-right">
-          <p className="text-sm text-slate-400">Starting from</p>
+          <p className="text-sm text-slate-400">{t.starting_from}</p>
 
           <div className="mt-1 flex items-end gap-1 md:justify-end">
             <p className="text-2xl font-bold text-emerald-700">
@@ -473,7 +493,7 @@ function WorkerCard({ worker }) {
               })}
               className="h-10 rounded-lg border border-emerald-700 bg-white px-5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
             >
-              Chat first
+              {t.chat_first}
             </button>
 
             <button
@@ -489,7 +509,7 @@ function WorkerCard({ worker }) {
               })}
               className="h-10 rounded-lg bg-emerald-700 px-5 text-sm font-semibold text-white transition hover:bg-emerald-800"
             >
-              Book now
+              {t.book_now}
             </button>
           </div>
         </div>
@@ -498,10 +518,10 @@ function WorkerCard({ worker }) {
       {worker.pro && (
         <div className="flex items-center justify-between border-t border-amber-100 bg-amber-50 px-6 py-3 text-xs">
           <span className="font-bold uppercase tracking-wide text-orange-600">
-            Pro Member
+            {t.pro_member}
           </span>
           <span className="font-medium text-slate-400">
-            Top 5% SkilledLK Experts
+            {t.top_experts}
           </span>
         </div>
       )}
@@ -512,9 +532,25 @@ function WorkerCard({ worker }) {
 export default function SearchPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
   const [filters, setFilters] = useState(initialFilters);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const distanceOptions = useMemo(() => [
+    { label: t.within_5km, value: '5' },
+    { label: t.within_10km, value: '10' },
+    { label: t.within_20km, value: '20' },
+    { label: t.any_distance, value: 'any' },
+  ], [t]);
+
+  const sortOptions = useMemo(() => [
+    { label: t.recommended, value: 'Recommended' },
+    { label: t.highest_rated, value: 'Highest Rated' },
+    { label: t.lowest_price, value: 'Lowest Price' },
+    { label: t.highest_price, value: 'Highest Price' },
+    { label: t.most_experienced, value: 'Most Experienced' },
+  ], [t]);
 
   const isLoggedIn = !!getStoredSessionUser();
 
@@ -589,7 +625,9 @@ export default function SearchPage() {
         let path = '/services';
         const params = [];
         if (catQuery) params.push(`category=${catQuery}`);
-        if (filters.serviceQuery) params.push(`search=${filters.serviceQuery}`);
+        if (filters.serviceQuery && (!filters.category || filters.serviceQuery.toLowerCase() !== filters.category.toLowerCase())) {
+          params.push(`search=${filters.serviceQuery}`);
+        }
         if (params.length > 0) path += `?${params.join('&')}`;
 
         const res = await apiRequest(path);
@@ -607,8 +645,12 @@ export default function SearchPage() {
             location: 'Colombo',
             experience: '6 years exp.',
             experienceYears: 6,
-            rating: 4.8,
-            reviews: 120,
+            rating: service.worker?.average_rating !== null && service.worker?.average_rating !== undefined
+              ? parseFloat(service.worker.average_rating)
+              : 0.0,
+            reviews: service.worker?.reviews_count !== null && service.worker?.reviews_count !== undefined
+              ? parseInt(service.worker.reviews_count, 10)
+              : 0,
             price: parseFloat(service.price) || 0,
             unit: '/ task',
             distance: 4,
@@ -787,25 +829,25 @@ export default function SearchPage() {
 
     filters.under5000 && {
       key: 'under5000',
-      label: 'Under LKR 5,000',
+      label: t.under_5000,
       remove: () => updateFilter('under5000', false),
     },
 
     filters.between5000And15000 && {
       key: 'between5000And15000',
-      label: 'LKR 5,000 - 15,000',
+      label: t.between_5000_15000,
       remove: () => updateFilter('between5000And15000', false),
     },
 
     filters.rating4Plus && {
       key: 'rating4Plus',
-      label: '4++ Rating',
+      label: '4++ ' + (t.ratings || 'Rating'),
       remove: () => updateFilter('rating4Plus', false),
     },
 
     filters.verifiedOnly && {
       key: 'verifiedOnly',
-      label: 'Verified only',
+      label: t.verified_only,
       remove: () => updateFilter('verifiedOnly', false),
     },
 
@@ -813,7 +855,7 @@ export default function SearchPage() {
       key: 'distance',
       label:
         distanceOptions.find((option) => option.value === filters.distance)
-          ?.label || 'Distance',
+          ?.label || t.distance,
       remove: () => updateFilter('distance', initialFilters.distance),
     },
   ].filter(Boolean);
@@ -861,10 +903,10 @@ export default function SearchPage() {
         <section className="min-w-0 flex-1 px-5 py-6 sm:px-8 lg:px-8 xl:px-10">
           {/* Breadcrumb */}
           <div className="hidden items-center gap-2 text-sm font-medium text-slate-400 sm:flex">
-            <span>Home</span>
+            <span>{t.home}</span>
             <span>›</span>
             <span className={!filters.category ? 'font-bold text-emerald-700' : ''}>
-              Search
+              {t.search_nav}
             </span>
 
             {filters.category && (
@@ -881,9 +923,9 @@ export default function SearchPage() {
           <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl lg:text-[32px]">
-                Showing {filteredWorkers.length}{' '}
-                {filters.category || 'Professionals'}
-                {filters.locationQuery ? ` in ${filters.locationQuery}` : ''}
+                {t.showing} {filteredWorkers.length}{' '}
+                {filters.category || t.professionals}
+                {filters.locationQuery ? ` ${t.in} ${filters.locationQuery}` : ''}
               </h1>
             </div>
 
@@ -894,7 +936,7 @@ export default function SearchPage() {
                 className="flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 lg:hidden"
               >
                 <Filter size={18} />
-                Filters
+                {t.filters}
               </button>
 
               <div className="relative">
@@ -904,8 +946,8 @@ export default function SearchPage() {
                   className="h-11 appearance-none rounded-lg border border-slate-200 bg-white px-4 pr-10 text-sm font-medium text-slate-700 outline-none"
                 >
                   {sortOptions.map((option) => (
-                    <option key={option} value={option}>
-                      Sort by: {option}
+                    <option key={option.value} value={option.value}>
+                      {t.sort_by}: {option.label}
                     </option>
                   ))}
                 </select>
@@ -940,10 +982,10 @@ export default function SearchPage() {
             ) : (
               <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
                 <h3 className="text-xl font-bold text-slate-950">
-                  No professionals found
+                  {t.no_professionals}
                 </h3>
                 <p className="mt-2 text-sm text-slate-500">
-                  Try changing your search, filters, category, or distance.
+                  {t.no_professionals_sub}
                 </p>
 
                 <button
@@ -951,7 +993,7 @@ export default function SearchPage() {
                   onClick={clearFilters}
                   className="mt-6 rounded-lg bg-emerald-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800"
                 >
-                  Clear all filters
+                  {t.clear_all_filters}
                 </button>
               </div>
             )}
