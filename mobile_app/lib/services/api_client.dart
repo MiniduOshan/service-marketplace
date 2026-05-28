@@ -328,6 +328,17 @@ class ApiClient {
     return postJson('/auth/profile', token: token, body: body);
   }
 
+  Future<Map<String, dynamic>> updatePricingPlan({
+    int? pricingPlanId,
+    String? token,
+  }) {
+    return postJson(
+      '/auth/user/pricing-plan',
+      token: token,
+      body: {'pricing_plan_id': pricingPlanId},
+    );
+  }
+
   Future<Map<String, dynamic>> submitReview({
     required String bookingId,
     required int rating,

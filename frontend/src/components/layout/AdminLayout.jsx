@@ -23,6 +23,7 @@ const sidebarItems = [
   { path: '/admin/customers', name: 'Customers', icon: Users },
   { path: '/admin/privileges', name: 'Privileges', icon: ShieldCheck },
   { path: '/admin/pricing-plans', name: 'Pricing Plans', icon: CircleDollarSign },
+  { path: '/admin/user-plans', name: 'User Price Plans', icon: Users },
   { path: '/admin/credentials', name: 'Credentials', icon: KeyRound },
   { path: '/admin/notifications', name: 'SMS / Email', icon: MessageSquareText },
   { path: '/admin/system', name: 'System Health', icon: BarChart3 },

@@ -9,6 +9,7 @@ class AppUser {
   final UserRole role;
   final bool isRegistrationComplete;
   final DateTime? phoneVerifiedAt;
+  final int? pricingPlanId;
 
   AppUser({
     required this.id, 
@@ -19,6 +20,7 @@ class AppUser {
     required this.role, 
     this.isRegistrationComplete = false,
     this.phoneVerifiedAt,
+    this.pricingPlanId,
   });
 
   bool get isPhoneVerified => phoneVerifiedAt != null;

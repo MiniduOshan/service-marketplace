@@ -246,8 +246,11 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                     ),
                   ],
                   const SizedBox(height: 28),
-                  _buildProPlanCard(renewalStr),
-                  const SizedBox(height: 32),
+                  if (authController.currentUser?.pricingPlanId != null) ...[
+                    _buildProPlanCard(renewalStr),
+                    const SizedBox(height: 28),
+                  ],
+                  const SizedBox(height: 4),
                 ],
               ),
             ),
@@ -313,6 +316,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
   }
 
   Widget _buildStatusBadges() {
+    final isPro = authController.currentUser?.pricingPlanId != null;
     return Row(
       children: [
         Container(
@@ -325,15 +329,18 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
           ]),
         ),
         const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(color: const Color(0xFFFFF7E8), borderRadius: BorderRadius.circular(16)),
-          child: const Row(children: [
-              Icon(Icons.star, color: Color(0xFFF79009), size: 14),
-              SizedBox(width: 6),
-              Text("Featured", style: TextStyle(color: Color(0xFFF79009), fontWeight: FontWeight.bold, fontSize: 12)),
-          ]),
-        ),
+        if (isPro) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(color: const Color(0xFFFFF7E8), borderRadius: BorderRadius.circular(16)),
+            child: const Row(children: [
+                Icon(Icons.star, color: Color(0xFFF79009), size: 14),
+                SizedBox(width: 6),
+                Text("Featured", style: TextStyle(color: Color(0xFFF79009), fontWeight: FontWeight.bold, fontSize: 12)),
+            ]),
+          ),
+          const SizedBox(width: 8),
+        ],
         const Spacer(),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             const Text("Priority Score: 100/100", style: TextStyle(color: Colors.grey, fontSize: 12)),
@@ -428,9 +435,15 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
         ),
         GestureDetector(
           onTap: () => Navigator.pushNamed(context, '/worker-subscription'),
-          child: _buildStatCard("Free Plan", "SUBSCRIPTION"),
+          child: _buildStatCard(
+            authController.currentUser?.pricingPlanId != null ? "Pro Plan" : "Free Plan",
+            "SUBSCRIPTION",
+          ),
         ),
-        _buildStatCard("100", "PRIORITY SCORE"),
+        _buildStatCard(
+          authController.currentUser?.pricingPlanId != null ? "100" : "75",
+          "PRIORITY SCORE",
+        ),
     ]);
   }
 

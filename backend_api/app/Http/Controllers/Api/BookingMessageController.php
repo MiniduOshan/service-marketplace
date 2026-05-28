@@ -39,7 +39,7 @@ class BookingMessageController extends Controller
         $message = BookingMessage::create([
             'booking_id' => $booking->id,
             'sender_id' => $user->id,
-            'body' => $validated['body'],
+            'body' => strip_tags($validated['body']),
         ]);
 
         return response()->json([

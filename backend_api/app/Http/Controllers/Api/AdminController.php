@@ -13,7 +13,7 @@ class AdminController extends Controller
 {
     public function workers(): JsonResponse
     {
-        $workers = User::where('role', 'worker')->with('category')->get()->map(function ($worker) {
+        $workers = User::where('role', 'worker')->with(['category', 'pricingPlan'])->get()->map(function ($worker) {
             return [
                 'id' => $worker->id,
                 'name' => $worker->name,
@@ -22,6 +22,8 @@ class AdminController extends Controller
                 'verification' => $worker->verification ?? 'Pending verification',
                 'category' => $worker->category ? $worker->category->name : 'General',
                 'city' => 'Colombo',
+                'pricing_plan' => $worker->pricingPlan ? $worker->pricingPlan->title : 'Free Usage',
+                'pricing_plan_id' => $worker->pricing_plan_id,
             ];
         });
 
@@ -32,8 +34,8 @@ class AdminController extends Controller
     {
         $worker = User::where('role', 'worker')->findOrFail($id);
         $validated = $request->validate([
-            'status' => 'required|string',
-            'verification' => 'required|string',
+            'status' => ['required', 'string', 'in:Active,Suspended'],
+            'verification' => ['required', 'string', 'in:Pending verification,Verified,Rejected'],
         ]);
 
         $worker->update($validated);
@@ -46,7 +48,7 @@ class AdminController extends Controller
 
     public function customers(): JsonResponse
     {
-        $customers = User::where('role', 'customer')->get()->map(function ($customer) {
+        $customers = User::where('role', 'customer')->with('pricingPlan')->get()->map(function ($customer) {
             $bookingsCount = DB::table('bookings')->where('customer_id', $customer->id)->count();
             return [
                 'id' => $customer->id,
@@ -55,6 +57,8 @@ class AdminController extends Controller
                 'status' => $customer->status ?? 'Active',
                 'bookings' => $bookingsCount,
                 'lastActive' => $customer->updated_at ? $customer->updated_at->diffForHumans() : 'Just now',
+                'pricing_plan' => $customer->pricingPlan ? $customer->pricingPlan->title : 'Free Usage',
+                'pricing_plan_id' => $customer->pricing_plan_id,
             ];
         });
 
@@ -65,7 +69,7 @@ class AdminController extends Controller
     {
         $customer = User::where('role', 'customer')->findOrFail($id);
         $validated = $request->validate([
-            'status' => 'required|string',
+            'status' => ['required', 'string', 'in:Active,Suspended'],
         ]);
 
         $customer->update($validated);
@@ -142,11 +146,14 @@ class AdminController extends Controller
     public function sendNotification(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'channel' => 'required|string',
-            'audience' => 'required|string',
-            'subject' => 'nullable|string',
-            'message' => 'required|string',
+            'channel' => ['required', 'string', 'in:sms,email'],
+            'audience' => ['required', 'string', 'in:all,workers,customers'],
+            'subject' => ['nullable', 'string', 'max:255'],
+            'message' => ['required', 'string', 'max:5000'],
         ]);
+
+        $validated['subject'] = isset($validated['subject']) ? strip_tags($validated['subject']) : null;
+        $validated['message'] = strip_tags($validated['message']);
 
         $logs = Setting::get('notification_logs', []);
         $logs[] = array_merge($validated, ['timestamp' => now()->toIso8601String()]);
@@ -172,6 +179,23 @@ class AdminController extends Controller
 
         return response()->json([
             'message' => 'Credentials saved securely.',
+        ]);
+    }
+
+    public function assignPricingPlan(Request $request, $userId): JsonResponse
+    {
+        $validated = $request->validate([
+            'pricing_plan_id' => ['nullable', 'exists:pricing_plans,id'],
+        ]);
+
+        $user = User::findOrFail($userId);
+        $user->update([
+            'pricing_plan_id' => $validated['pricing_plan_id'],
+        ]);
+
+        return response()->json([
+            'message' => 'User pricing plan updated successfully.',
+            'data' => $user->load('pricingPlan'),
         ]);
     }
 }

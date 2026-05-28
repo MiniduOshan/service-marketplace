@@ -7,61 +7,77 @@ use App\Models\ServicePackage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 class ServicePackageController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = ServicePackage::query()
-            ->with([
-                'category',
-                'worker' => function ($q) {
-                    $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at')
-                      ->withAvg('workerReviews as average_rating', 'rating')
-                      ->withCount('workerReviews as reviews_count');
-                }
-            ])
-            ->where('is_active', true)
-            ->latest();
+        $page = $request->input('page', 1);
+        $category = $request->input('category');
+        $workerId = $request->input('worker_id');
+        $search = $request->input('search');
 
-        if ($request->filled('category')) {
-            $query->whereHas('category', function ($categoryQuery) use ($request): void {
-                $categoryQuery->where('slug', (string) $request->input('category'));
-            });
-        }
+        $cacheKey = "services:list:" . md5(serialize([$page, $category, $workerId, $search]));
 
-        if ($request->filled('worker_id')) {
-            $query->where('user_id', $request->input('worker_id'));
-        }
+        $data = Cache::remember($cacheKey, now()->addMinutes(2), function () use ($request) {
+            $query = ServicePackage::query()
+                ->with([
+                    'category',
+                    'worker' => function ($q) {
+                        $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at')
+                          ->withAvg('workerReviews as average_rating', 'rating')
+                          ->withCount('workerReviews as reviews_count');
+                    }
+                ])
+                ->where('is_active', true)
+                ->latest();
 
-        if ($request->filled('search')) {
-            $search = trim((string) $request->input('search'));
+            if ($request->filled('category')) {
+                $query->whereHas('category', function ($categoryQuery) use ($request): void {
+                    $categoryQuery->where('slug', (string) $request->input('category'));
+                });
+            }
 
-            $query->where(function ($serviceQuery) use ($search): void {
-                $serviceQuery->where('title', 'like', '%'.$search.'%')
-                    ->orWhere('description', 'like', '%'.$search.'%')
-                    ->orWhereHas('worker', function ($workerQuery) use ($search): void {
-                        $workerQuery->where('name', 'like', '%'.$search.'%');
-                    });
-            });
-        }
+            if ($request->filled('worker_id')) {
+                $query->where('user_id', $request->input('worker_id'));
+            }
+
+            if ($request->filled('search')) {
+                $search = trim((string) $request->input('search'));
+
+                $query->where(function ($serviceQuery) use ($search): void {
+                    $serviceQuery->where('title', 'like', '%'.$search.'%')
+                        ->orWhere('description', 'like', '%'.$search.'%')
+                        ->orWhereHas('worker', function ($workerQuery) use ($search): void {
+                            $workerQuery->where('name', 'like', '%'.$search.'%');
+                        });
+                });
+            }
+
+            return $query->paginate(12)->toArray();
+        });
 
         return response()->json([
-            'data' => $query->paginate(12),
+            'data' => $data,
         ]);
     }
 
     public function show(ServicePackage $servicePackage): JsonResponse
     {
-        return response()->json([
-            'data' => $servicePackage->load([
+        $data = Cache::remember("service_package:{$servicePackage->id}", now()->addDay(), function () use ($servicePackage) {
+            return $servicePackage->load([
                 'category',
                 'worker' => function ($q) {
                     $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at')
                       ->withAvg('workerReviews as average_rating', 'rating')
                       ->withCount('workerReviews as reviews_count');
                 }
-            ]),
+            ])->toArray();
+        });
+
+        return response()->json([
+            'data' => $data,
         ]);
     }
 
@@ -83,9 +99,9 @@ class ServicePackageController extends Controller
         $servicePackage = ServicePackage::create([
             'user_id' => $user->id,
             'service_category_id' => $validated['service_category_id'],
-            'title' => $validated['title'],
-            'slug' => Str::slug($validated['title']).'-'.Str::lower(Str::random(6)),
-            'description' => $validated['description'] ?? null,
+            'title' => strip_tags($validated['title']),
+            'slug' => Str::slug(strip_tags($validated['title'])).'-'.Str::lower(Str::random(6)),
+            'description' => isset($validated['description']) ? strip_tags($validated['description']) : null,
             'price' => $validated['price'],
             'duration_minutes' => $validated['duration_minutes'] ?? null,
             'location_type' => $validated['location_type'] ?? 'onsite',
@@ -115,10 +131,17 @@ class ServicePackageController extends Controller
         ]);
 
         if (array_key_exists('title', $validated)) {
+            $validated['title'] = strip_tags($validated['title']);
             $validated['slug'] = Str::slug($validated['title']).'-'.Str::lower(Str::random(6));
         }
 
+        if (array_key_exists('description', $validated) && $validated['description'] !== null) {
+            $validated['description'] = strip_tags($validated['description']);
+        }
+
         $servicePackage->update($validated);
+
+        Cache::forget("service_package:{$servicePackage->id}");
 
         return response()->json([
             'message' => 'Service package updated successfully.',

@@ -72,6 +72,7 @@ class AuthController {
         'phoneVerifiedAt': user.phoneVerifiedAt?.toIso8601String(),
         'role': user.role.toString().split('.').last,
         'isRegistrationComplete': user.isRegistrationComplete,
+        'pricing_plan_id': user.pricingPlanId,
       };
       await prefs.setString(_prefsUserKey, jsonEncode(userMap));
 
@@ -119,6 +120,9 @@ class AuthController {
         phoneVerifiedAt: map['phoneVerifiedAt'] != null
             ? DateTime.tryParse(map['phoneVerifiedAt'].toString())
             : null,
+        pricingPlanId: map['pricing_plan_id'] != null
+            ? int.tryParse(map['pricing_plan_id'].toString())
+            : null,
       );
 
       if (_authStateNotifier.value!.role == UserRole.worker) {
@@ -136,6 +140,7 @@ class AuthController {
             role: _authStateNotifier.value!.role,
             isRegistrationComplete: true,
             phoneVerifiedAt: _authStateNotifier.value!.phoneVerifiedAt,
+            pricingPlanId: _authStateNotifier.value!.pricingPlanId,
           );
         }
       }
@@ -157,6 +162,7 @@ class AuthController {
       role: currentUser.role,
       isRegistrationComplete: true,
       phoneVerifiedAt: currentUser.phoneVerifiedAt,
+      pricingPlanId: currentUser.pricingPlanId,
     );
 
     _authStateNotifier.value = completedUser;
@@ -193,6 +199,9 @@ class AuthController {
         phoneVerifiedAt: user['phone_verified_at'] != null
             ? DateTime.tryParse(user['phone_verified_at'].toString())
             : null,
+        pricingPlanId: user['pricing_plan_id'] != null
+            ? int.tryParse(user['pricing_plan_id'].toString())
+            : null,
       ),
       token: token,
     );
@@ -226,6 +235,9 @@ class AuthController {
         phoneVerifiedAt: user['phone_verified_at'] != null
             ? DateTime.tryParse(user['phone_verified_at'].toString())
             : null,
+        pricingPlanId: user['pricing_plan_id'] != null
+            ? int.tryParse(user['pricing_plan_id'].toString())
+            : null,
       ),
       token: token,
     );
@@ -258,6 +270,9 @@ class AuthController {
         isRegistrationComplete: false,
         phoneVerifiedAt: user['phone_verified_at'] != null
             ? DateTime.tryParse(user['phone_verified_at'].toString())
+            : null,
+        pricingPlanId: user['pricing_plan_id'] != null
+            ? int.tryParse(user['pricing_plan_id'].toString())
             : null,
       ),
       token: token,
@@ -307,6 +322,9 @@ class AuthController {
         isRegistrationComplete: isRegistrationComplete,
         phoneVerifiedAt: user['phone_verified_at'] != null
             ? DateTime.tryParse(user['phone_verified_at'].toString())
+            : null,
+        pricingPlanId: user['pricing_plan_id'] != null
+            ? int.tryParse(user['pricing_plan_id'].toString())
             : null,
       ),
       token: token,
@@ -379,6 +397,9 @@ class AuthController {
         phoneVerifiedAt: user['phone_verified_at'] != null
             ? DateTime.tryParse(user['phone_verified_at'].toString())
             : null,
+        pricingPlanId: user['pricing_plan_id'] != null
+            ? int.tryParse(user['pricing_plan_id'].toString())
+            : null,
       ),
       token: token,
     );
@@ -412,6 +433,9 @@ class AuthController {
         phoneVerifiedAt: user['phone_verified_at'] != null
             ? DateTime.tryParse(user['phone_verified_at'].toString())
             : null,
+        pricingPlanId: user['pricing_plan_id'] != null
+            ? int.tryParse(user['pricing_plan_id'].toString())
+            : null,
       ),
       token: _sessionToken,
     );
@@ -427,6 +451,41 @@ class AuthController {
       prefs.remove(_prefsTokenKey);
       prefs.remove(_prefsUserKey);
     });
+  }
+
+  Future<bool> updatePricingPlan(int? pricingPlanId) async {
+    final response = await ApiClient.instance.updatePricingPlan(
+      pricingPlanId: pricingPlanId,
+      token: _sessionToken,
+    );
+    final data = response['data'] as Map<String, dynamic>;
+    final user = data['user'] as Map<String, dynamic>;
+    final role = user['role']?.toString() == 'worker'
+        ? UserRole.worker
+        : UserRole.customer;
+
+    _setSession(
+      AppUser(
+        id: user['id'].toString(),
+        name: user['name']?.toString(),
+        email: user['email']?.toString(),
+        phone: user['phone']?.toString(),
+        token: _sessionToken,
+        role: role,
+        isRegistrationComplete:
+            _authStateNotifier.value?.isRegistrationComplete ??
+            (role != UserRole.worker),
+        phoneVerifiedAt: user['phone_verified_at'] != null
+            ? DateTime.tryParse(user['phone_verified_at'].toString())
+            : null,
+        pricingPlanId: user['pricing_plan_id'] != null
+            ? int.tryParse(user['pricing_plan_id'].toString())
+            : null,
+      ),
+      token: _sessionToken,
+    );
+
+    return true;
   }
 }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../controllers/auth_controller.dart';
 
 class WorkerSubscriptionScreen extends StatelessWidget {
   const WorkerSubscriptionScreen({super.key});
@@ -23,40 +24,102 @@ class WorkerSubscriptionScreen extends StatelessWidget {
         title: const Text("Subscription & Plan", style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildActivePlanHeader(context, renewalStr),
-            const SizedBox(height: 30),
-            const Text("What Pro gives you", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            _buildBenefitsList(),
-            const SizedBox(height: 30),
-            const Text("Plan comparison", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            _buildPlanComparison(),
-            const SizedBox(height: 30),
-            _buildPriorityScoreCard(),
-            const SizedBox(height: 24),
-            _buildPayPerLeadToggle(context),
-            const SizedBox(height: 30),
-            Center(child: TextButton(onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Payment settings coming soon!")));
-            }, child: const Text("Manage payment method", style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold)))),
-            const Center(child: Text("•", style: TextStyle(color: Colors.grey))),
-            Center(child: TextButton(onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Support chat coming soon!")));
-            }, child: const Text("Contact support", style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold)))),
-            const SizedBox(height: 40),
-          ],
-        ),
+      body: ValueListenableBuilder<AppUser?>(
+        valueListenable: authController.authStateNotifier,
+        builder: (context, user, child) {
+          final isPro = user?.pricingPlanId != null;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildActivePlanHeader(context, renewalStr, isPro),
+                const SizedBox(height: 30),
+                const Text("What Pro gives you", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                _buildBenefitsList(),
+                const SizedBox(height: 30),
+                const Text("Plan comparison", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                _buildPlanComparison(isPro),
+                const SizedBox(height: 30),
+                _buildPriorityScoreCard(isPro),
+                const SizedBox(height: 24),
+                _buildPayPerLeadToggle(context, isPro),
+                const SizedBox(height: 30),
+                Center(child: TextButton(onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Payment settings coming soon!")));
+                }, child: const Text("Manage payment method", style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold)))),
+                const Center(child: Text("•", style: TextStyle(color: Colors.grey))),
+                Center(child: TextButton(onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Support chat coming soon!")));
+                }, child: const Text("Contact support", style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold)))),
+                const SizedBox(height: 40),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildActivePlanHeader(BuildContext context, String renewalStr) {
+  Widget _buildActivePlanHeader(BuildContext context, String renewalStr, bool isPro) {
+    if (!isPro) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.info_outline, color: primaryGreen),
+                SizedBox(width: 8),
+                Text("Free Plan — Active", style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text("LKR 0/month · Pay-per-lead (LKR 150 per lead)", style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryGreen,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                onPressed: () async {
+                  try {
+                    await authController.updatePricingPlan(1); // Starter plan
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Upgraded to Pro Plan successfully!"), backgroundColor: primaryGreen),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(e.toString())),
+                      );
+                    }
+                  }
+                },
+                child: const Text("Upgrade to Pro", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -92,9 +155,44 @@ class WorkerSubscriptionScreen extends StatelessWidget {
           const SizedBox(height: 20),
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton(onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Cancellation request submitted."), backgroundColor: Colors.red));
-            }, child: const Text("Cancel plan", style: TextStyle(color: Colors.white70))),
+            child: TextButton(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text("Cancel Pro Plan"),
+                    content: const Text("Are you sure you want to cancel your Pro Plan subscription? This will immediately revoke your profile priority score boost and badges."),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text("Keep Plan", style: TextStyle(color: Colors.grey)),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          Navigator.pop(ctx);
+                          try {
+                            await authController.updatePricingPlan(null);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Subscription cancelled successfully."), backgroundColor: Colors.red),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(e.toString())),
+                              );
+                            }
+                          }
+                        },
+                        child: const Text("Cancel Plan", style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              child: const Text("Cancel plan", style: TextStyle(color: Colors.white70)),
+            ),
           ),
         ],
       ),
@@ -122,12 +220,12 @@ class WorkerSubscriptionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPlanComparison() {
+  Widget _buildPlanComparison(bool isPro) {
     return Row(
       children: [
-        _comparisonCard("Free", "LKR 0/month", ["Basic Profile"], ["Featured Badge", "Early Leads"]),
+        _comparisonCard("Free", "LKR 0/month", ["Basic Profile"], ["Featured Badge", "Early Leads"], isCurrent: !isPro),
         const SizedBox(width: 16),
-        _comparisonCard("Pro", "LKR 2,500/mo", ["Premium Profile", "Featured Badge", "Early Leads"], [], isCurrent: true),
+        _comparisonCard("Pro", "LKR 2,500/mo", ["Premium Profile", "Featured Badge", "Early Leads"], [], isCurrent: isPro),
       ],
     );
   }
@@ -170,23 +268,23 @@ class WorkerSubscriptionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPriorityScoreCard() {
+  Widget _buildPriorityScoreCard(bool isPro) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
       child: Column(
         children: [
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Your priority score", style: TextStyle(color: Colors.grey)),
-              Text("100 /100", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryGreen)),
+              const Text("Your priority score", style: TextStyle(color: Colors.grey)),
+              Text(isPro ? "100 /100" : "75 /100", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryGreen)),
             ],
           ),
           const SizedBox(height: 16),
           _scoreBreakdownRow("Distance (Live)", "+20"),
           _scoreBreakdownRow("Rating 0.0", "+25"),
-          _scoreBreakdownRow("Pro Subscription", "+25", isHighlight: true),
+          _scoreBreakdownRow("Pro Subscription", isPro ? "+25" : "+0", isHighlight: isPro),
           _scoreBreakdownRow("Activity Level", "+25"),
           _scoreBreakdownRow("Response Rate", "+5"),
         ],
@@ -207,7 +305,7 @@ class WorkerSubscriptionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPayPerLeadToggle(BuildContext context) {
+  Widget _buildPayPerLeadToggle(BuildContext context, bool isPro) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade200), borderRadius: BorderRadius.circular(12)),
@@ -218,14 +316,12 @@ class WorkerSubscriptionScreen extends StatelessWidget {
               const Icon(Icons.payments_outlined, color: Colors.grey),
               const SizedBox(width: 12),
               const Expanded(child: Text("Pay-per-lead option", style: TextStyle(fontWeight: FontWeight.bold))),
-              Switch(value: false, onChanged: (v) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Switching mode coming soon!")));
-              }),
+              Switch(value: !isPro, onChanged: null), // Disabled toggle, controlled by subscription status
             ],
           ),
           const Padding(
             padding: EdgeInsets.only(top: 8),
-            child: Text("LKR 150 per job request. Available if you switch to lead-based mode. Pro features will be disabled.", 
+            child: Text("LKR 150 per job request. Active when using the Free Plan. Pro features will be disabled.", 
               style: TextStyle(color: Colors.grey, fontSize: 12)),
           ),
         ],

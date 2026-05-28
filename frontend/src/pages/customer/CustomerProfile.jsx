@@ -29,7 +29,6 @@ import {
 
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
-import { apiRequest, getStoredSessionUser, storeSession, clearSession } from '../../lib/api';
 import {
   apiRequest,
   clearSession,

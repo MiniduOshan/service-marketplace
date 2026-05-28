@@ -5,17 +5,22 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ServiceCategory;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 
 class ServiceCategoryController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json([
-            'data' => ServiceCategory::query()
+        $categories = Cache::remember('categories:active', now()->addDay(), function () {
+            return ServiceCategory::query()
                 ->where('is_active', true)
                 ->withCount('servicePackages')
                 ->orderBy('name')
-                ->get(),
+                ->get();
+        });
+
+        return response()->json([
+            'data' => $categories,
         ]);
     }
 }

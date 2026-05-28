@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Review;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class ReviewController extends Controller
 {
@@ -43,8 +44,11 @@ class ReviewController extends Controller
             'customer_id' => $user->id,
             'worker_id' => $booking->worker_id,
             'rating' => $validated['rating'],
-            'comment' => $validated['comment'] ?? null,
+            'comment' => isset($validated['comment']) ? strip_tags($validated['comment']) : null,
         ]);
+
+        // Invalidate cache for the worker's reviews
+        Cache::forget("worker:{$booking->worker_id}:reviews");
 
         return response()->json([
             'message' => 'Review submitted successfully.',
@@ -54,10 +58,13 @@ class ReviewController extends Controller
 
     public function index(Request $request, $workerId): JsonResponse
     {
-        $reviews = Review::where('worker_id', $workerId)
-            ->with('customer:id,name')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $reviews = Cache::remember("worker:{$workerId}:reviews", now()->addDay(), function () use ($workerId) {
+            return Review::where('worker_id', $workerId)
+                ->with('customer:id,name')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->toArray();
+        });
 
         return response()->json([
             'data' => $reviews,

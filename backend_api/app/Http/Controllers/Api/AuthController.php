@@ -259,7 +259,7 @@ class AuthController extends Controller
     {
         $user = $request->user();
         if ($user) {
-            $user->load('category');
+            $user->load(['category', 'pricingPlan']);
         }
         return response()->json([
             'data' => [
@@ -313,6 +313,25 @@ class AuthController extends Controller
             'message' => 'Profile updated successfully.',
             'data' => [
                 'user' => $user->fresh(),
+            ],
+        ]);
+    }
+
+    public function updatePricingPlan(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'pricing_plan_id' => ['nullable', 'exists:pricing_plans,id'],
+        ]);
+
+        $user = $request->user();
+        $user->update([
+            'pricing_plan_id' => $validated['pricing_plan_id'],
+        ]);
+
+        return response()->json([
+            'message' => 'Pricing plan updated successfully.',
+            'data' => [
+                'user' => $user->fresh()->load('pricingPlan'),
             ],
         ]);
     }

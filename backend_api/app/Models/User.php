@@ -33,6 +33,7 @@ class User extends Authenticatable
         'phone_otp_hash',
         'phone_otp_expires_at',
         'api_token_hash',
+        'pricing_plan_id',
     ];
 
     /**
@@ -159,6 +160,11 @@ class User extends Authenticatable
     public function workerReviews(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Review::class, 'worker_id');
+    }
+
+    public function pricingPlan()
+    {
+        return $this->belongsTo(PricingPlan::class, 'pricing_plan_id');
     }
 }
 

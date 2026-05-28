@@ -11,6 +11,7 @@ import AdminWorkers from './pages/admin/AdminWorkers';
 import AdminCustomers from './pages/admin/AdminCustomers';
 import AdminPrivileges from './pages/admin/AdminPrivileges';
 import AdminPricingPlans from './pages/admin/AdminPricingPlans';
+import AdminUserPlans from './pages/admin/AdminUserPlans';
 import AdminCredentials from './pages/admin/AdminCredentials';
 import AdminNotifications from './pages/admin/AdminNotifications';
 import AdminSystemHealth from './pages/admin/AdminSystemHealth';
@@ -61,6 +62,7 @@ function App() {
           <Route path="/admin/customers" element={<AdminCustomers />} />
           <Route path="/admin/privileges" element={<AdminPrivileges />} />
           <Route path="/admin/pricing-plans" element={<AdminPricingPlans />} />
+          <Route path="/admin/user-plans" element={<AdminUserPlans />} />
           <Route path="/admin/credentials" element={<AdminCredentials />} />
           <Route path="/admin/notifications" element={<AdminNotifications />} />
           <Route path="/admin/system" element={<AdminSystemHealth />} />

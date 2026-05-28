@@ -51,8 +51,8 @@ class BookingController extends Controller
             'worker_id' => $servicePackage->user_id,
             'service_package_id' => $servicePackage->id,
             'scheduled_at' => $validated['scheduled_at'],
-            'address' => $validated['address'],
-            'notes' => $validated['notes'] ?? null,
+            'address' => strip_tags($validated['address']),
+            'notes' => isset($validated['notes']) ? strip_tags($validated['notes']) : null,
             'total_price' => $servicePackage->price,
             'status' => 'pending',
         ]);

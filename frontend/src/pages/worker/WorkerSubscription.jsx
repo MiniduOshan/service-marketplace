@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CheckCircle2,
   CircleDollarSign,
@@ -6,6 +6,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import WorkerLayout from '../../components/layout/WorkerLayout';
+import { apiRequest, getStoredSessionUser, storeSession } from '../../lib/api';
 
 const getRenewalDate = () => {
   const d = new Date();
@@ -444,18 +445,120 @@ function BillingModal({ onClose, onCancelPlan }) {
   );
 }
 
+function CancelPlanModal({ onClose, onConfirm }) {
+  const [inputValue, setInputValue] = useState('');
+
+  const handleConfirm = () => {
+    if (inputValue === 'CANCEL') {
+      onConfirm();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 px-4 py-6 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100">
+        <h2 className="text-xl font-bold text-slate-950">Cancel Pro Subscription?</h2>
+        
+        <p className="mt-3 text-sm text-slate-500 leading-normal">
+          This will immediately revoke your profile priority rankings, featured badges, and restore pay-per-lead fees of LKR 150.
+        </p>
+
+        <div className="mt-5">
+          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Type CANCEL to confirm
+          </label>
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="CANCEL"
+            className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+          />
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg bg-slate-100 px-5 py-3 font-semibold text-slate-600 transition hover:bg-slate-200 text-xs"
+          >
+            Keep Pro Plan
+          </button>
+
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={inputValue !== 'CANCEL'}
+            className="rounded-lg bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-xs"
+          >
+            Confirm Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function WorkerSubscription() {
-  const [currentPlan, setCurrentPlan] = useState('pro');
+  const [currentPlan, setCurrentPlan] = useState(() => {
+    const user = getStoredSessionUser();
+    return user?.pricing_plan_id ? 'pro' : 'free';
+  });
   const [billingModalOpen, setBillingModalOpen] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const isPro = currentPlan === 'pro';
 
-  function handleUpgrade() {
-    setCurrentPlan('pro');
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const res = await apiRequest('/auth/me');
+        const user = res.data.user;
+        storeSession(undefined, user);
+        setCurrentPlan(user.pricing_plan_id ? 'pro' : 'free');
+      } catch (err) {
+        console.error('Failed to fetch user pricing plan:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchUser();
+  }, []);
+
+  async function handleUpgrade() {
+    try {
+      const res = await apiRequest('/auth/user/pricing-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pricing_plan_id: 1 }), // Starter plan (LKR 2,500/month)
+      });
+      const user = res.data.user;
+      storeSession(undefined, user);
+      setCurrentPlan('pro');
+    } catch (err) {
+      alert(err.message || 'Failed to upgrade subscription.');
+    }
   }
 
-  function handleCancelPlan() {
-    setCurrentPlan('free');
+  function handleCancelTrigger() {
     setBillingModalOpen(false);
+    setCancelModalOpen(true);
+  }
+
+  async function handleCancelConfirm() {
+    try {
+      const res = await apiRequest('/auth/user/pricing-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pricing_plan_id: null }),
+      });
+      const user = res.data.user;
+      storeSession(undefined, user);
+      setCurrentPlan('free');
+      setCancelModalOpen(false);
+    } catch (err) {
+      alert(err.message || 'Failed to cancel subscription.');
+    }
   }
 
   return (
@@ -475,7 +578,7 @@ export default function WorkerSubscription() {
             {isPro ? (
               <ProPlanHero
                 onManageBilling={() => setBillingModalOpen(true)}
-                onCancelPlan={handleCancelPlan}
+                onCancelPlan={handleCancelTrigger}
               />
             ) : (
               <FreePlanHero onUpgrade={handleUpgrade} />
@@ -496,7 +599,14 @@ export default function WorkerSubscription() {
       {billingModalOpen && (
         <BillingModal
           onClose={() => setBillingModalOpen(false)}
-          onCancelPlan={handleCancelPlan}
+          onCancelPlan={handleCancelTrigger}
+        />
+      )}
+
+      {cancelModalOpen && (
+        <CancelPlanModal
+          onClose={() => setCancelModalOpen(false)}
+          onConfirm={handleCancelConfirm}
         />
       )}
     </WorkerLayout>
