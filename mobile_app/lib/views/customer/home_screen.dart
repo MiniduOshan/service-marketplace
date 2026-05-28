@@ -139,7 +139,19 @@ class _HomeScreenState extends State<HomeScreen> {
       final services = await ApiClient.instance.getServices();
       if (!mounted) return;
 
-      final loadedWorkers = services.map((service) {
+      final seenWorkers = <String>{};
+      final uniqueServices = <Map<String, dynamic>>[];
+      for (final service in services) {
+        final workerId = service['worker'] is Map<String, dynamic>
+            ? service['worker']['id']?.toString() ?? service['user_id']?.toString() ?? '1'
+            : service['user_id']?.toString() ?? '1';
+        if (!seenWorkers.contains(workerId)) {
+          seenWorkers.add(workerId);
+          uniqueServices.add(service);
+        }
+      }
+
+      final loadedWorkers = uniqueServices.map((service) {
         final categoryName = service['category'] is Map<String, dynamic>
             ? service['category']['name']?.toString() ?? 'All'
             : 'All';

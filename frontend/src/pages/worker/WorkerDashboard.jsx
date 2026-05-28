@@ -286,10 +286,17 @@ export default function WorkerDashboard() {
   }, [bookings]);
 
   const handleAcceptJob = async (bookingId) => {
-    alert('Job request accepted!');
-    setBookings((current) =>
-      current.map((b) => (b.id === bookingId ? { ...b, status: 'confirmed' } : b))
-    );
+    try {
+      await apiRequest(`/auth/bookings/${bookingId}/accept`, {
+        method: 'PATCH',
+      });
+      alert('Job request accepted!');
+      setBookings((current) =>
+        current.map((b) => (b.id === bookingId ? { ...b, status: 'confirmed' } : b))
+      );
+    } catch (err) {
+      alert(err.message || 'Failed to accept job request.');
+    }
   };
 
   const handleDeclineJob = async (bookingId) => {
@@ -308,10 +315,17 @@ export default function WorkerDashboard() {
   };
 
   const handleCompleteJob = async (bookingId) => {
-    alert('Job marked as completed!');
-    setBookings((current) =>
-      current.map((b) => (b.id === bookingId ? { ...b, status: 'completed' } : b))
-    );
+    try {
+      await apiRequest(`/auth/bookings/${bookingId}/complete`, {
+        method: 'PATCH',
+      });
+      alert('Job marked as completed!');
+      setBookings((current) =>
+        current.map((b) => (b.id === bookingId ? { ...b, status: 'completed' } : b))
+      );
+    } catch (err) {
+      alert(err.message || 'Failed to complete job.');
+    }
   };
 
   const handleCancelJob = async (bookingId) => {

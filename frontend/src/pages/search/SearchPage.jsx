@@ -633,10 +633,21 @@ export default function SearchPage() {
         const res = await apiRequest(path);
         const data = res.data?.data || res.data || [];
 
-        const mappedWorkers = data.map((service) => {
+        const seenWorkers = new Set();
+        const mappedWorkers = [];
+
+        data.forEach((service) => {
+          const workerId = service.worker?.id;
+          if (workerId && seenWorkers.has(workerId)) {
+            return;
+          }
+          if (workerId) {
+            seenWorkers.add(workerId);
+          }
+
           const workerName = service.worker?.name || 'Verified Pro';
-          return {
-            id: service.worker?.id || '1',
+          mappedWorkers.push({
+            id: workerId || '1',
             servicePackageId: service.id,
             name: workerName,
             avatar: workerName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2),
@@ -658,7 +669,7 @@ export default function SearchPage() {
             featured: service.is_active,
             pro: !!service.worker?.phone_verified_at,
             avatarClass: 'bg-emerald-700 text-white',
-          };
+          });
         });
 
         setWorkersList(mappedWorkers);

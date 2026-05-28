@@ -279,7 +279,17 @@ export default function LandingPage() {
         const res = await apiRequest('/services');
         const services = res.data?.data || res.data || [];
         if (isMounted) {
-          const mapped = services.slice(0, 3).map((service, idx) => {
+          const seenWorkers = new Set();
+          const uniqueServices = [];
+          for (const service of services) {
+            const wId = service.worker?.id;
+            if (wId && !seenWorkers.has(wId)) {
+              seenWorkers.add(wId);
+              uniqueServices.push(service);
+            }
+          }
+
+          const mapped = uniqueServices.slice(0, 3).map((service, idx) => {
             const workerName = service.worker?.name || 'Verified Pro';
             const defaultImages = [
               'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=800&q=80',
