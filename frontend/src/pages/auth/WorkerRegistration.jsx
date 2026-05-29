@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import CustomerFooter from '../../components/layout/CustomerFooter';
 import { getStoredSessionUser, apiRequest } from '../../lib/api';
+import { uploadImageToSupabase } from '../../lib/supabase';
 
 const serviceCategories = [
   'Painting',
@@ -739,15 +740,19 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
   const [authenticDocs, setAuthenticDocs] = useState(isEditMode);
   const [customPackages, setCustomPackages] = useState([]);
   const [isAdding, setIsAdding] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadingPackageId, setUploadingPackageId] = useState(null);
   const [newPkgName, setNewPkgName] = useState('');
   const [newPkgPrice, setNewPkgPrice] = useState('');
   const [newPkgDesc, setNewPkgDesc] = useState('');
+  const [newPkgImage, setNewPkgImage] = useState('');
 
   // Editing state variables
   const [editingPkgId, setEditingPkgId] = useState(null);
   const [editPkgName, setEditPkgName] = useState('');
   const [editPkgPrice, setEditPkgPrice] = useState('');
   const [editPkgDesc, setEditPkgDesc] = useState('');
+  const [editPkgImage, setEditPkgImage] = useState('');
 
   // Load existing packages if in Edit Mode
   useEffect(() => {
@@ -762,12 +767,30 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
               price: `LKR ${parseFloat(p.price).toLocaleString()}`,
               description: p.description,
               active: !!p.is_active,
+              image_url: p.image_url || '',
             })));
           }
         })
         .catch(err => console.error("Failed to load packages", err));
     }
   }, [isEditMode]);
+
+  async function handleImageSelect(file, setImage, packageId = 'new') {
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    setUploadingPackageId(packageId);
+
+    try {
+      const publicUrl = await uploadImageToSupabase(file, 'service-packages');
+      setImage(publicUrl);
+    } catch (err) {
+      alert(err.message || 'Failed to upload image.');
+    } finally {
+      setIsUploadingImage(false);
+      setUploadingPackageId(null);
+    }
+  }
 
   async function saveCustomPackage() {
     const name = newPkgName.trim();
@@ -788,7 +811,8 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
             description: description,
             service_category_id: currentUser?.primary_service_category_id || 1,
             duration_minutes: 60,
-            location_type: 'onsite'
+            location_type: 'onsite',
+            image_url: newPkgImage || null,
           })
         });
         const newPkg = res.data || res;
@@ -800,6 +824,7 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
             price: `LKR ${parseFloat(newPkg.price).toLocaleString()}`,
             description: newPkg.description,
             active: !!newPkg.is_active,
+            image_url: newPkg.image_url || newPkgImage || '',
           },
         ]);
       } catch (err) {
@@ -815,6 +840,7 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
           price: `LKR ${priceVal.toLocaleString()}`,
           description: description,
           active: true,
+          image_url: newPkgImage,
         },
       ]);
     }
@@ -823,6 +849,7 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
     setNewPkgName('');
     setNewPkgPrice('');
     setNewPkgDesc('');
+    setNewPkgImage('');
     setIsAdding(false);
   }
 
@@ -847,6 +874,7 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
     setEditPkgName(pkg.title);
     setEditPkgPrice(pkg.price);
     setEditPkgDesc(pkg.description);
+    setEditPkgImage(pkg.image_url || '');
   }
 
   async function saveEditedPackage() {
@@ -864,7 +892,8 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
           body: JSON.stringify({
             title: name,
             price: priceVal,
-            description: description
+            description: description,
+            image_url: editPkgImage || null,
           })
         });
       } catch (err) {
@@ -876,11 +905,12 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
     setCustomPackages((current) =>
       current.map((pkg) =>
         pkg.id === editingPkgId
-          ? { ...pkg, title: name, price: `LKR ${priceVal.toLocaleString()}`, description: description }
+          ? { ...pkg, title: name, price: `LKR ${priceVal.toLocaleString()}`, description: description, image_url: editPkgImage }
           : pkg
       )
     );
     setEditingPkgId(null);
+    setEditPkgImage('');
   }
 
   return (
@@ -911,6 +941,36 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
               <div className="sm:col-span-2">
                 <Field label="Description">
                   <TextArea defaultValue="" placeholder="Describe what is included in the basic package..." />
+                </Field>
+              </div>
+
+              <div className="sm:col-span-2">
+                <Field label="Package Image">
+                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">Attach a service image</p>
+                        <p className="mt-1 text-sm text-slate-500">Use Supabase storage so the image stays available after refresh.</p>
+                      </div>
+
+                      <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
+                        <ImagePlus size={17} />
+                        {isUploadingImage && uploadingPackageId === 'new' ? 'Uploading...' : 'Select image'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(event) => handleImageSelect(event.target.files?.[0], setNewPkgImage)}
+                        />
+                      </label>
+                    </div>
+
+                    {newPkgImage ? (
+                      <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                        <img src={newPkgImage} alt="Package preview" className="h-44 w-full object-cover" />
+                      </div>
+                    ) : null}
+                  </div>
                 </Field>
               </div>
             </div>
@@ -948,6 +1008,36 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
                           onChange={(e) => setEditPkgDesc(e.target.value)} 
                           placeholder="Describe what services and benefits are included in this package..." 
                         />
+                      </Field>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <Field label="Package Image">
+                        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
+                          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">Replace the package image</p>
+                              <p className="mt-1 text-sm text-slate-500">The uploaded Supabase URL will be saved with the package.</p>
+                            </div>
+
+                            <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
+                              <ImagePlus size={17} />
+                              {isUploadingImage && uploadingPackageId === pkg.id ? 'Uploading...' : 'Select image'}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(event) => handleImageSelect(event.target.files?.[0], setEditPkgImage, pkg.id)}
+                              />
+                            </label>
+                          </div>
+
+                          {editPkgImage ? (
+                            <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                              <img src={editPkgImage} alt="Package preview" className="h-44 w-full object-cover" />
+                            </div>
+                          ) : null}
+                        </div>
                       </Field>
                     </div>
                   </div>
@@ -997,6 +1087,11 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
                   <h3 className="font-bold text-slate-950 text-lg mr-14">{pkg.title}</h3>
                   <span className="text-xl font-extrabold text-emerald-700 mr-8">{pkg.price}</span>
                 </div>
+                {pkg.image_url ? (
+                  <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <img src={pkg.image_url} alt={pkg.title} className="h-40 w-full object-cover" />
+                  </div>
+                ) : null}
                 <p className="mt-2 text-sm leading-relaxed text-slate-600 max-w-[90%]">{pkg.description}</p>
               </div>
             );
@@ -1031,6 +1126,36 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
                       onChange={(e) => setNewPkgDesc(e.target.value)} 
                       placeholder="Describe what services and benefits are included in this package..." 
                     />
+                  </Field>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <Field label="Package Image">
+                    <div className="rounded-lg border border-dashed border-emerald-700/30 bg-white p-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">Optional: add a product image</p>
+                          <p className="mt-1 text-sm text-slate-500">This image is uploaded to Supabase and stored with the package.</p>
+                        </div>
+
+                        <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
+                          <ImagePlus size={17} />
+                          {isUploadingImage && uploadingPackageId === 'new' ? 'Uploading...' : 'Select image'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(event) => handleImageSelect(event.target.files?.[0], setNewPkgImage)}
+                          />
+                        </label>
+                      </div>
+
+                      {newPkgImage ? (
+                        <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                          <img src={newPkgImage} alt="Package preview" className="h-44 w-full object-cover" />
+                        </div>
+                      ) : null}
+                    </div>
                   </Field>
                 </div>
               </div>

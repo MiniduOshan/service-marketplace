@@ -20,6 +20,7 @@ class ServicePackage extends Model
         'price',
         'duration_minutes',
         'location_type',
+        'image_url',
         'is_active',
     ];
 

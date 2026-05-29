@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { getStoredSessionUser, clearSession } from '../../lib/api';
+import { getStoredSessionUser, clearSession, apiRequest } from '../../lib/api';
 import {
   Bell,
   BriefcaseBusiness,
@@ -15,6 +15,8 @@ import {
   Settings,
   Star,
   Wrench,
+  Check,
+  X,
 } from 'lucide-react';
 import CustomerFooter from './CustomerFooter';
 
@@ -155,7 +157,7 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [notificationExpanded, setNotificationExpanded] = useState(false);
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const [notifications, setNotifications] = useState([]);
 
   const currentUser = getStoredSessionUser();
   const firstName = currentUser?.name?.split(' ')[0] || 'Worker';
@@ -163,7 +165,47 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
   useEffect(() => {
     if (!currentUser) {
       navigate('/login');
+      return;
     }
+
+    const fetchNotifications = () => {
+      apiRequest('/auth/notifications')
+        .then((res) => {
+          const list = res.data || res;
+          if (Array.isArray(list)) {
+            setNotifications(list.map(n => {
+              let Icon = CalendarCheck;
+              let iconClassName = 'bg-blue-50 text-blue-700';
+              if (n.title.toLowerCase().includes('message') || n.type === 'message') {
+                Icon = MessageSquare;
+                iconClassName = 'bg-emerald-50 text-emerald-700';
+              } else if (n.title.toLowerCase().includes('cancel')) {
+                Icon = X;
+                iconClassName = 'bg-red-50 text-red-700';
+              } else if (n.title.toLowerCase().includes('complete')) {
+                Icon = Check;
+                iconClassName = 'bg-emerald-50 text-emerald-700';
+              }
+              
+              return {
+                id: n.id,
+                group: n.type === 'booking' ? 'Bookings' : 'System',
+                title: n.title,
+                message: n.message,
+                unread: !!n.unread,
+                time: new Date(n.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+                icon: Icon,
+                iconClassName: iconClassName
+              };
+            }));
+          }
+        })
+        .catch(err => console.error(err));
+    };
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 10000);
+    return () => clearInterval(interval);
   }, [currentUser, navigate]);
 
   const unreadCount = useMemo(
@@ -177,12 +219,16 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
   }
 
   function markAllAsRead() {
-    setNotifications((current) =>
-      current.map((notification) => ({
-        ...notification,
-        unread: false,
-      }))
-    );
+    apiRequest('/auth/notifications/mark-read', { method: 'POST' })
+      .then(() => {
+        setNotifications((current) =>
+          current.map((notification) => ({
+            ...notification,
+            unread: false,
+          }))
+        );
+      })
+      .catch(err => console.error(err));
   }
 
   return (

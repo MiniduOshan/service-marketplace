@@ -110,6 +110,8 @@ export default function BookingPayment() {
           scheduled_at: scheduledAt,
           address: bookingDetails.address,
           notes: bookingDetails.description,
+          payment_option: selectedOption,
+          advance_paid: selectedOption === 'advance' ? advanceAmount : 0,
         }),
       });
 

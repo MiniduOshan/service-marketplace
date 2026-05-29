@@ -20,13 +20,28 @@ export default function BookingDetails() {
   const location = useLocation();
 
   // Load from location state, fallback if page is refreshed or visited directly
-  const worker = location.state?.worker || {
+  const stateWorker = location.state?.worker || (location.state?.workerId ? {
+    id: location.state.workerId,
+    name: location.state.workerName || 'Verified Pro',
+    rating: '4.8',
+    reviews: '24 reviews',
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(location.state.workerName || 'Pro')}&background=006D44&color=fff`,
+  } : null);
+
+  const statePackage = location.state?.servicePackage || (location.state?.servicePackageId ? {
+    id: location.state.servicePackageId,
+    title: location.state.serviceTitle || 'Professional Service',
+    price: location.state.priceLabel ? parseFloat(location.state.priceLabel.replace(/[^0-9.]/g, '')) || 3500 : 3500,
+  } : null);
+
+  const worker = stateWorker || {
     name: 'Verified Pro',
     rating: '4.8',
     reviews: '24 reviews',
     avatar: 'https://ui-avatars.com/api/?name=Pro&background=006D44&color=fff',
   };
-  const servicePackage = location.state?.servicePackage || {
+
+  const servicePackage = statePackage || {
     id: 1,
     title: 'Professional Service',
     price: '3500',

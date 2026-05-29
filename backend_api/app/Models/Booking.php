@@ -22,6 +22,9 @@ class Booking extends Model
         'notes',
         'total_price',
         'status',
+        'payment_option',
+        'advance_paid',
+        'payout_status',
     ];
 
     protected function casts(): array

@@ -189,7 +189,10 @@ function ActiveJobCard({ job, onComplete, onChat }) {
   );
 }
 
-function CompletedJobCard({ job }) {
+function CompletedJobCard({ job, onSettle }) {
+  const isAdvance = job.paymentOption === 'advance';
+  const isSettlePending = job.payoutStatus !== 'settled';
+
   return (
     <article className="rounded-xl border border-emerald-900/20 bg-white shadow-sm">
       <div className="p-5 sm:p-6 2xl:p-7">
@@ -210,6 +213,11 @@ function CompletedJobCard({ job }) {
 
             <DetailBlock label={job.priceLabel}>
               <span className="text-emerald-700">{job.price}</span>
+              {isAdvance && (
+                <div className="text-xs font-bold text-slate-500 mt-1">
+                  (50% Advance paid: LKR {parseFloat(job.advancePaid).toLocaleString()})
+                </div>
+              )}
             </DetailBlock>
           </div>
 
@@ -218,16 +226,35 @@ function CompletedJobCard({ job }) {
               Completed
             </span>
 
-            <div className="inline-flex items-center gap-1 text-sm font-bold text-emerald-700">
-              <CheckCircle2 size={16} />
-              Payment received
-            </div>
+            {isAdvance ? (
+              isSettlePending ? (
+                <button
+                  type="button"
+                  onClick={() => onSettle(job.id)}
+                  className="rounded-lg bg-orange-600 px-4 py-2 text-xs font-bold text-white shadow transition hover:bg-orange-700 cursor-pointer"
+                >
+                  Settle Remaining 50%
+                </button>
+              ) : (
+                <div className="inline-flex items-center gap-1 text-sm font-bold text-emerald-700">
+                  <CheckCircle2 size={16} />
+                  Fully Settled
+                </div>
+              )
+            ) : (
+              <div className="inline-flex items-center gap-1 text-sm font-bold text-emerald-700">
+                <CheckCircle2 size={16} />
+                Payment received
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="mt-6 rounded-lg bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
-          {job.review}
-        </div>
+        {job.review && (
+          <div className="mt-6 rounded-lg bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+            {job.review}
+          </div>
+        )}
       </div>
     </article>
   );
@@ -336,6 +363,20 @@ export default function WorkerJobs() {
     }
   };
 
+  const handleSettle = async (id) => {
+    try {
+      await apiRequest(`/auth/bookings/${id}/settle`, {
+        method: 'PATCH',
+      });
+      alert('Payout settled successfully!');
+      setBookings((current) =>
+        current.map((b) => (b.id === id ? { ...b, payout_status: 'settled' } : b))
+      );
+    } catch (err) {
+      alert(err.message || 'Failed to settle payout.');
+    }
+  };
+
   const handleChat = (bookingId) => {
     navigate('/worker/messages', { state: { bookingId } });
   };
@@ -359,6 +400,9 @@ export default function WorkerJobs() {
       cancelledAt: new Date(b.updated_at || b.scheduled_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }),
       reason: b.cancellation_reason || 'No reason provided.',
       rawStatus: b.status.toLowerCase(),
+      paymentOption: b.payment_option || 'after',
+      advancePaid: b.advance_paid || 0,
+      payoutStatus: b.payout_status || 'pending',
     }));
   }, [bookings]);
 
@@ -453,7 +497,7 @@ export default function WorkerJobs() {
                   );
                 }
                 if (job.rawStatus === 'completed') {
-                  return <CompletedJobCard key={job.id} job={job} />;
+                  return <CompletedJobCard key={job.id} job={job} onSettle={handleSettle} />;
                 }
                 return <CancelledJobCard key={job.id} job={job} />;
               })
