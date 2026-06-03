@@ -25,6 +25,7 @@ class Booking extends Model
         'payment_option',
         'advance_paid',
         'payout_status',
+        'photos',
     ];
 
     protected function casts(): array
@@ -32,6 +33,7 @@ class Booking extends Model
         return [
             'scheduled_at' => 'datetime',
             'total_price' => 'decimal:2',
+            'photos' => 'array',
         ];
     }
 

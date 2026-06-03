@@ -8,6 +8,48 @@ export default function AdminNotifications() {
   const [statusMessage, setStatusMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
+  const templates = [
+    {
+      label: 'Welcome (Worker)',
+      channel: 'email',
+      audience: 'workers',
+      subject: 'Welcome to SkilledLK! Action Required',
+      message: 'Welcome to SkilledLK! Please complete your profile and verify your ID to start receiving jobs.',
+    },
+    {
+      label: 'Account Approved',
+      channel: 'sms',
+      audience: 'pending-workers',
+      subject: 'Account Approved',
+      message: 'Your SkilledLK worker account has been approved. You can now login and start accepting bookings!',
+    },
+    {
+      label: 'System Maintenance',
+      channel: 'sms',
+      audience: 'all',
+      subject: 'System Maintenance Alert',
+      message: 'SkilledLK will undergo scheduled maintenance tonight from 12 AM to 2 AM. Services may be unavailable.',
+    },
+    {
+      label: 'Promo Offer (Customers)',
+      channel: 'email',
+      audience: 'customers',
+      subject: 'Special Offer: 10% Off Your Next Booking',
+      message: 'Use code PROMO10 on your next booking to get 10% off any service. Valid until the end of the month!',
+    }
+  ];
+
+  const useTemplate = (template) => {
+    setForm({
+      channel: template.channel,
+      audience: template.audience,
+      subject: template.subject,
+      message: template.message,
+    });
+    setErrorMessage('');
+    setStatusMessage('');
+  };
+
   const sendNotification = async (event) => {
     event.preventDefault();
     if (!form.message.trim()) {
@@ -65,7 +107,24 @@ export default function AdminNotifications() {
 
         {statusMessage ? <div className="mt-3 rounded-lg border border-emerald-250 bg-emerald-50 px-3 py-2 text-xs text-emerald-850">{statusMessage}</div> : null}
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <div className="mt-6 mb-2 flex items-center justify-between">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Quick Templates</h3>
+        </div>
+        <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {templates.map((tpl) => (
+            <button
+              key={tpl.label}
+              type="button"
+              onClick={() => useTemplate(tpl)}
+              className="flex flex-col items-start rounded-lg border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-emerald-500 hover:bg-emerald-50"
+            >
+              <span className="mb-1 text-xs font-bold text-slate-900">{tpl.label}</span>
+              <span className="line-clamp-2 text-[10px] leading-relaxed text-slate-500">{tpl.message}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm text-slate-700"><Smartphone size={18} className="text-emerald-600" /><h3 className="mt-2 text-xs font-bold text-slate-900">SMS broadcast</h3><p className="mt-1 text-xs leading-normal text-slate-550">Send urgent account and booking alerts.</p></div>
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm text-slate-700"><Mail size={18} className="text-emerald-600" /><h3 className="mt-2 text-xs font-bold text-slate-900">Email campaign</h3><p className="mt-1 text-xs leading-normal text-slate-550">Announce changes and feature updates.</p></div>
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm text-slate-700"><ArrowUpRight size={18} className="text-emerald-600" /><h3 className="mt-2 text-xs font-bold text-slate-900">Audit-ready logs</h3><p className="mt-1 text-xs leading-normal text-slate-550">Keep a visible trail for sent announcements.</p></div>

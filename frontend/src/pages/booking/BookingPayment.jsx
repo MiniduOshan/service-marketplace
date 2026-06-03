@@ -112,6 +112,7 @@ export default function BookingPayment() {
           notes: bookingDetails.description,
           payment_option: selectedOption,
           advance_paid: selectedOption === 'advance' ? advanceAmount : 0,
+          photos: bookingDetails.photos,
         }),
       });
 

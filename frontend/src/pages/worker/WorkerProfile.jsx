@@ -151,16 +151,20 @@ function ProfileCompleteness({ onManage, user }) {
 function ServiceCard({ service, onToggle }) {
   const isActive = service.is_active === true || service.is_active === 1;
   const priceLabel = service.price ? `LKR ${parseFloat(service.price).toLocaleString()}` : 'Negotiable';
-  const imageUrl = service.image || 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=700&q=80';
-
   return (
     <article className="overflow-hidden rounded-xl border border-emerald-900/20 bg-white shadow-sm">
       <div className="relative h-32 overflow-hidden bg-slate-100">
-        <img
-          src={imageUrl}
-          alt={service.title}
-          className="h-full w-full object-cover"
-        />
+        {service.image ? (
+          <img
+            src={service.image}
+            alt={service.title}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
+            <span className="text-slate-400 font-medium text-sm">No Image</span>
+          </div>
+        )}
 
         <div className="absolute right-3 top-3">
           <Toggle checked={isActive} onChange={onToggle} />
@@ -442,6 +446,48 @@ export default function WorkerProfile() {
   }
 
   const portfolioInputRef = React.useRef(null);
+  const coverPhotoInputRef = React.useRef(null);
+  const profilePhotoInputRef = React.useRef(null);
+
+  function handleCoverPhotoUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const result = e.target.result;
+        await apiRequest('/auth/profile', {
+          method: 'POST',
+          body: JSON.stringify({ cover_photo: result }),
+        });
+        setUser(prev => ({ ...prev, cover_photo: result }));
+      } catch (err) {
+        alert(err.message || 'Failed to upload cover photo');
+      }
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  }
+
+  function handleProfilePhotoUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const result = e.target.result;
+        await apiRequest('/auth/profile', {
+          method: 'POST',
+          body: JSON.stringify({ avatar_url: result }),
+        });
+        setUser(prev => ({ ...prev, avatar_url: result }));
+      } catch (err) {
+        alert(err.message || 'Failed to upload profile photo');
+      }
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  }
 
   function addPortfolio() {
     portfolioInputRef.current?.click();
@@ -491,16 +537,20 @@ export default function WorkerProfile() {
     <WorkerLayout>
       <div className="mx-auto w-full max-w-[1560px]">
         <section className="overflow-hidden rounded-t-xl bg-white">
-          <div className="relative h-56 overflow-hidden lg:h-64">
-            <img
-              src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=80"
-              alt="Cover"
-              className="h-full w-full object-cover"
-            />
+          <div className="relative h-56 overflow-hidden lg:h-64 bg-slate-200">
+            {user?.cover_photo ? (
+              <img
+                src={user.cover_photo}
+                alt="Cover"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="h-full w-full bg-gradient-to-r from-emerald-700 to-teal-900" />
+            )}
 
             <button
               type="button"
-              onClick={() => alert('Cover photo upload opened.')}
+              onClick={() => coverPhotoInputRef.current?.click()}
               className="absolute right-5 top-5 inline-flex items-center gap-2 rounded-lg bg-white/90 px-4 py-2 text-sm font-bold text-emerald-700 shadow transition hover:bg-white"
             >
               <Camera size={17} />
@@ -511,21 +561,25 @@ export default function WorkerProfile() {
           <div className="relative px-6 pb-8 lg:px-8">
             <div className="-mt-16 flex flex-col gap-4 sm:flex-row sm:items-end">
               <div className="relative">
-                {user?.name ? (
+                {user?.avatar_url ? (
+                  <img
+                    src={user.avatar_url}
+                    alt={user.name || 'Worker'}
+                    className="h-32 w-32 rounded-xl border-4 border-white object-cover shadow-xl"
+                  />
+                ) : user?.name ? (
                   <div className="h-32 w-32 rounded-xl border-4 border-white bg-emerald-700 text-white flex items-center justify-center text-4xl font-bold shadow-xl">
                     {user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                   </div>
                 ) : (
-                  <img
-                    src="https://i.pravatar.cc/160?img=12"
-                    alt="Worker"
-                    className="h-32 w-32 rounded-xl border-4 border-white object-cover shadow-xl"
-                  />
+                  <div className="h-32 w-32 rounded-xl border-4 border-white bg-emerald-700 text-white flex items-center justify-center text-4xl font-bold shadow-xl">
+                    W
+                  </div>
                 )}
 
                 <button
                   type="button"
-                  onClick={() => alert('Profile photo upload opened.')}
+                  onClick={() => profilePhotoInputRef.current?.click()}
                   className="absolute -right-2 -top-2 grid h-9 w-9 place-items-center rounded-full bg-emerald-700 text-white shadow-lg hover:bg-emerald-800"
                   aria-label="Change profile photo"
                 >
@@ -672,6 +726,20 @@ export default function WorkerProfile() {
             </section>
 
             <section>
+              <input
+                type="file"
+                ref={coverPhotoInputRef}
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleCoverPhotoUpload}
+              />
+              <input
+                type="file"
+                ref={profilePhotoInputRef}
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleProfilePhotoUpload}
+              />
               <input
                 type="file"
                 ref={portfolioInputRef}

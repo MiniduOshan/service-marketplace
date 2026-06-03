@@ -34,7 +34,140 @@ import Footer from '../components/layout/Footer';
 import AuthFlow from './auth/AuthFlow';
 import { apiRequest, getStoredSessionUser } from '../lib/api';
 
+const defaultServiceCategories = [
+  {
+    name: 'Painting',
+    icon: Paintbrush,
+    color: 'text-blue-500',
+    bg: 'bg-blue-50',
+  },
+  {
+    name: 'Electrical',
+    icon: Zap,
+    color: 'text-orange-500',
+    bg: 'bg-orange-50',
+  },
+  {
+    name: 'Plumbing',
+    icon: Wrench,
+    color: 'text-cyan-500',
+    bg: 'bg-cyan-50',
+  },
+  {
+    name: 'Carpentry',
+    icon: Hammer,
+    color: 'text-yellow-500',
+    bg: 'bg-yellow-50',
+  },
+  {
+    name: 'AC Repair',
+    icon: Snowflake,
+    color: 'text-teal-500',
+    bg: 'bg-teal-50',
+  },
+  {
+    name: 'Cleaning',
+    icon: SprayCan,
+    color: 'text-purple-500',
+    bg: 'bg-purple-50',
+  },
+  {
+    name: 'Masonry',
+    icon: Wrench,
+    color: 'text-slate-600',
+    bg: 'bg-slate-50',
+  },
+  {
+    name: '+More',
+    icon: PlusCircle,
+    color: 'text-emerald-500',
+    bg: 'bg-emerald-50',
+  },
+];
 
+const heroWorkers = [
+  {
+    name: 'Nimal Silva',
+    role: 'Expert Electrician',
+    rating: '4.9',
+    image:
+      'https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    name: 'Samantha Perera',
+    role: 'Master Carpenter',
+    rating: '5.0',
+    image:
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    name: 'Aruni Fernando',
+    role: 'Interior Painter',
+    rating: '4.8',
+    image:
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
+  },
+];
+
+const professionals = [
+  {
+    name: 'Arshad Majeed',
+    role: 'Plumbing & Sanitary Expert',
+    rating: '4.9',
+    jobs: '120+ Jobs',
+    badge: 'Verified ID',
+    image:
+      'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=800&q=80',
+    label: 'PLATINUM PRO',
+  },
+  {
+    name: 'Chathura Peiris',
+    role: 'Licensed Electrician',
+    rating: '5.0',
+    jobs: '85 Jobs',
+    badge: 'Safety First',
+    image:
+      'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=800&q=80',
+    label: 'ELITE',
+  },
+  {
+    name: 'Dilantha Goonewardena',
+    role: 'Property Maintenance',
+    rating: '4.7',
+    jobs: '200+ Jobs',
+    badge: 'Multi-skilled',
+    image:
+      'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80',
+    label: null,
+  },
+];
+
+const testimonials = [
+  {
+    quote:
+      'Found a reliable plumber within 10 minutes. Arshad was professional and fixed the leak quickly. Highly recommend SkilledLK for anyone in Colombo.',
+    name: 'Nadine Jayasuriya',
+    location: 'Colombo 07',
+    avatar:
+      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    quote:
+      'As a professional electrician, SkilledLK has changed how I get clients. No more waiting for calls, I get verified leads every day.',
+    name: 'Kasun Rathnayake',
+    location: 'Verified Pro',
+    avatar:
+      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    quote:
+      'Great experience hiring a deep cleaning crew for my new apartment. Transparent pricing and the team was very thorough.',
+    name: 'Dimuthu Perera',
+    location: 'Kandy',
+    avatar:
+      'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?auto=format&fit=crop&w=200&q=80',
+  },
+];
 
 const workerBenefits = [
   {
@@ -55,10 +188,20 @@ const workerBenefits = [
   },
 ];
 
+function RatingStars() {
+  return (
+    <div className="flex gap-0.5 text-yellow-400">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star key={star} size={16} fill="currentColor" />
+      ))}
+    </div>
+  );
+}
+
 export default function LandingPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [serviceCategories, setServiceCategories] = useState([]);
+  const [serviceCategories, setServiceCategories] = useState(defaultServiceCategories);
   const [searchVal, setSearchVal] = useState('');
   const [locationVal, setLocationVal] = useState('');
   const [professionalsList, setProfessionalsList] = useState([]);
@@ -116,17 +259,12 @@ export default function LandingPage() {
 
         // We only want 2 rows of 8 columns = 16 items. The 16th item is '+More'
         const limitedCards = cards.slice(0, 15);
-        limitedCards.push({
-          name: '+More',
-          icon: PlusCircle,
-          color: 'text-emerald-500',
-          bg: 'bg-emerald-50',
-        });
+        limitedCards.push(defaultServiceCategories[7]);
         setServiceCategories(limitedCards);
       })
       .catch(() => {
         if (isMounted) {
-          setServiceCategories([]);
+          setServiceCategories(defaultServiceCategories);
         }
       });
 
@@ -155,7 +293,12 @@ export default function LandingPage() {
           }
 
           const mapped = uniqueServices.slice(0, 3).map((service, idx) => {
-            const workerName = service.worker?.name || 'Worker';
+            const workerName = service.worker?.name || 'Verified Pro';
+            const defaultImages = [
+              'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=800&q=80',
+              'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=800&q=80',
+              'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80'
+            ];
             const avgRating = service.worker?.average_rating;
             const completedJobs = service.worker?.completed_jobs_count || 0;
             const planTitle = service.worker?.pricing_plan?.title;
@@ -168,7 +311,7 @@ export default function LandingPage() {
                 : 'New',
               jobs: `${completedJobs} Job` + (completedJobs === 1 ? '' : 's'),
               badge: service.worker?.phone_verified_at ? 'Verified ID' : 'Basic ID',
-              image: service.worker?.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(workerName)}&background=random`,
+              image: defaultImages[idx % defaultImages.length],
               label: planTitle ? planTitle.replace(' Plan', '').toUpperCase() : null,
             };
           });
@@ -293,7 +436,7 @@ export default function LandingPage() {
               <div className="lp-fade-in absolute h-78.75 w-93.75 rounded-[36px] border-28 border-emerald-50/80 xl:h-87.5 xl:w-107.5 2xl:h-105 2xl:w-125 min-[1920px]:h-117.5 min-[1920px]:w-140" />
 
               <div className="relative z-10 w-full max-w-md space-y-5 2xl:max-w-lg 2xl:space-y-6 min-[1920px]:max-w-xl min-[1920px]:space-y-7">
-                {professionalsList.map((person, index) => (
+                {heroWorkers.map((person, index) => (
                   <div
                     key={person.name}
                     className={`lp-pop lp-card-hover flex items-center justify-between rounded-2xl bg-white px-5 py-4 shadow-xl shadow-slate-300/40 2xl:px-6 2xl:py-5 min-[1920px]:px-7 min-[1920px]:py-6 ${
@@ -340,7 +483,7 @@ export default function LandingPage() {
           {/* Mobile worker cards */}
           <div className="px-4 pb-12 sm:px-6 lg:hidden 2xl:px-12 min-[1920px]:px-16">
             <div className="mx-auto grid max-w-xl gap-4">
-              {professionalsList.map((person) => (
+              {heroWorkers.map((person) => (
                 <div
                   key={person.name}
                   className="lp-fade-up lp-card-hover flex items-center justify-between rounded-2xl bg-white px-4 py-4 shadow-md"
@@ -615,8 +758,11 @@ export default function LandingPage() {
                 ))}
               </div>
             </div>
+
+
           </div>
         </section>
+
 
         {/* Pricing */}
         <section
@@ -699,6 +845,49 @@ export default function LandingPage() {
               })}
             </div>
           )}
+        </section>
+
+        {/* Testimonials */}
+        <section
+          id="testimonials"
+          className={`${pageWidthClass} scroll-mt-20 px-4 pb-16 sm:px-6 lg:px-8 lg:pb-24 2xl:pb-28 min-[1920px]:pb-32`}
+        >
+          <h2 className="text-center text-2xl font-extrabold text-slate-900 sm:text-3xl">
+            What our customers say
+          </h2>
+
+          <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8">
+            {testimonials.map((item) => (
+              <div
+                key={item.name}
+                className="lp-fade-up lp-card-hover rounded-2xl bg-white p-7 shadow-sm ring-1 ring-slate-100 sm:p-8"
+              >
+                <RatingStars />
+
+                <p className="mt-5 text-sm italic leading-7 text-slate-600 sm:text-[15px]">
+                  &quot;{item.quote}&quot;
+                </p>
+
+                <div className="mt-7 flex items-center gap-4">
+                  <img
+                    src={item.avatar}
+                    alt={item.name}
+                    className="h-10 w-10 shrink-0 rounded-full object-cover"
+                  />
+
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-900">
+                      {item.name}
+                    </h4>
+
+                    <p className="mt-1 text-xs text-slate-400">
+                      {item.location}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       </main>
 

@@ -126,11 +126,15 @@ export default function WorkerPublicProfile() {
         {/* Hero */}
         <section className="relative">
           <div className="h-[250px] overflow-hidden rounded-xl bg-slate-200 sm:h-[300px]">
-            <img
-              src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&q=80&w=1600"
-              alt="Worker banner"
-              className="h-full w-full object-cover"
-            />
+            {workerInfo?.cover_photo_url ? (
+              <img
+                src={workerInfo.cover_photo_url}
+                alt="Worker banner"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="h-full w-full bg-gradient-to-r from-emerald-700 to-teal-900" />
+            )}
             <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-slate-950/60 via-slate-700/30 to-white/20" />
           </div>
 

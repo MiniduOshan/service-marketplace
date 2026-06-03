@@ -240,11 +240,6 @@ export default function CustomerDashboard() {
               .join('')
               .toUpperCase()
               .slice(0, 2);
-            const defaultImages = [
-              'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=800&q=80',
-              'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=800&q=80',
-              'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80',
-            ];
             const rating = service.worker?.average_rating !== null && service.worker?.average_rating !== undefined
               ? parseFloat(service.worker.average_rating).toFixed(1)
               : '0.0';
@@ -262,7 +257,7 @@ export default function CustomerDashboard() {
               verified: !!service.worker?.phone_verified_at,
               avatarBg: bgColors[idx % bgColors.length],
               reviews: `${reviewsCount} reviews`,
-              image: defaultImages[idx % defaultImages.length],
+              image: service.worker?.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(workerName)}&background=random`,
             };
           });
           setServicesList(mapped);

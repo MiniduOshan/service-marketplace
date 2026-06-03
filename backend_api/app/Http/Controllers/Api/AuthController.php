@@ -275,11 +275,12 @@ class AuthController extends Controller
             'city' => ['nullable', 'string', 'max:255'],
             'bio' => ['nullable', 'string', 'max:5000'],
             'skills' => ['nullable', 'array'],
-            'avatar_url' => ['nullable', 'string', 'max:2048'],
-            'nic_front' => ['nullable', 'string', 'max:2048'],
-            'nic_back' => ['nullable', 'string', 'max:2048'],
+            'avatar_url' => ['nullable', 'string'],
+            'cover_photo' => ['nullable', 'string'],
+            'nic_front' => ['nullable', 'string'],
+            'nic_back' => ['nullable', 'string'],
             'certificates' => ['nullable', 'array'],
-            'police_clearance' => ['nullable', 'string', 'max:2048'],
+            'police_clearance' => ['nullable', 'string'],
             'portfolio' => ['nullable', 'array'],
         ]);
 
@@ -347,6 +348,10 @@ class AuthController extends Controller
 
         if ($request->has('avatar_url')) {
             $updates['avatar_url'] = $validated['avatar_url'];
+        }
+
+        if ($request->has('cover_photo')) {
+            $updates['cover_photo'] = $validated['cover_photo'];
         }
 
         if ($request->has('nic_front')) {

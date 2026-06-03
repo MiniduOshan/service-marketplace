@@ -9,6 +9,7 @@ import {
   Shield,
   Star,
   UploadCloud,
+  X,
 } from 'lucide-react';
 
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
@@ -53,6 +54,26 @@ export default function BookingDetails() {
   const [city, setCity] = useState('Colombo');
   const [landmark, setLandmark] = useState('');
   const [description, setDescription] = useState('');
+  const [photos, setPhotos] = useState([]);
+  const fileInputRef = React.useRef(null);
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setPhotos((prev) => [...prev, event.target.result]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+
+  const removePhoto = (index) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleContinue = () => {
     if (!date) {
@@ -75,6 +96,7 @@ export default function BookingDetails() {
           time,
           address: fullAddress,
           description: description || 'No description provided.',
+          photos,
         },
       },
     });
@@ -223,6 +245,7 @@ export default function BookingDetails() {
 
                 <button
                   type="button"
+                  onClick={() => fileInputRef.current?.click()}
                   className="flex h-40 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 text-center transition hover:border-emerald-300 hover:bg-emerald-50/40"
                 >
                   <UploadCloud size={31} className="text-slate-400" />
@@ -233,6 +256,31 @@ export default function BookingDetails() {
                     SVG, PNG, JPG or GIF max. 10MB
                   </p>
                 </button>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+
+                {photos.length > 0 && (
+                  <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                    {photos.map((photo, index) => (
+                      <div key={index} className="group relative h-24 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                        <img src={photo} alt={`Upload ${index + 1}`} className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(index)}
+                          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-600"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Submit Action */}

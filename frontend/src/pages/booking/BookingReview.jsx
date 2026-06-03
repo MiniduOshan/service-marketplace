@@ -126,6 +126,22 @@ export default function BookingReview() {
                   </div>
                 </div>
               </div>
+
+              {/* Attached Photos */}
+              {bookingDetails.photos && bookingDetails.photos.length > 0 && (
+                <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+                  <h2 className="mb-5 text-xl font-semibold text-slate-900">
+                    Attached Photos
+                  </h2>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                    {bookingDetails.photos.map((photo, index) => (
+                      <div key={index} className="h-24 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                        <img src={photo} alt={`Upload ${index + 1}`} className="h-full w-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 

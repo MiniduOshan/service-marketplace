@@ -43,6 +43,8 @@ class BookingController extends Controller
             'address' => ['required', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
             'payment_option' => ['nullable', 'string', 'in:advance,full,after'],
+            'photos' => ['nullable', 'array'],
+            'photos.*' => ['string'],
         ]);
 
         $servicePackage = ServicePackage::query()
@@ -88,6 +90,7 @@ class BookingController extends Controller
                 'payment_option' => $paymentOption,
                 'advance_paid' => $advancePaid,
                 'payout_status' => 'pending',
+                'photos' => $validated['photos'] ?? null,
             ]);
 
             if ($paymentOption === 'advance' || $paymentOption === 'full') {

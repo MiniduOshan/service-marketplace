@@ -40,6 +40,7 @@ class User extends Authenticatable
         'city',
         'skills',
         'avatar_url',
+        'cover_photo',
         'nic_front',
         'nic_back',
         'certificates',
