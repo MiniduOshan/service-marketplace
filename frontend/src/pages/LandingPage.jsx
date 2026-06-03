@@ -207,6 +207,7 @@ export default function LandingPage() {
   const [professionalsList, setProfessionalsList] = useState([]);
   const [loadingPros, setLoadingPros] = useState(true);
   const [pricingPlans, setPricingPlans] = useState([]);
+  const [platformStats, setPlatformStats] = useState(null);
 
   const authConfigByPath = {
     '/login': { initialView: 'login', entryMode: 'signin' },
@@ -328,6 +329,14 @@ export default function LandingPage() {
     }
 
     loadPros();
+
+    apiRequest('/public-stats')
+      .then((response) => {
+        if (isMounted) {
+          setPlatformStats(response);
+        }
+      })
+      .catch((err) => console.error('Failed to fetch platform stats:', err));
 
     return () => {
       isMounted = false;
@@ -514,29 +523,30 @@ export default function LandingPage() {
 
           {/* Stats */}
           <div className="border-y border-slate-100 bg-white/80">
-            <div className={`${pageWidthClass} grid grid-cols-2 gap-y-6 px-4 py-6 text-center sm:px-6 md:grid-cols-4 lg:px-8 2xl:py-8 min-[1920px]:py-10`}>
+            <div className={`${pageWidthClass} grid grid-cols-1 gap-y-6 px-4 py-6 text-center sm:px-6 md:grid-cols-3 lg:px-8 2xl:py-8 min-[1920px]:py-10`}>
               <div className="lp-fade-up md:border-r md:border-slate-200">
-                <h3 className="text-base font-bold text-slate-800">2,100+</h3>
+                <h3 className="text-base font-bold text-slate-800">
+                  {platformStats ? platformStats.customers : '...'}
+                </h3>
                 <p className="mt-1 text-xs text-slate-500">Customers</p>
               </div>
 
               <div className="lp-fade-up lp-delay-1 md:border-r md:border-slate-200">
-                <h3 className="text-base font-bold text-slate-800">347</h3>
+                <h3 className="text-base font-bold text-slate-800">
+                  {platformStats ? platformStats.workers : '...'}
+                </h3>
                 <p className="mt-1 text-xs text-slate-500">
                   Verified Workers
                 </p>
               </div>
 
-              <div className="lp-fade-up lp-delay-2 md:border-r md:border-slate-200">
-                <h3 className="text-base font-bold text-slate-800">{serviceCategories.length}</h3>
+              <div className="lp-fade-up lp-delay-2">
+                <h3 className="text-base font-bold text-slate-800">
+                  {platformStats ? platformStats.categories : '...'}
+                </h3>
                 <p className="mt-1 text-xs text-slate-500">
                   Service Categories
                 </p>
-              </div>
-
-              <div className="lp-fade-up lp-delay-3">
-                <h3 className="text-base font-bold text-slate-800">4.8 ★</h3>
-                <p className="mt-1 text-xs text-slate-500">Avg Rating</p>
               </div>
             </div>
           </div>

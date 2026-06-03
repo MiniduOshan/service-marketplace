@@ -14,7 +14,9 @@ export default function AdminWorkers() {
     setLoading(true);
     try {
       const response = await apiRequest('/admin/workers');
-      setWorkers(Array.isArray(response.data) ? response.data : []);
+      // Handle both paginated (response.data.data) and non-paginated (response.data) responses
+      const workersData = response.data?.data ? response.data.data : response.data;
+      setWorkers(Array.isArray(workersData) ? workersData : []);
     } catch (error) {
       setErrorMessage(error.message || 'Failed to load workers.');
     } finally {

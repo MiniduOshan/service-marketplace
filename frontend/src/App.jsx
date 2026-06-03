@@ -36,11 +36,14 @@ import CustomerBookings from './pages/booking/CustomerBookings';
 
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
+import { ConfigProvider } from './context/ConfigContext';
+
 function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-white font-sans text-gray-900 selection:bg-emerald-100 selection:text-[#1B5E44]">
-        <Routes>
+    <ConfigProvider>
+      <Router>
+        <div className="min-h-screen bg-white font-sans text-gray-900 selection:bg-emerald-100 selection:text-[#1B5E44]">
+          <Routes>
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/search" element={<SearchPage />} />
@@ -268,9 +271,10 @@ function App() {
           <Route path="/signup" element={<LandingPage />} />
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </div>
-    </Router>
+          </Routes>
+        </div>
+      </Router>
+    </ConfigProvider>
   );
 }
 

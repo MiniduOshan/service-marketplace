@@ -16,6 +16,7 @@ import {
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
 import { apiRequest, getStoredSessionUser } from '../../lib/api';
+import { useConfig } from '../../context/ConfigContext';
 
 const filters = ['All Chats', 'Unread', 'Starring'];
 
@@ -153,6 +154,7 @@ export default function ChatPage() {
   const [activeFilter, setActiveFilter] = useState('All Chats');
   const [messageInput, setMessageInput] = useState('');
   const [mobileListOpen, setMobileListOpen] = useState(false);
+  const { config } = useConfig();
 
   useEffect(() => {
     async function loadConversations() {
@@ -286,6 +288,21 @@ export default function ChatPage() {
       console.error(err);
     }
   };
+
+  if (config?.chat === false) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900">
+        <CustomerNavbar activePage="" />
+        <main className="flex h-[calc(100vh-80px)] items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-slate-900">Chat Disabled</h2>
+            <p className="mt-2 text-slate-500">The chat feature is currently disabled by the administrator.</p>
+          </div>
+        </main>
+        <CustomerFooter />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">

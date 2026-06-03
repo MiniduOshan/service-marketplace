@@ -393,11 +393,11 @@ function WorkerCard({ worker }) {
         worker.pro ? 'border-emerald-200' : 'border-slate-200'
       }`}
     >
-      <div className="flex flex-col gap-6 p-6 sm:p-7 md:flex-row md:items-start md:justify-between">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+      <div className="flex flex-col gap-4 p-5 md:flex-row md:items-start md:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div
             onClick={() => navigate(`/worker/${worker.id}`)}
-            className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-full text-2xl font-bold cursor-pointer hover:opacity-90 transition ${worker.avatarClass}`}
+            className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-xl font-bold cursor-pointer hover:opacity-90 transition ${worker.avatarClass}`}
           >
             {worker.avatar}
           </div>
@@ -406,7 +406,7 @@ function WorkerCard({ worker }) {
             <div className="flex flex-wrap items-center gap-2">
               <h3 
                 onClick={() => navigate(`/worker/${worker.id}`)}
-                className="text-2xl font-bold text-slate-950 sm:text-xl cursor-pointer hover:text-emerald-750 transition"
+                className="text-xl font-bold text-slate-950 cursor-pointer hover:text-emerald-750 transition"
               >
                 {worker.name}
               </h3>
@@ -472,17 +472,17 @@ function WorkerCard({ worker }) {
           </div>
         </div>
 
-        <div className="w-full shrink-0 text-left md:w-44 md:text-right">
-          <p className="text-sm text-slate-400">{t.starting_from}</p>
+        <div className="w-full shrink-0 text-left md:w-[220px] md:text-right">
+          <p className="text-xs text-slate-400">{t.starting_from}</p>
 
           <div className="mt-1 flex items-end gap-1 md:justify-end">
-            <p className="text-2xl font-bold text-emerald-700">
+            <p className="text-xl font-bold text-emerald-700">
               LKR {formatPrice(worker.price)}
             </p>
-            <p className="pb-1 text-sm text-slate-500">{worker.unit}</p>
+            <p className="pb-0.5 text-xs text-slate-500">{worker.unit}</p>
           </div>
 
-          <div className="mt-4 grid gap-2">
+          <div className="mt-4 flex gap-2 justify-start md:justify-end">
             <button
               type="button"
               onClick={() => navigate('/chat', {
@@ -491,7 +491,7 @@ function WorkerCard({ worker }) {
                   workerName: worker.name,
                 }
               })}
-              className="h-10 rounded-lg border border-emerald-700 bg-white px-5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+              className="h-9 flex-1 min-w-[90px] rounded-lg border border-emerald-700 bg-white px-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
             >
               {t.chat_first}
             </button>
@@ -507,7 +507,7 @@ function WorkerCard({ worker }) {
                   priceLabel: `LKR ${worker.price.toLocaleString()} / task`,
                 }
               })}
-              className="h-10 rounded-lg bg-emerald-700 px-5 text-sm font-semibold text-white transition hover:bg-emerald-800"
+              className="h-9 flex-1 min-w-[90px] rounded-lg bg-emerald-700 px-3 text-sm font-semibold text-white transition hover:bg-emerald-800"
             >
               {t.book_now}
             </button>

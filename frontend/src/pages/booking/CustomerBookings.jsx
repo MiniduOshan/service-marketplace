@@ -22,6 +22,7 @@ import {
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
 import { apiRequest, getStoredSessionUser } from '../../lib/api';
+import { useConfig } from '../../context/ConfigContext';
 
 const tabs = [
   { label: 'All', value: 'all' },
@@ -66,14 +67,14 @@ function BookingAvatar({ booking }) {
       <img
         src={booking.avatar}
         alt={booking.workerName}
-        className="h-16 w-16 rounded-lg object-cover"
+        className="h-12 w-12 rounded-lg object-cover"
       />
     );
   }
 
   if (booking.status === 'active' || booking.status === 'confirmed') {
     return (
-      <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-emerald-700 text-xl font-bold text-white">
+      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-700 text-lg font-bold text-white">
         {booking.workerInitials}
       </div>
     );
@@ -81,23 +82,23 @@ function BookingAvatar({ booking }) {
 
   if (booking.status === 'pending') {
     return (
-      <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-blue-50 text-slate-500">
-        <CircleUserRound size={30} strokeWidth={1.8} />
+      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-slate-500">
+        <CircleUserRound size={24} strokeWidth={1.8} />
       </div>
     );
   }
 
   if (booking.status === 'declined') {
     return (
-      <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-red-50 text-red-500">
-        <XCircle size={30} strokeWidth={1.8} />
+      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-50 text-red-500">
+        <XCircle size={24} strokeWidth={1.8} />
       </div>
     );
   }
 
   return (
-    <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-slate-200 text-slate-400">
-      <Ban size={30} strokeWidth={1.8} />
+    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-slate-200 text-slate-400">
+      <Ban size={24} strokeWidth={1.8} />
     </div>
   );
 }
@@ -144,32 +145,32 @@ function ActiveBookingCard({ booking, onComplete, onViewDetails }) {
   const isWorker = currentUser?.role === 'worker';
 
   return (
-    <article className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm sm:p-6">
-      <div className="grid gap-5 lg:grid-cols-[300px_minmax(330px,1fr)_260px] lg:items-center 2xl:grid-cols-[360px_minmax(420px,1fr)_320px]">
-        <div className="flex gap-5">
+    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 transition hover:border-emerald-200 hover:shadow-md">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex gap-4 min-w-0 lg:w-[35%] xl:w-[30%]">
           <BookingAvatar booking={booking} />
 
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold tracking-tight text-slate-800 sm:text-2xl">
+              <h2 className="text-lg font-bold tracking-tight text-slate-800">
                 {booking.workerName}
               </h2>
               <StatusBadge type="painter">{booking.category}</StatusBadge>
             </div>
 
-            <p className="mt-1 text-base text-slate-500">#{booking.id}</p>
+            <p className="mt-0.5 text-sm text-slate-500">#{booking.id}</p>
 
-            <div className="mt-3 space-y-2 text-base text-slate-600">
+            <div className="mt-2 space-y-1 text-sm text-slate-600">
               <p className="flex items-center gap-2">
-                <Hammer size={15} />
+                <Hammer size={14} />
                 {booking.service}
               </p>
               <p className="flex items-center gap-2">
-                <CalendarDays size={15} />
+                <CalendarDays size={14} />
                 {booking.date}
               </p>
               <p className="flex items-center gap-2">
-                <Clock3 size={15} />
+                <Clock3 size={14} />
                 {booking.time}
               </p>
             </div>
@@ -178,12 +179,12 @@ function ActiveBookingCard({ booking, onComplete, onViewDetails }) {
 
         <div className="border-y border-slate-200 py-5 lg:border-y-0 lg:border-x lg:px-6 lg:py-0">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-widest text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
               Location
             </p>
-            <p className="mt-2 flex items-start gap-2 text-base text-slate-700">
+            <p className="mt-1 flex items-start gap-2 text-sm text-slate-700">
               <MapPin
-                size={22}
+                size={16}
                 className="mt-0.5 shrink-0 text-emerald-700"
                 strokeWidth={2.4}
               />
@@ -199,10 +200,10 @@ function ActiveBookingCard({ booking, onComplete, onViewDetails }) {
           </div>
         </div>
 
-        <div className="flex flex-col gap-6 lg:items-end">
+        <div className="flex shrink-0 flex-col gap-4 lg:items-end lg:min-w-fit">
           <div className="text-left lg:text-right">
-            <p className="text-lg font-medium text-slate-800">{booking.price}</p>
-            <p className="mt-2 text-base font-medium text-emerald-700">
+            <p className="text-base font-bold text-slate-800">{booking.price}</p>
+            <p className="mt-1 text-sm font-medium text-emerald-700">
               {booking.advance}
             </p>
           </div>
@@ -211,7 +212,7 @@ function ActiveBookingCard({ booking, onComplete, onViewDetails }) {
             <button
               type="button"
               onClick={() => onViewDetails(booking)}
-              className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-base font-medium text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex h-9 cursor-pointer items-center justify-center whitespace-nowrap gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               View Details
             </button>
@@ -219,9 +220,9 @@ function ActiveBookingCard({ booking, onComplete, onViewDetails }) {
             <button
               type="button"
               onClick={() => navigate('/chat', { state: { bookingId: booking.id } })}
-              className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-emerald-700 bg-white px-4 text-base font-medium text-emerald-700 transition hover:bg-emerald-50"
+              className="inline-flex h-9 cursor-pointer items-center justify-center whitespace-nowrap gap-2 rounded-lg border border-emerald-700 bg-white px-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
             >
-              <MessageSquare size={17} />
+              <MessageSquare size={15} />
               Chat
             </button>
 
@@ -229,18 +230,18 @@ function ActiveBookingCard({ booking, onComplete, onViewDetails }) {
               <button
                 type="button"
                 onClick={() => onComplete(booking.id)}
-                className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg bg-emerald-700 px-4 text-base font-medium text-white transition hover:bg-emerald-800"
+                className="inline-flex h-9 cursor-pointer items-center justify-center whitespace-nowrap gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white transition hover:bg-emerald-800"
               >
-                <CheckCircle2 size={17} />
+                <CheckCircle2 size={15} />
                 Mark Completed
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => navigate(`/cancel-booking/${booking.id}`)}
-                className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg bg-red-500 px-4 text-base font-medium text-white transition hover:bg-red-600"
+                className="inline-flex h-9 cursor-pointer items-center justify-center whitespace-nowrap gap-2 rounded-lg bg-red-500 px-4 text-sm font-semibold text-white transition hover:bg-red-600"
               >
-                <Ban size={17} />
+                <Ban size={15} />
                 Cancel
               </button>
             )}
@@ -256,49 +257,49 @@ function PendingBookingCard({ booking, onAccept, onDecline, onCancel, onViewDeta
   const isWorker = currentUser?.role === 'worker';
 
   return (
-    <article className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm sm:p-6">
-      <div className="grid gap-5 lg:grid-cols-[360px_minmax(260px,1fr)_230px] lg:items-center 2xl:grid-cols-[430px_minmax(320px,1fr)_280px]">
-        <div className="flex gap-5">
+    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 transition hover:border-emerald-200 hover:shadow-md">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex gap-4 min-w-0 lg:w-[40%] xl:w-[35%]">
           <BookingAvatar booking={booking} />
 
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold tracking-tight text-slate-800 sm:text-2xl">
+              <h2 className="text-lg font-bold tracking-tight text-slate-800">
                 {booking.workerName}
               </h2>
               <StatusBadge type="pending">{booking.category}</StatusBadge>
             </div>
 
-            <p className="mt-1 text-base text-slate-500">#{booking.id}</p>
+            <p className="mt-0.5 text-sm text-slate-500">#{booking.id}</p>
 
-            <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700">
-              <Clock3 size={14} />
+            <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
+              <Clock3 size={12} />
               {booking.responseNote}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-slate-500">
-          <Zap size={23} className="text-slate-400" />
+        <div className="flex-1 flex items-center gap-3 text-slate-500 border-y border-slate-100 py-4 lg:border-y-0 lg:border-x lg:px-6 lg:py-0">
+          <Zap size={18} className="text-slate-400" />
           <div>
-            <p className="text-lg font-medium text-slate-600">{booking.service}</p>
-            <p className="text-base text-slate-500">
+            <p className="text-base font-bold text-slate-600">{booking.service}</p>
+            <p className="text-sm text-slate-500">
               {booking.date}, {booking.time}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 lg:items-end">
+        <div className="flex shrink-0 flex-col gap-4 lg:items-end lg:min-w-fit">
           <div className="text-left lg:text-right">
-            <p className="text-lg font-medium text-slate-800">{booking.price}</p>
-            <p className="mt-2 text-base text-slate-500">{booking.paymentNote}</p>
+            <p className="text-base font-bold text-slate-800">{booking.price}</p>
+            <p className="mt-1 text-sm text-slate-500">{booking.paymentNote}</p>
           </div>
 
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => onViewDetails(booking)}
-              className="h-11 cursor-pointer rounded-lg border border-slate-300 bg-white px-5 text-base font-medium text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center justify-center whitespace-nowrap h-9 cursor-pointer rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               View Details
             </button>
@@ -308,14 +309,14 @@ function PendingBookingCard({ booking, onAccept, onDecline, onCancel, onViewDeta
                 <button
                   type="button"
                   onClick={() => onDecline(booking.id)}
-                  className="h-11 cursor-pointer rounded-lg border border-red-500 bg-white px-5 text-base font-medium text-red-600 transition hover:bg-red-50"
+                  className="inline-flex items-center justify-center whitespace-nowrap h-9 cursor-pointer rounded-lg border border-red-500 bg-white px-4 text-sm font-semibold text-red-600 transition hover:bg-red-50"
                 >
                   Decline
                 </button>
                 <button
                   type="button"
                   onClick={() => onAccept(booking.id)}
-                  className="h-11 cursor-pointer rounded-lg bg-emerald-700 px-5 text-base font-medium text-white transition hover:bg-emerald-800"
+                  className="inline-flex items-center justify-center whitespace-nowrap h-9 cursor-pointer rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white transition hover:bg-emerald-800"
                 >
                   Accept
                 </button>
@@ -324,7 +325,7 @@ function PendingBookingCard({ booking, onAccept, onDecline, onCancel, onViewDeta
               <button
                 type="button"
                 onClick={() => onCancel(booking.id)}
-                className="h-11 w-fit cursor-pointer rounded-lg border border-slate-300 bg-white px-5 text-base font-medium text-slate-500 transition hover:border-red-300 hover:text-red-500"
+                className="inline-flex items-center justify-center whitespace-nowrap h-9 cursor-pointer rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-500 transition hover:border-red-300 hover:text-red-500"
               >
                 Cancel Request
               </button>
@@ -338,27 +339,27 @@ function PendingBookingCard({ booking, onAccept, onDecline, onCancel, onViewDeta
 
 function CompletedBookingCard({ booking, onViewDetails, onLeaveFeedback }) {
   return (
-    <article className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm sm:p-6">
-      <div className="grid gap-5 lg:grid-cols-[360px_minmax(260px,1fr)_190px] lg:items-center 2xl:grid-cols-[430px_minmax(320px,1fr)_260px]">
-        <div className="flex gap-5">
+    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 transition hover:border-emerald-200 hover:shadow-md">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex gap-4 min-w-0 lg:w-[40%] xl:w-[35%]">
           <BookingAvatar booking={booking} />
 
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold tracking-tight text-slate-800 sm:text-2xl">
+              <h2 className="text-lg font-bold tracking-tight text-slate-800">
                 {booking.workerName}
               </h2>
               <StatusBadge type="completed">{booking.category}</StatusBadge>
             </div>
 
-            <p className="mt-1 text-base text-slate-500">#{booking.id}</p>
+            <p className="mt-0.5 text-sm text-slate-500">#{booking.id}</p>
 
             {booking.rawBooking?.review && (
-              <div className="mt-3 flex text-amber-400">
+              <div className="mt-2 flex text-amber-400">
                 {Array.from({ length: booking.rawBooking.review.rating }).map((_, index) => (
                   <Star
                     key={index}
-                    size={15}
+                    size={14}
                     fill="currentColor"
                     strokeWidth={0}
                   />
@@ -368,47 +369,47 @@ function CompletedBookingCard({ booking, onViewDetails, onLeaveFeedback }) {
           </div>
         </div>
 
-        <div className="border-y border-slate-200 py-5 lg:border-y-0 lg:border-x lg:px-6 lg:py-0">
+        <div className="flex-1 border-y border-slate-100 py-4 lg:border-y-0 lg:border-x lg:px-6 lg:py-0">
           <div className="flex items-center gap-3 text-slate-500">
-            <Wrench size={21} className="text-slate-400" />
+            <Wrench size={18} className="text-slate-400" />
             <div>
-              <p className="text-lg font-medium text-slate-600">
+              <p className="text-base font-bold text-slate-600">
                 {booking.service}
               </p>
-              <p className="text-base text-slate-500">{booking.date}</p>
+              <p className="text-sm text-slate-500">{booking.date}</p>
             </div>
           </div>
         </div>
 
-        <div className="flex lg:justify-end gap-2 items-center">
+        <div className="flex shrink-0 flex-wrap lg:flex-col lg:justify-end gap-2 lg:items-end lg:min-w-fit">
           <button
             type="button"
             onClick={() => onViewDetails(booking)}
-            className="inline-flex h-11 cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-5 text-base font-medium text-slate-700 transition hover:bg-slate-50"
+            className="inline-flex whitespace-nowrap h-9 cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             View Details
           </button>
           
           {booking.rawBooking?.review ? (
-            <span className="inline-flex items-center gap-1 text-xs text-slate-500 font-semibold px-4 py-2.5">
-              <CheckCircle2 size={14} className="text-emerald-600" /> Feedback Given
+            <span className="inline-flex items-center gap-1 text-xs text-slate-500 font-semibold px-4 py-2">
+              <CheckCircle2 size={12} className="text-emerald-600" /> Feedback Given
             </span>
           ) : (
             <button
               type="button"
               onClick={() => onLeaveFeedback(booking)}
-              className="inline-flex h-11 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 px-4 text-base font-medium text-emerald-700 transition hover:bg-emerald-100"
+              className="inline-flex whitespace-nowrap h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 px-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
             >
-              <Star size={17} />
+              <Star size={14} />
               Rate & Review
             </button>
           )}
 
           <button
             type="button"
-            className="inline-flex h-11 min-w-32 cursor-pointer items-center justify-center gap-2 rounded-lg border border-emerald-700 bg-white px-6 text-base font-medium text-emerald-700 transition hover:bg-emerald-50"
+            className="inline-flex whitespace-nowrap h-9 min-w-28 cursor-pointer items-center justify-center gap-2 rounded-lg border border-emerald-700 bg-white px-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
           >
-            <RotateCcw size={17} />
+            <RotateCcw size={14} />
             Rebook
           </button>
         </div>
@@ -419,35 +420,35 @@ function CompletedBookingCard({ booking, onViewDetails, onLeaveFeedback }) {
 
 function CancelledBookingCard({ booking, onViewDetails }) {
   return (
-    <article className="rounded-xl border border-dashed border-slate-300 bg-white/60 p-5 sm:p-6">
-      <div className="grid gap-5 lg:grid-cols-[360px_minmax(260px,1fr)_190px] lg:items-center 2xl:grid-cols-[430px_minmax(320px,1fr)_260px]">
-        <div className="flex gap-5">
+    <article className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4 sm:p-5 transition hover:border-slate-300">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex gap-4 min-w-0 lg:w-[45%]">
           <BookingAvatar booking={booking} />
 
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold tracking-tight text-slate-400 sm:text-2xl">
+              <h2 className="text-lg font-bold tracking-tight text-slate-400">
                 {booking.workerName}
               </h2>
               <StatusBadge type="cancelled">{booking.category}</StatusBadge>
             </div>
 
-            <p className="mt-1 text-base text-slate-400">#{booking.id}</p>
+            <p className="mt-0.5 text-sm text-slate-400">#{booking.id}</p>
 
-            <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-500">
-              <CalendarDays size={14} />
+            <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-500">
+              <CalendarDays size={12} />
               {booking.refundNote || 'Booking Cancelled'}
             </div>
           </div>
         </div>
 
-        <p className="text-base text-slate-400">{booking.cancelledDate || booking.date}</p>
+        <p className="flex-1 text-sm text-slate-400 border-y border-slate-100 py-4 lg:border-y-0 lg:border-x lg:px-6 lg:py-0">{booking.cancelledDate || booking.date}</p>
 
-        <div className="flex lg:justify-end">
+        <div className="flex shrink-0 lg:justify-end lg:w-[150px]">
           <button
             type="button"
             onClick={() => onViewDetails(booking)}
-            className="cursor-pointer text-base font-medium text-slate-500 transition hover:text-emerald-700"
+            className="inline-flex items-center justify-center whitespace-nowrap cursor-pointer text-sm font-medium text-slate-500 transition hover:text-emerald-700"
           >
             View Details
           </button>
@@ -459,59 +460,59 @@ function CancelledBookingCard({ booking, onViewDetails }) {
 
 function DeclinedBookingCard({ booking, onViewDetails }) {
   return (
-    <article className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm sm:p-6">
-      <div className="grid gap-5 lg:grid-cols-[360px_minmax(260px,1fr)_190px] lg:items-center 2xl:grid-cols-[430px_minmax(320px,1fr)_260px]">
-        <div className="flex gap-5">
+    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 transition hover:border-red-200 hover:shadow-md">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex gap-4 min-w-0 lg:w-[40%] xl:w-[35%]">
           <BookingAvatar booking={booking} />
 
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold tracking-tight text-slate-800 sm:text-2xl">
+              <h2 className="text-lg font-bold tracking-tight text-slate-800">
                 {booking.workerName}
               </h2>
               <StatusBadge type="declined">{booking.category}</StatusBadge>
             </div>
 
-            <p className="mt-1 text-base text-slate-500">#{booking.id}</p>
+            <p className="mt-0.5 text-sm text-slate-500">#{booking.id}</p>
 
-            <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-600">
-              <AlertCircle size={14} />
+            <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2 py-1 text-xs font-semibold text-red-600">
+              <AlertCircle size={12} />
               {booking.reason || 'Declined'}
             </div>
           </div>
         </div>
 
-        <div className="border-y border-slate-200 py-5 lg:border-y-0 lg:border-x lg:px-6 lg:py-0">
+        <div className="flex-1 border-y border-slate-100 py-4 lg:border-y-0 lg:border-x lg:px-6 lg:py-0">
           <div className="flex items-center gap-3 text-slate-500">
-            <Wrench size={21} className="text-slate-400" />
+            <Wrench size={18} className="text-slate-400" />
             <div>
-              <p className="text-lg font-medium text-slate-700">
+              <p className="text-base font-bold text-slate-700">
                 {booking.service}
               </p>
-              <p className="text-base text-slate-500">
+              <p className="text-sm text-slate-500">
                 {booking.date}, {booking.time}
               </p>
-              <p className="mt-2 text-sm text-slate-400">
+              <p className="mt-1 text-xs text-slate-400">
                 {booking.suggestion || 'Try requesting again with adjusted details.'}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 lg:items-end">
-          <p className="text-lg font-medium text-slate-800">{booking.price}</p>
+        <div className="flex shrink-0 flex-col gap-3 lg:items-end lg:min-w-fit">
+          <p className="text-base font-bold text-slate-800">{booking.price}</p>
 
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => onViewDetails(booking)}
-              className="inline-flex h-11 cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-5 text-base font-medium text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex whitespace-nowrap h-9 cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               View Details
             </button>
             <button
               type="button"
-              className="inline-flex h-11 min-w-36 cursor-pointer items-center justify-center rounded-lg bg-emerald-700 px-6 text-base font-medium text-white transition hover:bg-emerald-800"
+              className="inline-flex whitespace-nowrap h-9 min-w-32 cursor-pointer items-center justify-center rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white transition hover:bg-emerald-800"
             >
               Find Another
             </button>
@@ -722,6 +723,7 @@ export default function CustomerBookings() {
   const [activeTab, setActiveTab] = useState('all');
   const [detailBooking, setDetailBooking] = useState(null);
   const [feedbackBooking, setFeedbackBooking] = useState(null);
+  const { config } = useConfig();
 
   const handleFeedbackSubmit = async (bookingId, rating, comment) => {
     try {
@@ -841,6 +843,21 @@ export default function CustomerBookings() {
   }, [bookings, activeTab]);
 
   const shouldScroll = filteredBookings.length > 3;
+
+  if (config?.bookings === false) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900">
+        <CustomerNavbar activePage="bookings" />
+        <main className="flex min-h-[calc(100vh-80px)] items-center justify-center p-6 sm:p-10">
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-slate-900">Bookings Disabled</h2>
+            <p className="mt-2 text-slate-500">The booking feature is currently disabled by the administrator.</p>
+          </div>
+        </main>
+        <CustomerFooter />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">

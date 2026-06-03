@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import CustomerFooter from './CustomerFooter';
+import { useConfig } from '../../context/ConfigContext';
 
 const sidebarItems = [
   { name: 'Dashboard', icon: LayoutGrid, path: '/worker/dashboard' },
@@ -161,6 +162,11 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
 
   const currentUser = getStoredSessionUser();
   const firstName = currentUser?.name?.split(' ')[0] || 'Worker';
+  const { config } = useConfig();
+
+  const visibleSidebarItems = config?.chat !== false 
+    ? sidebarItems 
+    : sidebarItems.filter(item => item.name !== 'Messages');
 
   useEffect(() => {
     if (!currentUser) {
@@ -251,7 +257,7 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
           </div>
 
           <nav className="mt-10 flex-1 space-y-2">
-            {sidebarItems.map(({ name, icon: Icon, path }) => (
+            {visibleSidebarItems.map(({ name, icon: Icon, path }) => (
               <NavLink
                 key={name}
                 to={path}
@@ -319,14 +325,16 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
                 )}
               </button>
 
-              <button
-                className="rounded-full bg-emerald-50 p-2 text-emerald-700 transition hover:bg-emerald-100"
-                aria-label="Messages"
-                type="button"
-                onClick={() => navigate('/worker/messages')}
-              >
-                <MessageSquare size={22} />
-              </button>
+              {config?.chat !== false && (
+                <button
+                  className="rounded-full bg-emerald-50 p-2 text-emerald-700 transition hover:bg-emerald-100"
+                  aria-label="Messages"
+                  type="button"
+                  onClick={() => navigate('/worker/messages')}
+                >
+                  <MessageSquare size={22} />
+                </button>
+              )}
 
               <button
                 type="button"
@@ -344,7 +352,7 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
           {mobileMenuOpen && (
             <div className="border-b border-slate-200 bg-white p-4 lg:hidden">
               <nav className="grid gap-2 sm:grid-cols-2">
-                {sidebarItems.map(({ name, icon: Icon, path }) => (
+                {visibleSidebarItems.map(({ name, icon: Icon, path }) => (
                   <NavLink
                     key={name}
                     to={path}

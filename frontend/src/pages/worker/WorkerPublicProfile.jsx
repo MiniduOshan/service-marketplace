@@ -16,6 +16,7 @@ import CustomerFooter from '../../components/layout/CustomerFooter';
 import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 import { apiRequest, getStoredSessionUser } from '../../lib/api';
+import { useConfig } from '../../context/ConfigContext';
 
 function SectionCard({ title, children, className = '' }) {
   return (
@@ -34,6 +35,7 @@ export default function WorkerPublicProfile() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isLoggedIn = !!getStoredSessionUser();
+  const { config } = useConfig();
 
   const [services, setServices] = useState([]);
   const [workerInfo, setWorkerInfo] = useState(null);
@@ -224,13 +226,15 @@ export default function WorkerPublicProfile() {
                           {priceLabel}
                         </p>
 
-                        <button
-                          type="button"
-                          onClick={() => handleBookNow(service.id, service.title, priceLabel)}
-                          className="h-10 min-w-24 cursor-pointer rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition font-semibold text-sm"
-                        >
-                          Select
-                        </button>
+                        {config?.bookings !== false && (
+                          <button
+                            type="button"
+                            onClick={() => handleBookNow(service.id, service.title, priceLabel)}
+                            className="h-10 min-w-24 cursor-pointer rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition font-semibold text-sm"
+                          >
+                            Select
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -250,13 +254,15 @@ export default function WorkerPublicProfile() {
 
                   <div className="flex shrink-0 items-center justify-between gap-5 sm:flex-col sm:items-end sm:gap-2">
                     <p className="text-sm font-medium text-emerald-700">Contact for Price</p>
-                    <button
-                      type="button"
-                      onClick={handleChat}
-                      className="h-10 min-w-24 cursor-pointer rounded-lg border border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-50 transition font-semibold text-sm"
-                    >
-                      Inquire
-                    </button>
+                    {config?.chat !== false && (
+                      <button
+                        type="button"
+                        onClick={handleChat}
+                        className="h-10 min-w-24 cursor-pointer rounded-lg border border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-50 transition font-semibold text-sm"
+                      >
+                        Inquire
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -332,23 +338,27 @@ export default function WorkerPublicProfile() {
               </p>
 
               <div className="mt-6 grid gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleBookNow(services.length > 0 ? services[0].id : null, roleName, services.length > 0 && services[0].price ? `LKR ${parseFloat(services[0].price).toLocaleString()}` : 'Negotiable')}
-                  className="flex h-14 cursor-pointer items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 text-base font-semibold text-white transition hover:bg-emerald-700"
-                >
-                  <CalendarDays size={20} />
-                  Book Now
-                </button>
+                {config?.bookings !== false && (
+                  <button
+                    type="button"
+                    onClick={() => handleBookNow(services.length > 0 ? services[0].id : null, roleName, services.length > 0 && services[0].price ? `LKR ${parseFloat(services[0].price).toLocaleString()}` : 'Negotiable')}
+                    className="flex h-14 cursor-pointer items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 text-base font-semibold text-white transition hover:bg-emerald-700"
+                  >
+                    <CalendarDays size={20} />
+                    Book Now
+                  </button>
+                )}
 
-                <button
-                  type="button"
-                  onClick={handleChat}
-                  className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 transition hover:border-emerald-600 hover:text-emerald-700"
-                >
-                  <MessageSquareText size={18} />
-                  Chat with {name.split(' ')[0]}
-                </button>
+                {config?.chat !== false && (
+                  <button
+                    type="button"
+                    onClick={handleChat}
+                    className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 transition hover:border-emerald-600 hover:text-emerald-700"
+                  >
+                    <MessageSquareText size={18} />
+                    Chat with {name.split(' ')[0]}
+                  </button>
+                )}
               </div>
 
               <div className="mt-6 border-t border-slate-100 pt-6">

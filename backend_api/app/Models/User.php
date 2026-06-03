@@ -191,5 +191,15 @@ class User extends Authenticatable
     {
         return $this->hasMany(Booking::class, 'worker_id');
     }
+
+    public function customerBookings(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Booking::class, 'customer_id');
+    }
+
+    public function servicePackages(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ServicePackage::class, 'user_id');
+    }
 }
 

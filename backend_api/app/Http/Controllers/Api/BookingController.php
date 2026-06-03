@@ -37,6 +37,12 @@ class BookingController extends Controller
         abort_unless($user?->isCustomer(), 403, 'Only customers can create bookings.');
         abort_unless($bypassPhoneVerification || $user->hasVerifiedPhone(), 403, 'Please verify your phone number before booking.');
 
+        $privileges = \App\Models\Setting::get('privileges', []);
+        $bookingPriv = collect($privileges)->firstWhere('key', 'bookings');
+        if ($bookingPriv && !$bookingPriv['enabled']) {
+            abort(403, 'The booking feature is currently disabled by the administrator.');
+        }
+
         $validated = $request->validate([
             'service_package_id' => ['required', 'exists:service_packages,id'],
             'scheduled_at' => ['required', 'date', 'after:now'],

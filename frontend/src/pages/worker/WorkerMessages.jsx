@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import WorkerLayout from '../../components/layout/WorkerLayout';
 import { apiRequest, getStoredSessionUser } from '../../lib/api';
+import { useConfig } from '../../context/ConfigContext';
 
 const filters = [
   { key: 'all', label: 'All Chats' },
@@ -126,6 +127,7 @@ export default function WorkerMessages() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [messageText, setMessageText] = useState('');
+  const { config } = useConfig();
 
   useEffect(() => {
     async function loadConversations() {
@@ -245,6 +247,19 @@ export default function WorkerMessages() {
     } catch (err) {
       console.error(err);
     }
+  }
+
+  if (config?.chat === false) {
+    return (
+      <WorkerLayout noMainPadding>
+        <div className="flex h-[calc(100vh-72px)] min-h-[620px] overflow-hidden bg-slate-50 items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-slate-900">Chat Disabled</h2>
+            <p className="mt-2 text-slate-500">The chat feature is currently disabled by the administrator.</p>
+          </div>
+        </div>
+      </WorkerLayout>
+    );
   }
 
   return (

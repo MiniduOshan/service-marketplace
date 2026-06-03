@@ -12,7 +12,8 @@ export default function AdminCustomers() {
     setLoading(true);
     try {
       const response = await apiRequest('/admin/customers');
-      setCustomers(Array.isArray(response.data) ? response.data : []);
+      const customersData = response.data?.data ? response.data.data : response.data;
+      setCustomers(Array.isArray(customersData) ? customersData : []);
     } catch (error) {
       setErrorMessage(error.message || 'Failed to load customers.');
     } finally {

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useConfig } from '../../context/ConfigContext';
 import {
   ArrowRight,
   CalendarDays,
@@ -19,6 +20,7 @@ import BookingProgress from './BookingProgress';
 export default function BookingDetails() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { config } = useConfig();
 
   // Load from location state, fallback if page is refreshed or visited directly
   const stateWorker = location.state?.worker || (location.state?.workerId ? {
@@ -103,6 +105,21 @@ export default function BookingDetails() {
   };
 
   const displayPrice = `LKR ${parseFloat(servicePackage.price || 0).toLocaleString()}`;
+
+  if (config?.bookings === false) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900">
+        <CustomerNavbar activePage="" />
+        <main className="flex min-h-[calc(100vh-80px)] items-center justify-center p-6 sm:p-10">
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-slate-900">Bookings Disabled</h2>
+            <p className="mt-2 text-slate-500">The booking feature is currently disabled by the administrator.</p>
+          </div>
+        </main>
+        <CustomerFooter />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">

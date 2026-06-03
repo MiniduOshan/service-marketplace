@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { apiRequest } from '../../lib/api';
+import { useConfig } from '../../context/ConfigContext';
 
 function Toggle({ checked, onChange }) {
   return (
-    <button type="button" onClick={() => onChange(!checked)} className={`relative h-6 w-11 rounded-full transition ${checked ? 'bg-emerald-500' : 'bg-slate-200'}`} aria-pressed={checked}>
-      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${checked ? 'left-5.5' : 'left-0.5'}`} />
+    <button type="button" onClick={() => onChange(!checked)} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? 'bg-emerald-500' : 'bg-slate-200'}`} aria-pressed={checked}>
+      <span className={`absolute top-[2px] h-5 w-5 rounded-full bg-white shadow transition-all ${checked ? 'left-[22px]' : 'left-[2px]'}`} />
     </button>
   );
 }
@@ -15,6 +16,7 @@ export default function AdminPrivileges() {
   const [privileges, setPrivileges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const { refreshConfig } = useConfig();
 
   const loadPrivileges = async () => {
     setLoading(true);
@@ -38,6 +40,7 @@ export default function AdminPrivileges() {
         method: 'POST',
       });
       setPrivileges(Array.isArray(response.data) ? response.data : []);
+      refreshConfig();
     } catch (error) {
       setErrorMessage(error.message || 'Failed to update privilege.');
     }

@@ -16,6 +16,12 @@ class BookingMessageController extends Controller
 
         abort_unless($user && ($user->id === $booking->customer_id || $user->id === $booking->worker_id), 403, 'You cannot access this conversation.');
 
+        $privileges = \App\Models\Setting::get('privileges', []);
+        $chatPriv = collect($privileges)->firstWhere('key', 'chat');
+        if ($chatPriv && !$chatPriv['enabled']) {
+            abort(403, 'The chat feature is currently disabled by the administrator.');
+        }
+
         $messages = $booking->messages()
             ->with('sender:id,name,role')
             ->orderBy('created_at')
@@ -31,6 +37,12 @@ class BookingMessageController extends Controller
         $user = $request->user();
 
         abort_unless($user && ($user->id === $booking->customer_id || $user->id === $booking->worker_id), 403, 'You cannot send messages in this conversation.');
+
+        $privileges = \App\Models\Setting::get('privileges', []);
+        $chatPriv = collect($privileges)->firstWhere('key', 'chat');
+        if ($chatPriv && !$chatPriv['enabled']) {
+            abort(403, 'The chat feature is currently disabled by the administrator.');
+        }
 
         $validated = $request->validate([
             'body' => ['required', 'string', 'max:1000'],

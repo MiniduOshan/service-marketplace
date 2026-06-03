@@ -420,12 +420,13 @@ class AuthController extends Controller
     {
         $user = $request->user();
         
-        $completedBookings = Booking::where('worker_id', $user->id)
+        $totalEarnings = Booking::where('worker_id', $user->id)
             ->where('status', 'completed')
-            ->get();
+            ->sum('total_price');
             
-        $totalEarnings = $completedBookings->sum('total_price');
-        $jobsDone = $completedBookings->count();
+        $jobsDone = Booking::where('worker_id', $user->id)
+            ->where('status', 'completed')
+            ->count();
         
         $totalBookings = Booking::where('worker_id', $user->id)
             ->where('status', '!=', 'cancelled')

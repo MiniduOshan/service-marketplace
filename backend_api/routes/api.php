@@ -21,6 +21,9 @@ $registerRoutes = function () {
         ]);
     });
 
+    Route::get('/public-stats', [\App\Http\Controllers\Api\PublicController::class, 'stats']);
+    Route::get('/platform-config', [\App\Http\Controllers\Api\PublicController::class, 'config']);
+    
     Route::get('/categories', [ServiceCategoryController::class, 'index']);
     Route::get('/services', [ServicePackageController::class, 'index']);
     Route::get('/services/{servicePackage}', [ServicePackageController::class, 'show']);
@@ -75,6 +78,7 @@ $registerRoutes = function () {
             
             Route::get('/admin/workers', [AdminController::class, 'workers']);
             Route::patch('/admin/workers/{id}', [AdminController::class, 'updateWorker']);
+            Route::get('/admin/stats', [AdminController::class, 'dashboardStats']);
             Route::get('/admin/customers', [AdminController::class, 'customers']);
             Route::patch('/admin/customers/{id}', [AdminController::class, 'updateCustomer']);
             Route::get('/admin/privileges', [AdminController::class, 'privileges']);

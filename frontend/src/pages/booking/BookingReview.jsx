@@ -11,10 +11,12 @@ import {
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
 import BookingProgress from './BookingProgress';
+import { useConfig } from '../../context/ConfigContext';
 
 export default function BookingReview() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { config } = useConfig();
 
   // Retrieve state passed from BookingDetails, with standard fallback mock-free defaults
   const worker = location.state?.worker || {
@@ -54,6 +56,21 @@ export default function BookingReview() {
       },
     });
   };
+
+  if (config?.bookings === false) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900">
+        <CustomerNavbar activePage="" />
+        <main className="flex min-h-[calc(100vh-80px)] items-center justify-center p-6 sm:p-10">
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-slate-900">Bookings Disabled</h2>
+            <p className="mt-2 text-slate-500">The booking feature is currently disabled by the administrator.</p>
+          </div>
+        </main>
+        <CustomerFooter />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">

@@ -16,6 +16,7 @@ import {
   Check,
 } from 'lucide-react';
 import { apiRequest } from '../../lib/api';
+import { useConfig } from '../../context/ConfigContext';
 
 const initialCustomerNotifications = [];
 
@@ -206,11 +207,16 @@ export default function CustomerNavbar({
     [notifications]
   );
 
+  const { config } = useConfig();
+
   const navLinks = [
     { label: t.home, href: '/customer/dashboard', key: 'home' },
     { label: t.search_nav, href: '/search', key: 'search' },
-    { label: t.bookings, href: '/bookings', key: 'bookings' },
   ];
+
+  if (config?.bookings !== false) {
+    navLinks.push({ label: t.bookings, href: '/bookings', key: 'bookings' });
+  }
 
   const goTo = (href) => {
     setMobileMenuOpen(false);
@@ -342,14 +348,16 @@ export default function CustomerNavbar({
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => goTo('/chat')}
-              className="cursor-pointer text-slate-700 transition hover:text-emerald-700"
-              aria-label={t.messages}
-            >
-              <MessageSquare size={22} strokeWidth={1.9} />
-            </button>
+            {config?.chat !== false && (
+              <button
+                type="button"
+                onClick={() => goTo('/chat')}
+                className="cursor-pointer text-slate-700 transition hover:text-emerald-700"
+                aria-label={t.messages}
+              >
+                <MessageSquare size={22} strokeWidth={1.9} />
+              </button>
+            )}
 
             <button
               type="button"
@@ -438,14 +446,16 @@ export default function CustomerNavbar({
                 )}
               </button>
 
-              <button
-                type="button"
-                onClick={() => goTo('/chat')}
-                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-slate-200 text-slate-700"
-                aria-label={t.messages}
-              >
-                <MessageSquare size={20} />
-              </button>
+              {config?.chat !== false && (
+                <button
+                  type="button"
+                  onClick={() => goTo('/chat')}
+                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-slate-200 text-slate-700"
+                  aria-label={t.messages}
+                >
+                  <MessageSquare size={20} />
+                </button>
+              )}
 
               <button
                 type="button"

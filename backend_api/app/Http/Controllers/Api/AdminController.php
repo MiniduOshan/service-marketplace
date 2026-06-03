@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Setting;
 use App\Models\NotificationLog;
 use App\Models\Notification;
+use App\Models\Booking;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,17 +15,54 @@ use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {
+    public function dashboardStats(): JsonResponse
+    {
+        $stats = \Illuminate\Support\Facades\Cache::remember('admin:dashboard:stats', now()->addMinutes(10), function () {
+            $totalWorkers = User::where('role', 'worker')->count();
+            $activeWorkers = User::where('role', 'worker')->where('status', 'Active')->count();
+            $totalCustomers = User::where('role', 'customer')->count();
+            $activeCustomers = User::where('role', 'customer')->where('status', 'Active')->count();
+
+            $totalBookings = Booking::count();
+            $completedBookings = Booking::where('status', 'completed')->count();
+            $totalRevenue = Booking::where('status', 'completed')->sum('total_price');
+
+            return [
+                'totalWorkers' => $totalWorkers,
+                'activeWorkers' => $activeWorkers,
+                'totalCustomers' => $totalCustomers,
+                'activeCustomers' => $activeCustomers,
+                'totalBookings' => $totalBookings,
+                'completedBookings' => $completedBookings,
+                'totalRevenue' => (float)$totalRevenue,
+            ];
+        });
+
+        $recentUsers = User::orderBy('created_at', 'desc')->take(5)->get()->map(function ($user) {
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'role' => $user->role,
+                'status' => $user->status,
+                'created_at' => $user->created_at->diffForHumans()
+            ];
+        });
+
+        return response()->json([
+            'stats' => $stats,
+            'recentActivity' => $recentUsers
+        ]);
+    }
     public function workers(): JsonResponse
     {
-        $workers = User::where('role', 'worker')->with(['category', 'pricingPlan'])->get()->map(function ($worker) {
+        $workers = User::where('role', 'worker')->with(['category', 'pricingPlan', 'servicePackages.category'])->paginate(50);
+        
+        $workers->getCollection()->transform(function ($worker) {
             $categoryName = 'General';
             if ($worker->category) {
                 $categoryName = $worker->category->name;
             } else {
-                $firstPackage = \App\Models\ServicePackage::where('user_id', $worker->id)
-                    ->where('is_active', true)
-                    ->with('category')
-                    ->first();
+                $firstPackage = $worker->servicePackages->where('is_active', true)->first();
                 if ($firstPackage && $firstPackage->category) {
                     $categoryName = $firstPackage->category->name;
                 }
@@ -70,8 +108,10 @@ class AdminController extends Controller
 
     public function customers(): JsonResponse
     {
-        $customers = User::where('role', 'customer')->with('pricingPlan')->get()->map(function ($customer) {
-            $bookingsCount = DB::table('bookings')->where('customer_id', $customer->id)->count();
+        $customers = User::where('role', 'customer')->with('pricingPlan')->withCount('customerBookings')->paginate(50);
+        
+        $customers->getCollection()->transform(function ($customer) {
+            $bookingsCount = $customer->customer_bookings_count;
             return [
                 'id' => $customer->id,
                 'name' => $customer->name,

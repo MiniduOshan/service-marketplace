@@ -13,6 +13,7 @@ import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
 import BookingProgress from './BookingProgress';
 import { apiRequest } from '../../lib/api';
+import { useConfig } from '../../context/ConfigContext';
 
 const paymentMethods = [
   {
@@ -35,6 +36,7 @@ const paymentMethods = [
 export default function BookingPayment() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { config } = useConfig();
 
   const worker = location.state?.worker || {
     name: 'Verified Pro',
@@ -124,6 +126,21 @@ export default function BookingPayment() {
       alert(err.message || 'Failed to create booking.');
     }
   };
+
+  if (config?.bookings === false) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900">
+        <CustomerNavbar activePage="" />
+        <main className="flex min-h-[calc(100vh-80px)] items-center justify-center p-6 sm:p-10">
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-slate-900">Bookings Disabled</h2>
+            <p className="mt-2 text-slate-500">The booking feature is currently disabled by the administrator.</p>
+          </div>
+        </main>
+        <CustomerFooter />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
