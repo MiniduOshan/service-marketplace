@@ -14,10 +14,10 @@ class ApiClient {
   bool allowBookingWithoutPhoneVerification = true;
 
   final String baseUrl = kIsWeb
-      ? 'http://localhost:8000/api'
+      ? 'http://localhost:8000/api/v1'
       : (defaultTargetPlatform == TargetPlatform.android
-            ? 'http://10.0.2.2:8000/api'
-            : 'http://localhost:8000/api');
+            ? 'http://10.0.2.2:8000/api/v1'
+            : 'http://localhost:8000/api/v1');
 
   Future<Map<String, dynamic>> postJson(
     String path, {
@@ -321,10 +321,20 @@ class ApiClient {
     String? name,
     String? phone,
     String? token,
+    String? primaryServiceCategoryId,
+    String? city,
+    String? bio,
+    List<String>? skills,
   }) {
     final body = <String, dynamic>{};
     if (name != null) body['name'] = name;
     if (phone != null) body['phone'] = phone;
+    if (primaryServiceCategoryId != null) {
+      body['primary_service_category_id'] = primaryServiceCategoryId;
+    }
+    if (city != null) body['city'] = city;
+    if (bio != null) body['bio'] = bio;
+    if (skills != null) body['skills'] = skills;
     return postJson('/auth/profile', token: token, body: body);
   }
 
@@ -337,6 +347,10 @@ class ApiClient {
       token: token,
       body: {'pricing_plan_id': pricingPlanId},
     );
+  }
+
+  Future<Map<String, dynamic>> fetchPricingPlans() {
+    return getJson('/pricing-plans');
   }
 
   Future<Map<String, dynamic>> submitReview({

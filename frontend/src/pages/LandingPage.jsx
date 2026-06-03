@@ -34,140 +34,7 @@ import Footer from '../components/layout/Footer';
 import AuthFlow from './auth/AuthFlow';
 import { apiRequest, getStoredSessionUser } from '../lib/api';
 
-const defaultServiceCategories = [
-  {
-    name: 'Painting',
-    icon: Paintbrush,
-    color: 'text-blue-500',
-    bg: 'bg-blue-50',
-  },
-  {
-    name: 'Electrical',
-    icon: Zap,
-    color: 'text-orange-500',
-    bg: 'bg-orange-50',
-  },
-  {
-    name: 'Plumbing',
-    icon: Wrench,
-    color: 'text-cyan-500',
-    bg: 'bg-cyan-50',
-  },
-  {
-    name: 'Carpentry',
-    icon: Hammer,
-    color: 'text-yellow-500',
-    bg: 'bg-yellow-50',
-  },
-  {
-    name: 'AC Repair',
-    icon: Snowflake,
-    color: 'text-teal-500',
-    bg: 'bg-teal-50',
-  },
-  {
-    name: 'Cleaning',
-    icon: SprayCan,
-    color: 'text-purple-500',
-    bg: 'bg-purple-50',
-  },
-  {
-    name: 'Masonry',
-    icon: Wrench,
-    color: 'text-slate-600',
-    bg: 'bg-slate-50',
-  },
-  {
-    name: '+More',
-    icon: PlusCircle,
-    color: 'text-emerald-500',
-    bg: 'bg-emerald-50',
-  },
-];
 
-const heroWorkers = [
-  {
-    name: 'Nimal Silva',
-    role: 'Expert Electrician',
-    rating: '4.9',
-    image:
-      'https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=200&q=80',
-  },
-  {
-    name: 'Samantha Perera',
-    role: 'Master Carpenter',
-    rating: '5.0',
-    image:
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-  },
-  {
-    name: 'Aruni Fernando',
-    role: 'Interior Painter',
-    rating: '4.8',
-    image:
-      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
-  },
-];
-
-const professionals = [
-  {
-    name: 'Arshad Majeed',
-    role: 'Plumbing & Sanitary Expert',
-    rating: '4.9',
-    jobs: '120+ Jobs',
-    badge: 'Verified ID',
-    image:
-      'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=800&q=80',
-    label: 'PLATINUM PRO',
-  },
-  {
-    name: 'Chathura Peiris',
-    role: 'Licensed Electrician',
-    rating: '5.0',
-    jobs: '85 Jobs',
-    badge: 'Safety First',
-    image:
-      'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=800&q=80',
-    label: 'ELITE',
-  },
-  {
-    name: 'Dilantha Goonewardena',
-    role: 'Property Maintenance',
-    rating: '4.7',
-    jobs: '200+ Jobs',
-    badge: 'Multi-skilled',
-    image:
-      'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80',
-    label: null,
-  },
-];
-
-const testimonials = [
-  {
-    quote:
-      'Found a reliable plumber within 10 minutes. Arshad was professional and fixed the leak quickly. Highly recommend SkilledLK for anyone in Colombo.',
-    name: 'Nadine Jayasuriya',
-    location: 'Colombo 07',
-    avatar:
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
-  },
-  {
-    quote:
-      'As a professional electrician, SkilledLK has changed how I get clients. No more waiting for calls, I get verified leads every day.',
-    name: 'Kasun Rathnayake',
-    location: 'Verified Pro',
-    avatar:
-      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80',
-  },
-  {
-    quote:
-      'Great experience hiring a deep cleaning crew for my new apartment. Transparent pricing and the team was very thorough.',
-    name: 'Dimuthu Perera',
-    location: 'Kandy',
-    avatar:
-      'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?auto=format&fit=crop&w=200&q=80',
-  },
-];
 
 const workerBenefits = [
   {
@@ -188,24 +55,15 @@ const workerBenefits = [
   },
 ];
 
-function RatingStars() {
-  return (
-    <div className="flex gap-0.5 text-yellow-400">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <Star key={star} size={16} fill="currentColor" />
-      ))}
-    </div>
-  );
-}
-
 export default function LandingPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [serviceCategories, setServiceCategories] = useState(defaultServiceCategories);
+  const [serviceCategories, setServiceCategories] = useState([]);
   const [searchVal, setSearchVal] = useState('');
   const [locationVal, setLocationVal] = useState('');
   const [professionalsList, setProfessionalsList] = useState([]);
   const [loadingPros, setLoadingPros] = useState(true);
+  const [pricingPlans, setPricingPlans] = useState([]);
 
   const authConfigByPath = {
     '/login': { initialView: 'login', entryMode: 'signin' },
@@ -256,12 +114,19 @@ export default function LandingPage() {
           };
         });
 
-        cards.push(defaultServiceCategories[7]);
-        setServiceCategories(cards);
+        // We only want 2 rows of 8 columns = 16 items. The 16th item is '+More'
+        const limitedCards = cards.slice(0, 15);
+        limitedCards.push({
+          name: '+More',
+          icon: PlusCircle,
+          color: 'text-emerald-500',
+          bg: 'bg-emerald-50',
+        });
+        setServiceCategories(limitedCards);
       })
       .catch(() => {
         if (isMounted) {
-          setServiceCategories(defaultServiceCategories);
+          setServiceCategories([]);
         }
       });
 
@@ -290,21 +155,21 @@ export default function LandingPage() {
           }
 
           const mapped = uniqueServices.slice(0, 3).map((service, idx) => {
-            const workerName = service.worker?.name || 'Verified Pro';
-            const defaultImages = [
-              'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=800&q=80',
-              'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=800&q=80',
-              'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80'
-            ];
+            const workerName = service.worker?.name || 'Worker';
+            const avgRating = service.worker?.average_rating;
+            const completedJobs = service.worker?.completed_jobs_count || 0;
+            const planTitle = service.worker?.pricing_plan?.title;
             return {
               id: service.worker?.id || '1',
               name: workerName,
               role: service.title || 'Service Expert',
-              rating: '4.9',
-              jobs: '120+ Jobs',
+              rating: avgRating !== null && avgRating !== undefined
+                ? parseFloat(avgRating).toFixed(1)
+                : 'New',
+              jobs: `${completedJobs} Job` + (completedJobs === 1 ? '' : 's'),
               badge: service.worker?.phone_verified_at ? 'Verified ID' : 'Basic ID',
-              image: defaultImages[idx % defaultImages.length],
-              label: service.is_active ? 'ELITE' : null,
+              image: service.worker?.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(workerName)}&background=random`,
+              label: planTitle ? planTitle.replace(' Plan', '').toUpperCase() : null,
             };
           });
 
@@ -325,7 +190,27 @@ export default function LandingPage() {
       isMounted = false;
     };
   }, []);
+  useEffect(() => {
+    let isMounted = true;
 
+    apiRequest('/pricing-plans')
+      .then((response) => {
+        if (isMounted) {
+          const plans = response.data || [];
+          const activePlans = plans.filter((p) => p.is_active);
+          setPricingPlans(activePlans);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setPricingPlans([]);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   const handleSearchSubmit = () => {
     const params = [];
     if (searchVal.trim()) params.push(`search=${encodeURIComponent(searchVal.trim())}`);
@@ -408,7 +293,7 @@ export default function LandingPage() {
               <div className="lp-fade-in absolute h-78.75 w-93.75 rounded-[36px] border-28 border-emerald-50/80 xl:h-87.5 xl:w-107.5 2xl:h-105 2xl:w-125 min-[1920px]:h-117.5 min-[1920px]:w-140" />
 
               <div className="relative z-10 w-full max-w-md space-y-5 2xl:max-w-lg 2xl:space-y-6 min-[1920px]:max-w-xl min-[1920px]:space-y-7">
-                {heroWorkers.map((person, index) => (
+                {professionalsList.map((person, index) => (
                   <div
                     key={person.name}
                     className={`lp-pop lp-card-hover flex items-center justify-between rounded-2xl bg-white px-5 py-4 shadow-xl shadow-slate-300/40 2xl:px-6 2xl:py-5 min-[1920px]:px-7 min-[1920px]:py-6 ${
@@ -455,7 +340,7 @@ export default function LandingPage() {
           {/* Mobile worker cards */}
           <div className="px-4 pb-12 sm:px-6 lg:hidden 2xl:px-12 min-[1920px]:px-16">
             <div className="mx-auto grid max-w-xl gap-4">
-              {heroWorkers.map((person) => (
+              {professionalsList.map((person) => (
                 <div
                   key={person.name}
                   className="lp-fade-up lp-card-hover flex items-center justify-between rounded-2xl bg-white px-4 py-4 shadow-md"
@@ -671,7 +556,7 @@ export default function LandingPage() {
                       </div>
 
                       <div className="flex items-center gap-1 text-sm font-bold text-yellow-500">
-                        <Star size={13} fill="currentColor" />
+                        {pro.rating !== 'New' && <Star size={13} fill="currentColor" />}
                         {pro.rating}
                       </div>
                     </div>
@@ -730,42 +615,6 @@ export default function LandingPage() {
                 ))}
               </div>
             </div>
-
-            <div className="flex justify-center lg:justify-end">
-              <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white p-7 text-slate-900 shadow-2xl sm:p-10">
-                <div className="absolute right-0 top-0 h-24 w-24 rounded-bl-full bg-emerald-50" />
-
-                <h3 className="text-lg font-extrabold">
-                  Earnings Calculator
-                </h3>
-
-                <p className="mt-2 text-xs text-slate-500 sm:text-sm">
-                  Average monthly payout for Top Pro category.
-                </p>
-
-                <div className="mt-8 rounded-xl bg-slate-50 p-5 sm:p-6">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    Projected Earnings
-                  </p>
-
-                  <h4 className="mt-2 text-2xl font-black text-[#05735f] sm:text-3xl">
-                    LKR 85,000
-                    <span className="text-sm font-semibold text-slate-400">
-                      {' '}
-                      /mo
-                    </span>
-                  </h4>
-                </div>
-
-                <button className="btn-press cursor-pointer mt-8 w-full rounded-lg bg-[#05735f] py-3 text-sm font-bold text-white transition hover:bg-[#046553]">
-                  Sign Up as a Pro
-                </button>
-
-                <p className="mt-4 text-center text-xs text-slate-400">
-                  Free to join. No hidden fees.
-                </p>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -784,133 +633,72 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="mx-auto mt-12 grid max-w-4xl grid-cols-1 gap-8 md:grid-cols-2">
-            <div className="rounded-2xl bg-white p-7 ring-1 ring-slate-200 sm:p-8">
-              <h3 className="text-xl font-extrabold text-slate-800">
-                FREE PLAN
-              </h3>
+          {pricingPlans.length === 0 ? (
+            <p className="mt-12 text-center text-sm text-slate-400">
+              Pricing information coming soon.
+            </p>
+          ) : (
+            <div className={`mx-auto mt-12 grid max-w-5xl grid-cols-1 gap-8 ${pricingPlans.length === 2 ? 'md:grid-cols-2 max-w-4xl' : 'md:grid-cols-3'}`}>
+              {pricingPlans.map((plan) => {
+                const isPopular = plan.status === 'Popular';
+                const isFree = Number(plan.price) === 0;
 
-              <div className="mt-4 flex items-end gap-2">
-                <span className="text-3xl font-black">LKR 0</span>
-
-                <span className="pb-1 text-xs text-slate-500">/month</span>
-              </div>
-
-              <div className="mt-8 space-y-4">
-                {[
-                  ['Basic Directory Listing', true],
-                  ['Accept 5 Direct Jobs/mo', true],
-                  ['Pro Badge on Profile', false],
-                  ['Priority Search Ranking', false],
-                  ['Zero Platform Fees on Direct Jobs', false],
-                ].map(([item, active]) => (
+                return (
                   <div
-                    key={item}
-                    className={`flex items-center gap-3 text-sm ${
-                      active ? 'text-slate-700' : 'text-slate-400'
+                    key={plan.id}
+                    className={`relative rounded-2xl p-7 sm:p-8 ${
+                      isPopular
+                        ? 'bg-[#eef4ff] ring-2 ring-[#05735f]'
+                        : 'bg-white ring-1 ring-slate-200'
                     }`}
                   >
-                    {active ? (
-                      <CheckCircle size={16} className="shrink-0 text-[#05735f]" />
-                    ) : (
-                      <XCircle size={16} className="shrink-0 text-slate-300" />
+                    {isPopular && (
+                      <span className="absolute -top-3 right-8 rounded-full bg-yellow-400 px-4 py-1 text-[10px] font-bold text-white">
+                        MOST POPULAR
+                      </span>
                     )}
 
-                    {item}
-                  </div>
-                ))}
-              </div>
+                    <h3
+                      className={`text-xl font-extrabold ${
+                        isPopular ? 'text-[#05735f]' : 'text-slate-800'
+                      }`}
+                    >
+                      {plan.title.toUpperCase()}
+                    </h3>
 
-              <button className="btn-press cursor-pointer mt-12 w-full rounded-lg border border-[#05735f] py-3 text-sm font-bold text-slate-800 hover:bg-emerald-50">
-                Get started free
-              </button>
+                    <div className="mt-4 flex items-end gap-2">
+                      <span className="text-3xl font-black">
+                        LKR {Number(plan.price).toLocaleString()}
+                      </span>
+                      <span className="pb-1 text-xs text-slate-500">/month</span>
+                    </div>
+
+                    <div className="mt-8 space-y-4">
+                      {(plan.privileges || []).map((item) => (
+                        <div
+                          key={item}
+                          className="flex items-center gap-3 text-sm text-slate-700"
+                        >
+                          <CheckCircle size={16} className="shrink-0 text-[#05735f]" />
+                          {item}
+                        </div>
+                      ))}
+                    </div>
+
+                    {isFree ? (
+                      <button className="btn-press cursor-pointer mt-12 w-full rounded-lg border border-[#05735f] py-3 text-sm font-bold text-slate-800 hover:bg-emerald-50">
+                        Get started free
+                      </button>
+                    ) : (
+                      <button className="btn-press cursor-pointer mt-12 w-full rounded-lg bg-[#05735f] py-3 text-sm font-bold text-white hover:bg-[#046553]">
+                        Subscribe &amp; go Pro
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-
-            <div className="relative rounded-2xl bg-[#eef4ff] p-7 ring-2 ring-[#05735f] sm:p-8">
-              <span className="absolute -top-3 right-8 rounded-full bg-yellow-400 px-4 py-1 text-[10px] font-bold text-white">
-                MOST POPULAR
-              </span>
-
-              <h3 className="text-xl font-extrabold text-[#05735f]">
-                PRO PLAN
-              </h3>
-
-              <div className="mt-4 flex items-end gap-2">
-                <span className="text-3xl font-black">LKR 2,500</span>
-
-                <span className="pb-1 text-xs text-slate-500">/month</span>
-              </div>
-
-              <div className="mt-8 space-y-4">
-                {[
-                  'Premium Directory Listing',
-                  'Unlimited Direct Jobs',
-                  'Pro Badge on Profile',
-                  'Priority Search Ranking (+30%)',
-                  'Zero Platform Fees on Direct Jobs',
-                ].map((item) => (
-                  <div
-                    key={item}
-                    className="flex items-center gap-3 text-sm text-slate-700"
-                  >
-                    <CheckCircle size={16} className="shrink-0 text-[#05735f]" />
-                    {item}
-                  </div>
-                ))}
-              </div>
-
-              <button className="btn-press cursor-pointer mt-12 w-full rounded-lg bg-[#05735f] py-3 text-sm font-bold text-white hover:bg-[#046553]">
-                Subscribe & go Pro
-              </button>
-
-              <p className="mt-4 text-center text-xs text-slate-500">
-                Average Pro worker earns LKR 42,000/month
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Testimonials */}
-        <section
-          id="testimonials"
-          className={`${pageWidthClass} scroll-mt-20 px-4 pb-16 sm:px-6 lg:px-8 lg:pb-24 2xl:pb-28 min-[1920px]:pb-32`}
-        >
-          <h2 className="text-center text-2xl font-extrabold text-slate-900 sm:text-3xl">
-            What our customers say
-          </h2>
-
-          <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8">
-            {testimonials.map((item) => (
-              <div
-                key={item.name}
-                className="lp-fade-up lp-card-hover rounded-2xl bg-white p-7 shadow-sm ring-1 ring-slate-100 sm:p-8"
-              >
-                <RatingStars />
-
-                <p className="mt-5 text-sm italic leading-7 text-slate-600 sm:text-[15px]">
-                  &quot;{item.quote}&quot;
-                </p>
-
-                <div className="mt-7 flex items-center gap-4">
-                  <img
-                    src={item.avatar}
-                    alt={item.name}
-                    className="h-10 w-10 shrink-0 rounded-full object-cover"
-                  />
-
-                  <div>
-                    <h4 className="text-sm font-semibold text-slate-900">
-                      {item.name}
-                    </h4>
-
-                    <p className="mt-1 text-xs text-slate-400">
-                      {item.location}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          )}
         </section>
       </main>
 

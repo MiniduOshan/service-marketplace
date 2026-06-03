@@ -284,17 +284,21 @@ export default function CustomerProfile() {
       };
       setProfileForm(freshForm);
       setSavedProfileForm(freshForm);
+      setAddresses(sessionUser.addresses || []);
+      setSavedAddresses(sessionUser.addresses || []);
+      setPaymentMethods(sessionUser.payment_methods || []);
+      setSavedPaymentMethods(sessionUser.payment_methods || []);
     }
   }, [sessionUser]);
 
-  const [addresses, setAddresses] = useState(initialAddresses);
-  const [savedAddresses, setSavedAddresses] = useState(initialAddresses);
+  const [addresses, setAddresses] = useState(() => sessionUser?.addresses || []);
+  const [savedAddresses, setSavedAddresses] = useState(() => sessionUser?.addresses || []);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [addressForm, setAddressForm] = useState(emptyAddressForm);
 
-  const [paymentMethods, setPaymentMethods] = useState(initialPaymentMethods);
+  const [paymentMethods, setPaymentMethods] = useState(() => sessionUser?.payment_methods || []);
   const [savedPaymentMethods, setSavedPaymentMethods] = useState(
-    initialPaymentMethods
+    () => sessionUser?.payment_methods || []
   );
   const [showCardForm, setShowCardForm] = useState(false);
   const [cardForm, setCardForm] = useState(emptyCardForm);
@@ -422,13 +426,23 @@ export default function CustomerProfile() {
       }
     }
 
+    const requestPayload = {
+      name: profileForm.name,
+      phone: profileForm.phone,
+      addresses: addresses,
+      payment_methods: paymentMethods,
+    };
+
+    if (passwordForm.newPassword && passwordForm.currentPassword) {
+      requestPayload.current_password = passwordForm.currentPassword;
+      requestPayload.password = passwordForm.newPassword;
+      requestPayload.password_confirmation = passwordForm.confirmPassword;
+    }
+
     try {
       const response = await apiRequest('/auth/profile', {
         method: 'POST',
-        body: JSON.stringify({
-          name: profileForm.name,
-          phone: profileForm.phone,
-        }),
+        body: JSON.stringify(requestPayload),
       });
 
       const updatedUser = response?.data?.user || response?.data || response;

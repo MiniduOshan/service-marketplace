@@ -22,7 +22,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import CustomerFooter from '../../components/layout/CustomerFooter';
-import { getStoredSessionUser, apiRequest } from '../../lib/api';
+import { getStoredSessionUser, apiRequest, storeSession } from '../../lib/api';
 import { uploadImageToSupabase } from '../../lib/supabase';
 
 const serviceCategories = [
@@ -229,11 +229,29 @@ function Chip({ children, onRemove }) {
   );
 }
 
-function StepTwo({ onBack, onNext, isEditMode }) {
-  const currentUser = getStoredSessionUser();
-  const [skills, setSkills] = useState(initialSkills);
+function StepTwo({
+  onBack,
+  onNext,
+  isEditMode,
+  name,
+  setName,
+  phone,
+  setPhone,
+  email,
+  setEmail,
+  primaryServiceCategoryId,
+  setPrimaryServiceCategoryId,
+  skills,
+  setSkills,
+  avatarUrl,
+  setAvatarUrl,
+  city,
+  setCity,
+  dbCategories,
+  saveProfileData,
+}) {
   const [skillInput, setSkillInput] = useState('');
-  const [avatar, setAvatar] = useState(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = React.useRef(null);
 
   function addSkill() {
@@ -243,14 +261,35 @@ function StepTwo({ onBack, onNext, isEditMode }) {
     setSkillInput('');
   }
 
-  function handleAvatarChange(event) {
+  async function handleAvatarChange(event) {
     const file = event.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setAvatar(e.target.result);
-    };
-    reader.readAsDataURL(file);
+    setIsUploadingAvatar(true);
+    try {
+      const publicUrl = await uploadImageToSupabase(file, 'avatars');
+      setAvatarUrl(publicUrl);
+    } catch (err) {
+      alert(err.message || 'Failed to upload photo.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  }
+
+  async function handleNextStep() {
+    try {
+      await saveProfileData({
+        name,
+        phone: phone ? `+94${phone}` : null,
+        email,
+        primary_service_category_id: primaryServiceCategoryId ? parseInt(primaryServiceCategoryId) : null,
+        skills,
+        avatar_url: avatarUrl,
+        city,
+      });
+      onNext();
+    } catch (err) {
+      // API error handled/alerted in saveProfileData
+    }
   }
 
   return (
@@ -274,7 +313,7 @@ function StepTwo({ onBack, onNext, isEditMode }) {
 
           <div className="mt-7 grid gap-5 sm:grid-cols-2">
             <Field label="Full Name">
-              <Input defaultValue={currentUser?.name || ''} />
+              <Input value={name} onChange={(e) => setName(e.target.value)} />
             </Field>
 
             <Field label="Phone Number">
@@ -282,7 +321,7 @@ function StepTwo({ onBack, onNext, isEditMode }) {
                 <span className="grid h-12 place-items-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-100 px-4 text-sm font-bold text-slate-600">
                   +94
                 </span>
-                <Input defaultValue={currentUser?.phone ? currentUser.phone.replace(/^\+94/, '') : ''} className="rounded-l-none" />
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="rounded-l-none" />
               </div>
             </Field>
 
@@ -290,16 +329,17 @@ function StepTwo({ onBack, onNext, isEditMode }) {
               <Field label="Email Address Optional">
                 <Input
                   type="email"
-                  defaultValue={currentUser?.email || ''}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </Field>
             </div>
 
             <Field label="Service Category">
-              <Select defaultValue={currentUser?.category?.name || ''}>
+              <Select value={primaryServiceCategoryId} onChange={(e) => setPrimaryServiceCategoryId(e.target.value)}>
                 <option value="" disabled>Select Category</option>
-                {serviceCategories.map((category) => (
-                  <option key={category}>{category}</option>
+                {dbCategories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </Select>
             </Field>
@@ -367,8 +407,10 @@ function StepTwo({ onBack, onNext, isEditMode }) {
                 onClick={() => fileInputRef.current?.click()}
                 className="grid h-36 w-36 place-items-center rounded-full border-2 border-dashed border-emerald-900/30 bg-emerald-50 text-emerald-700 transition hover:border-emerald-700 overflow-hidden"
               >
-                {avatar ? (
-                  <img src={avatar} alt="Profile preview" className="h-full w-full object-cover" />
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Profile preview" className="h-full w-full object-cover" />
+                ) : isUploadingAvatar ? (
+                  <p className="text-sm font-bold">Uploading...</p>
                 ) : (
                   <div>
                     <Camera className="mx-auto" size={32} />
@@ -391,10 +433,10 @@ function StepTwo({ onBack, onNext, isEditMode }) {
 
             <div className="mt-5">
               <Field label="City">
-                <Select defaultValue="">
+                <Select value={city} onChange={(e) => setCity(e.target.value)}>
                   <option value="" disabled>Select City</option>
-                  {cityOptions.map((city) => (
-                    <option key={city}>{city}</option>
+                  {cityOptions.map((c) => (
+                    <option key={c} value={c}>{c}</option>
                   ))}
                 </Select>
               </Field>
@@ -405,7 +447,7 @@ function StepTwo({ onBack, onNext, isEditMode }) {
 
       <ActionBar
         onBack={onBack}
-        onNext={onNext}
+        onNext={handleNextStep}
         nextLabel={isEditMode ? 'Save & Continue' : 'Next: Documents'}
       />
     </>
@@ -476,33 +518,75 @@ function UploadBox({ title, subtitle, uploaded = false, optional = false, onFile
   );
 }
 
-function StepThree({ onBack, onNext, isEditMode }) {
-  const currentUser = getStoredSessionUser();
-  const [nicFront, setNicFront] = useState(null);
-  const [nicBack, setNicBack] = useState(null);
-  const [certificate, setCertificate] = useState(null);
-  const [policeClearance, setPoliceClearance] = useState(null);
-  const [portfolio, setPortfolio] = useState([]);
+function StepThree({
+  onBack,
+  onNext,
+  isEditMode,
+  nicFrontUrl,
+  setNicFrontUrl,
+  nicBackUrl,
+  setNicBackUrl,
+  certificateUrl,
+  setCertificateUrl,
+  policeClearanceUrl,
+  setPoliceClearanceUrl,
+  portfolio,
+  setPortfolio,
+  saveProfileData,
+}) {
   const portfolioInputRef = React.useRef(null);
+  const [isUploading, setIsUploading] = useState({});
 
-  function handlePortfolioFileSelect(event) {
+  async function handleUpload(file, fieldName, setUrl) {
+    if (!file) return;
+    setIsUploading((prev) => ({ ...prev, [fieldName]: true }));
+    try {
+      const publicUrl = await uploadImageToSupabase(file, 'documents');
+      setUrl(publicUrl);
+    } catch (err) {
+      alert(err.message || 'Failed to upload document.');
+    } finally {
+      setIsUploading((prev) => ({ ...prev, [fieldName]: false }));
+    }
+  }
+
+  async function handlePortfolioFileSelect(event) {
     const file = event.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setPortfolio((current) => [...current, { id: Date.now(), image: e.target.result }]);
-    };
-    reader.readAsDataURL(file);
+    setIsUploading((prev) => ({ ...prev, portfolio: true }));
+    try {
+      const publicUrl = await uploadImageToSupabase(file, 'portfolio');
+      setPortfolio((current) => [...current, { id: Date.now(), image: publicUrl }]);
+    } catch (err) {
+      alert(err.message || 'Failed to upload portfolio image.');
+    } finally {
+      setIsUploading((prev) => ({ ...prev, portfolio: false }));
+    }
     event.target.value = '';
   }
 
-  // Calculate score dynamically
+  async function handleNextStep() {
+    try {
+      await saveProfileData({
+        nic_front: nicFrontUrl,
+        nic_back: nicBackUrl,
+        certificates: certificateUrl ? [certificateUrl] : [],
+        police_clearance: policeClearanceUrl,
+        portfolio: portfolio.map((p) => p.image),
+      });
+      onNext();
+    } catch (err) {
+      // Error handled
+    }
+  }
+
+  const currentUser = getStoredSessionUser();
   const baseScore = 20;
-  const nicFrontScore = nicFront ? 20 : 0;
-  const nicBackScore = nicBack ? 20 : 0;
+  const nicFrontScore = nicFrontUrl ? 20 : 0;
+  const nicBackScore = nicBackUrl ? 20 : 0;
   const phoneScore = currentUser?.phone_verified_at ? 15 : 0;
   const portfolioScore = portfolio.length > 0 ? 15 : 0;
-  const certificateScore = certificate ? 10 : 0;
+  const certificateScore = certificateUrl ? 10 : 0;
   const score = baseScore + nicFrontScore + nicBackScore + phoneScore + portfolioScore + certificateScore;
 
   return (
@@ -538,32 +622,32 @@ function StepThree({ onBack, onNext, isEditMode }) {
             <div className="mt-6 space-y-4">
               <UploadBox
                 title="National ID / NIC - Front Side"
-                subtitle={nicFront ? "Front ID uploaded successfully." : "Front side image of your National Identity Card."}
-                uploaded={!!nicFront}
-                onFileSelect={(file) => setNicFront(file)}
+                subtitle={nicFrontUrl ? "Front ID uploaded successfully." : "Front side image of your National Identity Card."}
+                uploaded={!!nicFrontUrl || isUploading.nicFront}
+                onFileSelect={(file) => handleUpload(file, 'nicFront', setNicFrontUrl)}
               />
 
               <UploadBox
                 title="National ID / NIC - Back Side"
-                subtitle={nicBack ? "Back ID uploaded successfully." : "Back side image of your National Identity Card."}
-                uploaded={!!nicBack}
-                onFileSelect={(file) => setNicBack(file)}
+                subtitle={nicBackUrl ? "Back ID uploaded successfully." : "Back side image of your National Identity Card."}
+                uploaded={!!nicBackUrl || isUploading.nicBack}
+                onFileSelect={(file) => handleUpload(file, 'nicBack', setNicBackUrl)}
               />
 
               <UploadBox
                 title="Work Certificate"
-                subtitle={certificate ? "Certificate uploaded successfully." : "Upload professional certificates or work experience letters."}
+                subtitle={certificateUrl ? "Certificate uploaded successfully." : "Upload professional certificates or work experience letters."}
                 optional
-                uploaded={!!certificate}
-                onFileSelect={(file) => setCertificate(file)}
+                uploaded={!!certificateUrl || isUploading.certificate}
+                onFileSelect={(file) => handleUpload(file, 'certificate', setCertificateUrl)}
               />
 
               <UploadBox
                 title="Police Clearance"
-                subtitle={policeClearance ? "Clearance uploaded successfully." : "Recommended for building more customer trust."}
+                subtitle={policeClearanceUrl ? "Clearance uploaded successfully." : "Recommended for building more customer trust."}
                 optional
-                uploaded={!!policeClearance}
-                onFileSelect={(file) => setPoliceClearance(file)}
+                uploaded={!!policeClearanceUrl || isUploading.policeClearance}
+                onFileSelect={(file) => handleUpload(file, 'policeClearance', setPoliceClearanceUrl)}
               />
             </div>
           </div>
@@ -626,7 +710,9 @@ function StepThree({ onBack, onNext, isEditMode }) {
               >
                 <div className="text-center">
                   <Plus className="mx-auto" size={24} />
-                  <p className="mt-2 text-sm font-bold">Add more</p>
+                  <p className="mt-2 text-sm font-bold">
+                    {isUploading.portfolio ? 'Uploading...' : 'Add more'}
+                  </p>
                 </div>
               </button>
             </div>
@@ -645,7 +731,7 @@ function StepThree({ onBack, onNext, isEditMode }) {
             <div className="mt-6 space-y-4">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-500">NIC Verified</span>
-                <span className={`font-bold ${nicFront && nicBack ? 'text-emerald-700' : 'text-slate-400'}`}>+20</span>
+                <span className={`font-bold ${nicFrontUrl && nicBackUrl ? 'text-emerald-700' : 'text-slate-400'}`}>+20</span>
               </div>
 
               <div className="flex items-center justify-between text-sm">
@@ -692,7 +778,7 @@ function StepThree({ onBack, onNext, isEditMode }) {
 
       <ActionBar
         onBack={onBack}
-        onNext={onNext}
+        onNext={handleNextStep}
         nextLabel={isEditMode ? 'Save & Continue' : 'Next: Packages'}
       />
     </>
@@ -747,6 +833,13 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
   const [newPkgDesc, setNewPkgDesc] = useState('');
   const [newPkgImage, setNewPkgImage] = useState('');
 
+  // Basic package states
+  const [basicPkgId, setBasicPkgId] = useState(null);
+  const [basicPkgName, setBasicPkgName] = useState('');
+  const [basicPkgPrice, setBasicPkgPrice] = useState('');
+  const [basicPkgDesc, setBasicPkgDesc] = useState('');
+  const [basicPkgImage, setBasicPkgImage] = useState('');
+
   // Editing state variables
   const [editingPkgId, setEditingPkgId] = useState(null);
   const [editPkgName, setEditPkgName] = useState('');
@@ -760,8 +853,15 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
       apiRequest('/auth/worker/services')
         .then((res) => {
           const pkgs = res.data || res;
-          if (Array.isArray(pkgs)) {
-            setCustomPackages(pkgs.map(p => ({
+          if (Array.isArray(pkgs) && pkgs.length > 0) {
+            const basic = pkgs[0];
+            setBasicPkgId(basic.id);
+            setBasicPkgName(basic.title);
+            setBasicPkgPrice(`LKR ${parseFloat(basic.price).toLocaleString()}`);
+            setBasicPkgDesc(basic.description);
+            setBasicPkgImage(basic.image_url || '');
+
+            setCustomPackages(pkgs.slice(1).map(p => ({
               id: p.id,
               title: p.title,
               price: `LKR ${parseFloat(p.price).toLocaleString()}`,
@@ -913,6 +1013,72 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
     setEditPkgImage('');
   }
 
+  async function handleSubmit() {
+    if (!agreedTerms || !authenticDocs) {
+      alert('Please agree to all terms and conditions before submitting.');
+      return;
+    }
+
+    const rawPrice = basicPkgPrice.replace(/[^0-9.]/g, '');
+    const priceVal = parseFloat(rawPrice);
+
+    if (basicPkgName.trim() && !isNaN(priceVal) && basicPkgDesc.trim()) {
+      try {
+        const currentUser = getStoredSessionUser();
+        const payload = {
+          title: basicPkgName.trim(),
+          price: priceVal,
+          description: basicPkgDesc.trim(),
+          service_category_id: currentUser?.primary_service_category_id || 1,
+          duration_minutes: 60,
+          location_type: 'onsite',
+          image_url: basicPkgImage || null,
+        };
+
+        if (isEditMode && basicPkgId) {
+          await apiRequest(`/auth/worker/services/${basicPkgId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(payload),
+          });
+        } else {
+          await apiRequest('/auth/worker/services', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+        }
+      } catch (err) {
+        alert(err.message || 'Failed to save basic package.');
+        return;
+      }
+    }
+
+    if (!isEditMode && customPackages.length > 0) {
+      for (const pkg of customPackages) {
+        try {
+          const currentUser = getStoredSessionUser();
+          const pkgPrice = parseFloat(pkg.price.replace(/[^0-9.]/g, ''));
+          await apiRequest('/auth/worker/services', {
+            method: 'POST',
+            body: JSON.stringify({
+              title: pkg.title,
+              price: pkgPrice,
+              description: pkg.description,
+              service_category_id: currentUser?.primary_service_category_id || 1,
+              duration_minutes: 60,
+              location_type: 'onsite',
+              image_url: pkg.image_url || null,
+            }),
+          });
+        } catch (err) {
+          alert(`Failed to save package "${pkg.title}": ${err.message}`);
+          return;
+        }
+      }
+    }
+
+    onSubmit();
+  }
+
   return (
     <>
       <ProgressHeader
@@ -931,16 +1097,16 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
 
             <div className="mt-6 grid gap-5 sm:grid-cols-2">
               <Field label="Package Name">
-                <Input defaultValue="" placeholder="e.g. Room Painting - Small" />
+                <Input value={basicPkgName} onChange={(e) => setBasicPkgName(e.target.value)} placeholder="e.g. Room Painting - Small" />
               </Field>
 
               <Field label="Base Price">
-                <Input defaultValue="" placeholder="e.g. LKR 15,000" />
+                <Input value={basicPkgPrice} onChange={(e) => setBasicPkgPrice(e.target.value)} placeholder="e.g. LKR 15,000" />
               </Field>
 
               <div className="sm:col-span-2">
                 <Field label="Description">
-                  <TextArea defaultValue="" placeholder="Describe what is included in the basic package..." />
+                  <TextArea value={basicPkgDesc} onChange={(e) => setBasicPkgDesc(e.target.value)} placeholder="Describe what is included in the basic package..." />
                 </Field>
               </div>
 
@@ -955,19 +1121,19 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
 
                       <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800">
                         <ImagePlus size={17} />
-                        {isUploadingImage && uploadingPackageId === 'new' ? 'Uploading...' : 'Select image'}
+                        {isUploadingImage && uploadingPackageId === 'basic' ? 'Uploading...' : 'Select image'}
                         <input
                           type="file"
                           accept="image/*"
                           className="hidden"
-                          onChange={(event) => handleImageSelect(event.target.files?.[0], setNewPkgImage)}
+                          onChange={(event) => handleImageSelect(event.target.files?.[0], setBasicPkgImage, 'basic')}
                         />
                       </label>
                     </div>
 
-                    {newPkgImage ? (
+                    {basicPkgImage ? (
                       <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
-                        <img src={newPkgImage} alt="Package preview" className="h-44 w-full object-cover" />
+                        <img src={basicPkgImage} alt="Package preview" className="h-44 w-full object-cover" />
                       </div>
                     ) : null}
                   </div>
@@ -1265,7 +1431,7 @@ function StepFour({ onBack, onSubmit, isEditMode }) {
 
       <ActionBar
         onBack={onBack}
-        onNext={onSubmit}
+        onNext={handleSubmit}
         submit
         nextLabel={isEditMode ? 'Save Changes' : 'Submit'}
       />
@@ -1285,6 +1451,51 @@ export default function WorkerRegistration() {
   const initialStep = stepFromUrl >= 2 && stepFromUrl <= 4 ? stepFromUrl : 2;
 
   const [step, setStep] = useState(initialStep);
+  const [currentUser, setCurrentUser] = useState(() => getStoredSessionUser());
+
+  // Step 2 state
+  const [name, setName] = useState(currentUser?.name || '');
+  const [phone, setPhone] = useState(currentUser?.phone ? currentUser.phone.replace(/^\+94/, '') : '');
+  const [email, setEmail] = useState(currentUser?.email || '');
+  const [primaryServiceCategoryId, setPrimaryServiceCategoryId] = useState(currentUser?.primary_service_category_id || '');
+  const [skills, setSkills] = useState(currentUser?.skills || []);
+  const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatar_url || '');
+  const [city, setCity] = useState(currentUser?.city || '');
+
+  // Step 3 state
+  const [nicFrontUrl, setNicFrontUrl] = useState(currentUser?.nic_front || '');
+  const [nicBackUrl, setNicBackUrl] = useState(currentUser?.nic_back || '');
+  const [certificateUrl, setCertificateUrl] = useState(currentUser?.certificates?.[0] || '');
+  const [policeClearanceUrl, setPoliceClearanceUrl] = useState(currentUser?.police_clearance || '');
+  const [portfolio, setPortfolio] = useState(
+    currentUser?.portfolio 
+      ? currentUser.portfolio.map((img, idx) => ({ id: idx, image: img })) 
+      : []
+  );
+
+  const [dbCategories, setDbCategories] = useState([]);
+  useEffect(() => {
+    apiRequest('/categories')
+      .then((res) => setDbCategories(res.data || []))
+      .catch((err) => console.error('Failed to load categories', err));
+  }, []);
+
+  async function saveProfileData(fields) {
+    try {
+      const res = await apiRequest('/auth/profile', {
+        method: 'POST',
+        body: JSON.stringify(fields),
+      });
+      if (res.data && res.data.user) {
+        storeSession(undefined, res.data.user);
+        setCurrentUser(res.data.user);
+      }
+      return res.data.user;
+    } catch (err) {
+      alert(err.message || 'Failed to save profile details.');
+      throw err;
+    }
+  }
 
   function updateStep(nextStep) {
     setStep(nextStep);
@@ -1330,6 +1541,22 @@ export default function WorkerRegistration() {
             onBack={goBack}
             onNext={goNext}
             isEditMode={isEditMode}
+            name={name}
+            setName={setName}
+            phone={phone}
+            setPhone={setPhone}
+            email={email}
+            setEmail={setEmail}
+            primaryServiceCategoryId={primaryServiceCategoryId}
+            setPrimaryServiceCategoryId={setPrimaryServiceCategoryId}
+            skills={skills}
+            setSkills={setSkills}
+            avatarUrl={avatarUrl}
+            setAvatarUrl={setAvatarUrl}
+            city={city}
+            setCity={setCity}
+            dbCategories={dbCategories}
+            saveProfileData={saveProfileData}
           />
         )}
 
@@ -1338,6 +1565,17 @@ export default function WorkerRegistration() {
             onBack={goBack}
             onNext={goNext}
             isEditMode={isEditMode}
+            nicFrontUrl={nicFrontUrl}
+            setNicFrontUrl={setNicFrontUrl}
+            nicBackUrl={nicBackUrl}
+            setNicBackUrl={setNicBackUrl}
+            certificateUrl={certificateUrl}
+            setCertificateUrl={setCertificateUrl}
+            policeClearanceUrl={policeClearanceUrl}
+            setPoliceClearanceUrl={setPoliceClearanceUrl}
+            portfolio={portfolio}
+            setPortfolio={setPortfolio}
+            saveProfileData={saveProfileData}
           />
         )}
 

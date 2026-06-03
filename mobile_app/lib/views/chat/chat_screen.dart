@@ -89,7 +89,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Map<String, dynamic> _mapMessage(Map<String, dynamic> message) {
-    final currentUserId = authController.currentUser?.id?.toString();
+    final currentUserId = authController.currentUser?.id;
     final sender = message['sender'] as Map<String, dynamic>?;
     final senderId = sender?['id']?.toString() ?? message['sender_id']?.toString();
     final createdAt = message['created_at']?.toString() ?? '';

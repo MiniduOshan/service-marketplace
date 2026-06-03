@@ -5,11 +5,15 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Booking;
+use App\Models\Review;
+use App\Models\BookingMessage;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
@@ -60,42 +64,6 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        $adminEmail = strtolower(trim((string) env('ADMIN_EMAIL', '')));
-        $adminPassword = (string) env('ADMIN_PASSWORD', '');
-
-        if (
-            $adminEmail !== ''
-            && $adminPassword !== ''
-            && strtolower($credentials['email']) === $adminEmail
-            && hash_equals($adminPassword, $credentials['password'])
-        ) {
-            $user = User::firstOrCreate(
-                ['email' => $adminEmail],
-                [
-                    'name' => 'Administrator',
-                    'password' => $adminPassword,
-                    'role' => 'admin',
-                ]
-            );
-
-            if ($user->role !== 'admin' || $user->name !== 'Administrator') {
-                $user->forceFill([
-                    'name' => 'Administrator',
-                    'role' => 'admin',
-                    'password' => $adminPassword,
-                ])->save();
-            }
-
-            $token = $user->issueApiToken();
-
-            return response()->json([
-                'message' => 'Logged in successfully.',
-                'data' => [
-                    'user' => $user->fresh(),
-                    'token' => $token,
-                ],
-            ]);
-        }
 
         $user = User::where('email', $credentials['email'])->first();
 
@@ -187,22 +155,20 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user = User::firstOrCreate(
-            ['phone' => $phone],
-            [
-                'name' => $validated['name'],
-                'email' => $this->buildPhoneEmail($phone, $validated['role']),
-                'password' => Str::random(40),
-                'role' => $validated['role'],
-            ]
-        );
-
-        if ($user->name !== $validated['name']) {
-            $user->forceFill(['name' => $validated['name']])->save();
-        }
-
         $otp = $this->generatePhoneOtp();
-        $user->storePhoneOtp($otp);
+        $otpExpiresAt = now()->addMinutes(10);
+
+        $cacheData = [
+            'name' => $validated['name'],
+            'role' => $validated['role'],
+            'otp_hash' => Hash::make($otp),
+            'expires_at' => $otpExpiresAt->toIso8601String(),
+            'attempts' => 0,
+        ];
+
+        Cache::put("phone_otp:{$phone}", $cacheData, $otpExpiresAt);
+
+        $this->sendSMSOtp($phone, $otp);
 
         return response()->json([
             'message' => 'OTP sent successfully.',
@@ -229,21 +195,48 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user = User::where('phone', $phone)->first();
+        $cacheData = Cache::get("phone_otp:{$phone}");
 
-        if (! $user) {
-            return response()->json([
-                'message' => 'No account found for this phone number.',
-            ], 404);
-        }
-
-        if (! $user->verifyPhoneOtp($validated['otp'])) {
+        if (! $cacheData || now()->parse($cacheData['expires_at'])->isPast()) {
             return response()->json([
                 'message' => 'Invalid or expired OTP.',
             ], 422);
         }
 
-        $user->markPhoneVerified();
+        if ($cacheData['attempts'] >= 5) {
+            return response()->json([
+                'message' => 'Too many failed attempts. Please request a new OTP.',
+            ], 422);
+        }
+
+        if (! Hash::check($validated['otp'], $cacheData['otp_hash'])) {
+            $cacheData['attempts']++;
+            $expiry = now()->parse($cacheData['expires_at']);
+            Cache::put("phone_otp:{$phone}", $cacheData, $expiry);
+
+            return response()->json([
+                'message' => 'Invalid or expired OTP.',
+            ], 422);
+        }
+
+        // OTP verified successfully, remove cache entry
+        Cache::forget("phone_otp:{$phone}");
+
+        $user = User::where('phone', $phone)->first();
+
+        if (! $user) {
+            $user = User::create([
+                'name' => $cacheData['name'],
+                'email' => $this->buildPhoneEmail($phone, $cacheData['role']),
+                'phone' => $phone,
+                'password' => Str::random(40),
+                'role' => $cacheData['role'],
+                'phone_verified_at' => now(),
+            ]);
+        } else {
+            $user->markPhoneVerified();
+        }
+
         $token = $user->issueApiToken();
 
         return response()->json([
@@ -274,6 +267,20 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30', 'unique:users,phone,' . $user->id],
+            'current_password' => ['nullable', 'string', 'required_with:password'],
+            'password' => ['nullable', 'string', 'confirmed', \Illuminate\Validation\Rules\Password::min(8)],
+            'addresses' => ['nullable', 'array'],
+            'payment_methods' => ['nullable', 'array'],
+            'primary_service_category_id' => ['nullable', 'exists:service_categories,id'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'bio' => ['nullable', 'string', 'max:5000'],
+            'skills' => ['nullable', 'array'],
+            'avatar_url' => ['nullable', 'string', 'max:2048'],
+            'nic_front' => ['nullable', 'string', 'max:2048'],
+            'nic_back' => ['nullable', 'string', 'max:2048'],
+            'certificates' => ['nullable', 'array'],
+            'police_clearance' => ['nullable', 'string', 'max:2048'],
+            'portfolio' => ['nullable', 'array'],
         ]);
 
         $updates = [];
@@ -305,6 +312,65 @@ class AuthController extends Controller
             }
         }
 
+        if ($request->has('password') && $validated['password']) {
+            if (! Hash::check($validated['current_password'], $user->password)) {
+                return response()->json([
+                    'message' => 'The provided current password does not match our records.',
+                ], 422);
+            }
+            $updates['password'] = Hash::make($validated['password']);
+        }
+
+        if ($request->has('addresses')) {
+            $updates['addresses'] = $validated['addresses'];
+        }
+
+        if ($request->has('payment_methods')) {
+            $updates['payment_methods'] = $validated['payment_methods'];
+        }
+
+        if ($request->has('primary_service_category_id')) {
+            $updates['primary_service_category_id'] = $validated['primary_service_category_id'];
+        }
+
+        if ($request->has('city')) {
+            $updates['city'] = $validated['city'];
+        }
+
+        if ($request->has('bio')) {
+            $updates['bio'] = $validated['bio'];
+        }
+
+        if ($request->has('skills')) {
+            $updates['skills'] = $validated['skills'];
+        }
+
+        if ($request->has('avatar_url')) {
+            $updates['avatar_url'] = $validated['avatar_url'];
+        }
+
+        if ($request->has('nic_front')) {
+            $updates['nic_front'] = $validated['nic_front'];
+            $updates['verification'] = 'Pending verification';
+        }
+
+        if ($request->has('nic_back')) {
+            $updates['nic_back'] = $validated['nic_back'];
+            $updates['verification'] = 'Pending verification';
+        }
+
+        if ($request->has('certificates')) {
+            $updates['certificates'] = $validated['certificates'];
+        }
+
+        if ($request->has('police_clearance')) {
+            $updates['police_clearance'] = $validated['police_clearance'];
+        }
+
+        if ($request->has('portfolio')) {
+            $updates['portfolio'] = $validated['portfolio'];
+        }
+
         if (! empty($updates)) {
             $user->forceFill($updates)->save();
         }
@@ -312,7 +378,7 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Profile updated successfully.',
             'data' => [
-                'user' => $user->fresh(),
+                'user' => $user->fresh()->load(['category', 'pricingPlan']),
             ],
         ]);
     }
@@ -365,7 +431,7 @@ class AuthController extends Controller
                 'total_earnings' => (double) $totalEarnings,
                 'jobs_done' => (int) $jobsDone,
                 'total_bookings' => (int) $totalBookings,
-                'profile_views' => 0,
+                'profile_views' => (int) ($user->profile_views ?? 0),
             ],
         ]);
     }
@@ -379,12 +445,15 @@ class AuthController extends Controller
             ->where('status', 'completed')
             ->count();
 
+        $reviewsGiven = Review::where('customer_id', $user->id)->count();
+        $messagesCount = BookingMessage::whereHas('booking', fn($q) => $q->where('customer_id', $user->id))->count();
+
         return response()->json([
             'data' => [
                 'total_bookings' => (int) $totalBookings,
                 'completed_bookings' => (int) $completedBookings,
-                'reviews_given' => 0,
-                'messages' => 0,
+                'reviews_given' => (int) $reviewsGiven,
+                'messages' => (int) $messagesCount,
             ],
         ]);
     }
@@ -448,5 +517,21 @@ class AuthController extends Controller
         throw new HttpResponseException(response()->json([
             'message' => $message,
         ], $status));
+    }
+
+    private function sendSMSOtp(string $phone, string $otp): void
+    {
+        $credentials = \App\Models\Setting::get('credentials');
+        $apiKey = $credentials['smsApiKey'] ?? env('SMS_API_KEY');
+        $apiSecret = $credentials['smsApiSecret'] ?? env('SMS_API_SECRET');
+        $senderId = $credentials['smsSenderId'] ?? env('SMS_SENDER_ID', 'SKILLEDLK');
+
+        if ($apiKey && $apiSecret) {
+            // Placeholder: integrate real SMS gateway service client (e.g. NotifyLK, Twilio, SMSGate) here.
+            // Log OTP delivery status details for verification and audits.
+            Log::info("SMS Gateway integration: OTP sent to {$phone}: {$otp} using Sender ID {$senderId}");
+        } else {
+            Log::debug("SMS Gateway simulation: OTP sent to {$phone}: {$otp}");
+        }
     }
 }

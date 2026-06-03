@@ -34,6 +34,20 @@ class User extends Authenticatable
         'phone_otp_expires_at',
         'api_token_hash',
         'pricing_plan_id',
+        'addresses',
+        'payment_methods',
+        'bio',
+        'city',
+        'skills',
+        'avatar_url',
+        'nic_front',
+        'nic_back',
+        'certificates',
+        'police_clearance',
+        'portfolio',
+        'status',
+        'verification',
+        'profile_views',
     ];
 
     /**
@@ -62,6 +76,11 @@ class User extends Authenticatable
             'phone_verified_at' => 'datetime',
             'phone_otp_expires_at' => 'datetime',
             'password' => 'hashed',
+            'addresses' => 'array',
+            'payment_methods' => 'array',
+            'skills' => 'array',
+            'certificates' => 'array',
+            'portfolio' => 'array',
         ];
     }
 
@@ -165,6 +184,11 @@ class User extends Authenticatable
     public function pricingPlan()
     {
         return $this->belongsTo(PricingPlan::class, 'pricing_plan_id');
+    }
+
+    public function workerBookings(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Booking::class, 'worker_id');
     }
 }
 

@@ -30,14 +30,7 @@ class MarketplaceDataSeeder extends Seeder
         \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
 
         // Ensure Admin user exists with correct credentials
-        User::updateOrCreate(
-            ['email' => env('ADMIN_EMAIL')],
-            [
-                'name' => 'SkilledLK Admin',
-                'password' => Hash::make(env('ADMIN_PASSWORD')),
-                'role' => 'admin',
-            ]
-        );
+        $this->call(AdminSeeder::class);
 
         // Fetch categories and pricing plans
         $categories = ServiceCategory::all();
@@ -146,6 +139,7 @@ class MarketplaceDataSeeder extends Seeder
             $worker->role = 'worker';
             $worker->primary_service_category_id = $cat ? $cat->id : null;
             $worker->pricing_plan_id = $plan ? $plan->id : null;
+            $worker->city = $wData['city'] ?? null;
             $worker->status = 'Active';
             $worker->verification = 'Verified';
             $worker->phone_verified_at = now();
@@ -302,23 +296,21 @@ class MarketplaceDataSeeder extends Seeder
         ]);
 
         // 6. Seed Setting defaults and Notification logs
-        $logs = [
-            [
-                'channel' => 'sms',
-                'audience' => 'all',
-                'subject' => null,
-                'message' => 'SkilledLK Platform Update: We have introduced new security options for both customers and workers. Please update your profiles.',
-                'timestamp' => now()->subDays(2)->toIso8601String(),
-            ],
-            [
-                'channel' => 'email',
-                'audience' => 'workers',
-                'subject' => 'New Premium Pricing Plans Active',
-                'message' => 'Dear Partner, new subscription features are now live. You can subscribe to Pro/Enterprise plans to get priority support and featured badges.',
-                'timestamp' => now()->subDay()->toIso8601String(),
-            ]
-        ];
-        Setting::set('notification_logs', $logs);
+        \App\Models\NotificationLog::create([
+            'channel' => 'sms',
+            'audience' => 'all',
+            'subject' => null,
+            'message' => 'SkilledLK Platform Update: We have introduced new security options for both customers and workers. Please update your profiles.',
+            'created_at' => now()->subDays(2),
+        ]);
+
+        \App\Models\NotificationLog::create([
+            'channel' => 'email',
+            'audience' => 'workers',
+            'subject' => 'New Premium Pricing Plans Active',
+            'message' => 'Dear Partner, new subscription features are now live. You can subscribe to Pro/Enterprise plans to get priority support and featured badges.',
+            'created_at' => now()->subDay(),
+        ]);
 
         $privileges = [
             ['key' => 'chat', 'label' => 'Chat access', 'description' => 'Allow workers and customers to message each other.', 'enabled' => true],

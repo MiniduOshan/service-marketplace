@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../controllers/auth_controller.dart';
 import '../../services/api_client.dart';
 
@@ -23,6 +24,7 @@ class _WorkerWalletScreenState extends State<WorkerWalletScreen> {
   List<Map<String, dynamic>> _bookings = [];
   String? _linkedBankName;
   String? _linkedAccountNumber;
+  String _proPriceStr = 'LKR 0';
 
   @override
   void initState() {
@@ -37,12 +39,33 @@ class _WorkerWalletScreenState extends State<WorkerWalletScreen> {
     });
     try {
       final token = authController.sessionToken;
-      final statsRes = await ApiClient.instance.getWorkerStats(token: token);
-      final bookingsRes = await ApiClient.instance.getBookings(token: token);
+      final results = await Future.wait([
+        ApiClient.instance.getWorkerStats(token: token),
+        ApiClient.instance.getBookings(token: token),
+        ApiClient.instance.fetchPricingPlans(),
+      ]);
+      final statsRes = results[0] as Map<String, dynamic>;
+      final bookingsRes = results[1] as List<Map<String, dynamic>>;
+      final plansRes = results[2] as Map<String, dynamic>;
+
+      String proPriceStr = 'LKR 0';
+      final plansList = plansRes['data'];
+      if (plansList is List && plansList.isNotEmpty) {
+        try {
+          final paidPlan = plansList.firstWhere(
+            (p) => (double.tryParse(p['price'].toString()) ?? 0) > 0,
+          );
+          final numPrice = double.tryParse(paidPlan['price'].toString()) ?? 0;
+          final formatter = NumberFormat('#,##0', 'en_US');
+          proPriceStr = 'LKR ${formatter.format(numPrice)}';
+        } catch (_) {}
+      }
+
       if (mounted) {
         setState(() {
           _stats = statsRes;
           _bookings = bookingsRes;
+          _proPriceStr = proPriceStr;
           _isLoading = false;
         });
       }
@@ -179,7 +202,7 @@ class _WorkerWalletScreenState extends State<WorkerWalletScreen> {
                     const SizedBox(height: 24),
                     _buildPlatformFeesCard(grossEarnings, commission, leadFees, netPayout),
                     const SizedBox(height: 20),
-                    _buildProPlanBanner(renewalStr),
+                    _buildProPlanBanner(renewalStr, _proPriceStr),
                     const SizedBox(height: 24),
                     _buildRecentTransactions(),
                     const SizedBox(height: 24),
@@ -303,7 +326,7 @@ class _WorkerWalletScreenState extends State<WorkerWalletScreen> {
     );
   }
 
-  Widget _buildProPlanBanner(String renewalStr) {
+  Widget _buildProPlanBanner(String renewalStr, String proPriceStr) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -317,7 +340,7 @@ class _WorkerWalletScreenState extends State<WorkerWalletScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Pro Plan — LKR 2,500/month", style: TextStyle(color: Color(0xFF92400E), fontWeight: FontWeight.bold)),
+                Text("Pro Plan — $proPriceStr/month", style: const TextStyle(color: Color(0xFF92400E), fontWeight: FontWeight.bold)),
                 Text(renewalStr, style: const TextStyle(color: Color(0xFFD97706), fontSize: 12)),
               ],
             ),

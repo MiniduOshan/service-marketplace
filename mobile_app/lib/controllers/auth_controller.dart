@@ -73,6 +73,10 @@ class AuthController {
         'role': user.role.toString().split('.').last,
         'isRegistrationComplete': user.isRegistrationComplete,
         'pricing_plan_id': user.pricingPlanId,
+        'city': user.city,
+        'bio': user.bio,
+        'skills': user.skills,
+        'primary_service_category_id': user.primaryServiceCategoryId,
       };
       await prefs.setString(_prefsUserKey, jsonEncode(userMap));
 
@@ -123,6 +127,10 @@ class AuthController {
         pricingPlanId: map['pricing_plan_id'] != null
             ? int.tryParse(map['pricing_plan_id'].toString())
             : null,
+        city: map['city']?.toString(),
+        bio: map['bio']?.toString(),
+        skills: map['skills'] != null ? List<String>.from(map['skills'] as List) : null,
+        primaryServiceCategoryId: map['primary_service_category_id']?.toString(),
       );
 
       if (_authStateNotifier.value!.role == UserRole.worker) {
@@ -141,6 +149,10 @@ class AuthController {
             isRegistrationComplete: true,
             phoneVerifiedAt: _authStateNotifier.value!.phoneVerifiedAt,
             pricingPlanId: _authStateNotifier.value!.pricingPlanId,
+            city: _authStateNotifier.value!.city,
+            bio: _authStateNotifier.value!.bio,
+            skills: _authStateNotifier.value!.skills,
+            primaryServiceCategoryId: _authStateNotifier.value!.primaryServiceCategoryId,
           );
         }
       }
@@ -163,6 +175,10 @@ class AuthController {
       isRegistrationComplete: true,
       phoneVerifiedAt: currentUser.phoneVerifiedAt,
       pricingPlanId: currentUser.pricingPlanId,
+      city: currentUser.city,
+      bio: currentUser.bio,
+      skills: currentUser.skills,
+      primaryServiceCategoryId: currentUser.primaryServiceCategoryId,
     );
 
     _authStateNotifier.value = completedUser;
@@ -202,6 +218,10 @@ class AuthController {
         pricingPlanId: user['pricing_plan_id'] != null
             ? int.tryParse(user['pricing_plan_id'].toString())
             : null,
+        city: user['city']?.toString(),
+        bio: user['bio']?.toString(),
+        skills: user['skills'] != null ? List<String>.from(user['skills'] as List) : null,
+        primaryServiceCategoryId: user['primary_service_category_id']?.toString(),
       ),
       token: token,
     );
@@ -238,6 +258,10 @@ class AuthController {
         pricingPlanId: user['pricing_plan_id'] != null
             ? int.tryParse(user['pricing_plan_id'].toString())
             : null,
+        city: user['city']?.toString(),
+        bio: user['bio']?.toString(),
+        skills: user['skills'] != null ? List<String>.from(user['skills'] as List) : null,
+        primaryServiceCategoryId: user['primary_service_category_id']?.toString(),
       ),
       token: token,
     );
@@ -274,6 +298,10 @@ class AuthController {
         pricingPlanId: user['pricing_plan_id'] != null
             ? int.tryParse(user['pricing_plan_id'].toString())
             : null,
+        city: user['city']?.toString(),
+        bio: user['bio']?.toString(),
+        skills: user['skills'] != null ? List<String>.from(user['skills'] as List) : null,
+        primaryServiceCategoryId: user['primary_service_category_id']?.toString(),
       ),
       token: token,
     );
@@ -326,6 +354,10 @@ class AuthController {
         pricingPlanId: user['pricing_plan_id'] != null
             ? int.tryParse(user['pricing_plan_id'].toString())
             : null,
+        city: user['city']?.toString(),
+        bio: user['bio']?.toString(),
+        skills: user['skills'] != null ? List<String>.from(user['skills'] as List) : null,
+        primaryServiceCategoryId: user['primary_service_category_id']?.toString(),
       ),
       token: token,
     );
@@ -400,6 +432,10 @@ class AuthController {
         pricingPlanId: user['pricing_plan_id'] != null
             ? int.tryParse(user['pricing_plan_id'].toString())
             : null,
+        city: user['city']?.toString(),
+        bio: user['bio']?.toString(),
+        skills: user['skills'] != null ? List<String>.from(user['skills'] as List) : null,
+        primaryServiceCategoryId: user['primary_service_category_id']?.toString(),
       ),
       token: token,
     );
@@ -407,10 +443,21 @@ class AuthController {
     return true;
   }
 
-  Future<bool> updateProfile({String? name, String? phone}) async {
+  Future<bool> updateProfile({
+    String? name,
+    String? phone,
+    String? city,
+    String? bio,
+    List<String>? skills,
+    String? primaryServiceCategoryId,
+  }) async {
     final response = await ApiClient.instance.updateProfile(
       name: name,
       phone: phone,
+      city: city,
+      bio: bio,
+      skills: skills,
+      primaryServiceCategoryId: primaryServiceCategoryId,
       token: _sessionToken,
     );
     final data = response['data'] as Map<String, dynamic>;
@@ -436,6 +483,10 @@ class AuthController {
         pricingPlanId: user['pricing_plan_id'] != null
             ? int.tryParse(user['pricing_plan_id'].toString())
             : null,
+        city: user['city']?.toString(),
+        bio: user['bio']?.toString(),
+        skills: user['skills'] != null ? List<String>.from(user['skills'] as List) : null,
+        primaryServiceCategoryId: user['primary_service_category_id']?.toString(),
       ),
       token: _sessionToken,
     );
@@ -481,6 +532,10 @@ class AuthController {
         pricingPlanId: user['pricing_plan_id'] != null
             ? int.tryParse(user['pricing_plan_id'].toString())
             : null,
+        city: user['city']?.toString(),
+        bio: user['bio']?.toString(),
+        skills: user['skills'] != null ? List<String>.from(user['skills'] as List) : null,
+        primaryServiceCategoryId: user['primary_service_category_id']?.toString(),
       ),
       token: _sessionToken,
     );

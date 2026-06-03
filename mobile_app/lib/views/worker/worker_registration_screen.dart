@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../controllers/auth_controller.dart';
+import '../../services/api_client.dart';
 import 'worker_service_packages_screen.dart';
 import '../onboarding/welcome_screen.dart';
 
@@ -24,6 +25,8 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
   late TextEditingController _bioController;
 
   final List<String> _skills = [];
+  List<Map<String, dynamic>> _categories = [];
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -36,7 +39,36 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
     }
     _phoneController = TextEditingController(text: displayPhone);
     _emailController = TextEditingController(text: currentUser?.email ?? '');
-    _bioController = TextEditingController(text: '');
+    _bioController = TextEditingController(text: currentUser?.bio ?? '');
+    if (currentUser?.city != null && cityOptions.contains(currentUser!.city)) {
+      selectedCity = currentUser.city!;
+    }
+    final userSkills = currentUser?.skills;
+    if (userSkills != null) {
+      _skills.addAll(userSkills);
+    }
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final categories = await ApiClient.instance.getCategories();
+      if (mounted) {
+        setState(() {
+          _categories = categories;
+          final currentUser = authController.currentUser;
+          if (currentUser?.primaryServiceCategoryId != null) {
+            final matched = categories.firstWhere(
+              (c) => c['id'].toString() == currentUser!.primaryServiceCategoryId,
+              orElse: () => <String, dynamic>{},
+            );
+            if (matched.isNotEmpty && matched['name'] != null) {
+              selectedCategory = matched['name'].toString();
+            }
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   static const List<String> categoryOptions = [
@@ -615,37 +647,93 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            onPressed: () {
-              if (widget.isEditing) {
-                // Save logic here
-                Navigator.pop(context);
-              } else {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const WorkerServicePackagesScreen(),
+            onPressed: _isSubmitting
+                ? null
+                : () async {
+                    setState(() => _isSubmitting = true);
+                    try {
+                      final matchedCategory = _categories.firstWhere(
+                        (c) => c['name']?.toString().toLowerCase() == selectedCategory.toLowerCase(),
+                        orElse: () => <String, dynamic>{},
+                      );
+                      final categoryId = matchedCategory['id']?.toString();
+
+                      final phoneInput = _phoneController.text.trim();
+                      final phone = phoneInput.isNotEmpty ? '+94$phoneInput' : null;
+
+                      await authController.updateProfile(
+                        name: _nameController.text.trim(),
+                        phone: phone,
+                        city: selectedCity,
+                        bio: _bioController.text.trim(),
+                        skills: _skills,
+                        primaryServiceCategoryId: categoryId,
+                      );
+
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              widget.isEditing
+                                  ? 'Profile updated successfully!'
+                                  : 'Personal details saved.',
+                            ),
+                          ),
+                        );
+                        if (widget.isEditing) {
+                          Navigator.pop(context);
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const WorkerServicePackagesScreen(),
+                            ),
+                          );
+                        }
+                      }
+                    } catch (error) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              error.toString().replaceFirst('Exception: ', ''),
+                            ),
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (mounted) {
+                        setState(() => _isSubmitting = false);
+                      }
+                    }
+                  },
+            child: _isSubmitting
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.isEditing ? "Save Changes" : "Next: Packages",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        widget.isEditing ? Icons.check : Icons.chevron_right,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ],
                   ),
-                );
-              }
-            },
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  widget.isEditing ? "Save Changes" : "Next: Packages",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  widget.isEditing ? Icons.check : Icons.chevron_right,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ],
-            ),
           ),
         ],
       ),

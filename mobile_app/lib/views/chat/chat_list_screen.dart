@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../controllers/auth_controller.dart';
+import '../../models/app_user.dart';
 import '../../services/api_client.dart';
-import 'chat_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -164,13 +164,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final currentUser = authController.currentUser;
     final worker = booking['worker'] as Map<String, dynamic>?;
     final customer = booking['customer'] as Map<String, dynamic>?;
-    return currentUser?.role == 'worker'
+    return currentUser?.role == UserRole.worker
         ? (customer?['name']?.toString() ?? 'Customer')
         : (worker?['name']?.toString() ?? 'Worker');
   }
 
   String _bookingTag() {
-    return authController.currentUser?.role == 'worker' ? 'Customer' : 'Worker';
+    return authController.currentUser?.role == UserRole.worker ? 'Customer' : 'Worker';
   }
 
   String _bookingSubtitle(Map<String, dynamic> booking) {

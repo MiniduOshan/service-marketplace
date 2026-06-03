@@ -120,7 +120,7 @@ function PriorityScoreCard({ plan }) {
   );
 }
 
-function ProPlanHero({ onManageBilling, onCancelPlan }) {
+function ProPlanHero({ onManageBilling, onCancelPlan, formattedPrice }) {
   return (
     <div
       className="rounded-xl p-6 text-white shadow-xl sm:p-7"
@@ -136,7 +136,7 @@ function ProPlanHero({ onManageBilling, onCancelPlan }) {
           </span>
 
           <h2 className="mt-4 text-3xl font-bold tracking-tight">
-            LKR 2,500/month
+            {formattedPrice}/month
           </h2>
 
           <p className="mt-2 flex items-center gap-2 text-sm text-emerald-50">
@@ -402,7 +402,7 @@ function LeadFeeModelCard({ plan }) {
   );
 }
 
-function BillingModal({ onClose, onCancelPlan }) {
+function BillingModal({ onClose, onCancelPlan, formattedPrice }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 px-4 py-6 backdrop-blur-sm">
       <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
@@ -412,7 +412,7 @@ function BillingModal({ onClose, onCancelPlan }) {
           <p className="text-sm text-slate-500">Current card</p>
           <p className="mt-1 font-bold text-slate-950">Visa ending in ****</p>
           <p className="mt-1 text-sm text-slate-500">
-            Next charge: LKR 2,500 on {getRenewalDate()}
+            Next charge: {formattedPrice} on {getRenewalDate()}
           </p>
         </div>
 
@@ -507,30 +507,46 @@ export default function WorkerSubscription() {
   const [billingModalOpen, setBillingModalOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [pricingPlan, setPricingPlan] = useState(null);
   const isPro = currentPlan === 'pro';
 
+  const formattedPrice = pricingPlan
+    ? `LKR ${Number(pricingPlan.price).toLocaleString()}`
+    : 'LKR 0';
+
   useEffect(() => {
-    async function fetchUser() {
+    async function fetchData() {
       try {
-        const res = await apiRequest('/auth/me');
-        const user = res.data.user;
+        const [userRes, plansRes] = await Promise.all([
+          apiRequest('/auth/me'),
+          apiRequest('/pricing-plans'),
+        ]);
+
+        const user = userRes.data.user;
         storeSession(undefined, user);
         setCurrentPlan(user.pricing_plan_id ? 'pro' : 'free');
+
+        const plans = plansRes.data;
+        const paidPlan = plans.find((p) => Number(p.price) > 0);
+        if (paidPlan) {
+          setPricingPlan(paidPlan);
+        }
       } catch (err) {
-        console.error('Failed to fetch user pricing plan:', err);
+        console.error('Failed to fetch subscription data:', err);
       } finally {
         setLoading(false);
       }
     }
-    fetchUser();
+    fetchData();
   }, []);
 
   async function handleUpgrade() {
+    if (!pricingPlan) return;
     try {
       const res = await apiRequest('/auth/user/pricing-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pricing_plan_id: 1 }), // Starter plan (LKR 2,500/month)
+        body: JSON.stringify({ pricing_plan_id: pricingPlan.id }),
       });
       const user = res.data.user;
       storeSession(undefined, user);
@@ -561,6 +577,16 @@ export default function WorkerSubscription() {
     }
   }
 
+  if (loading) {
+    return (
+      <WorkerLayout>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-700" />
+        </div>
+      </WorkerLayout>
+    );
+  }
+
   return (
     <WorkerLayout>
       <div className="mx-auto w-full max-w-[1280px]">
@@ -579,6 +605,7 @@ export default function WorkerSubscription() {
               <ProPlanHero
                 onManageBilling={() => setBillingModalOpen(true)}
                 onCancelPlan={handleCancelTrigger}
+                formattedPrice={formattedPrice}
               />
             ) : (
               <FreePlanHero onUpgrade={handleUpgrade} />
@@ -600,6 +627,7 @@ export default function WorkerSubscription() {
         <BillingModal
           onClose={() => setBillingModalOpen(false)}
           onCancelPlan={handleCancelTrigger}
+          formattedPrice={formattedPrice}
         />
       )}
 

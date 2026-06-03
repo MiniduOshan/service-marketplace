@@ -49,6 +49,8 @@ class ReviewController extends Controller
 
         // Invalidate cache for the worker's reviews
         Cache::forget("worker:{$booking->worker_id}:reviews");
+        Cache::forever('services:list:version', (string) microtime(true));
+        Cache::forget('categories:active');
 
         return response()->json([
             'message' => 'Review submitted successfully.',

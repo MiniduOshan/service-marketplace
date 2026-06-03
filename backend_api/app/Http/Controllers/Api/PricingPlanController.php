@@ -10,6 +10,13 @@ use Illuminate\Support\Str;
 
 class PricingPlanController extends Controller
 {
+    public function publicIndex(): JsonResponse
+    {
+        return response()->json([
+            'data' => PricingPlan::query()->where('is_active', true)->orderBy('price')->get(),
+        ]);
+    }
+
     public function index(): JsonResponse
     {
         return response()->json([

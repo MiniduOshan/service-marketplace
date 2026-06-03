@@ -77,7 +77,7 @@ class ReviewTest extends TestCase
 
     public function test_unauthenticated_user_cannot_submit_review(): void
     {
-        $this->postJson("/api/auth/bookings/{$this->completedBooking->id}/reviews", [
+        $this->postJson("/api/v1/auth/bookings/{$this->completedBooking->id}/reviews", [
             'rating' => 5,
             'comment' => 'Great work!',
         ])->assertStatus(401);
@@ -94,7 +94,7 @@ class ReviewTest extends TestCase
         $token = $otherCustomer->issueApiToken();
 
         $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->postJson("/api/auth/bookings/{$this->completedBooking->id}/reviews", [
+            ->postJson("/api/v1/auth/bookings/{$this->completedBooking->id}/reviews", [
                 'rating' => 5,
                 'comment' => 'Great work!',
             ])->assertStatus(403);
@@ -105,7 +105,7 @@ class ReviewTest extends TestCase
         $token = $this->customer->issueApiToken();
 
         $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->postJson("/api/auth/bookings/{$this->pendingBooking->id}/reviews", [
+            ->postJson("/api/v1/auth/bookings/{$this->pendingBooking->id}/reviews", [
                 'rating' => 5,
                 'comment' => 'Nice!',
             ])->assertStatus(422);
@@ -116,7 +116,7 @@ class ReviewTest extends TestCase
         $token = $this->customer->issueApiToken();
 
         $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->postJson("/api/auth/bookings/{$this->completedBooking->id}/reviews", [
+            ->postJson("/api/v1/auth/bookings/{$this->completedBooking->id}/reviews", [
                 'rating' => 4,
                 'comment' => 'Good job but delayed slightly.',
             ])->assertCreated()
@@ -145,7 +145,7 @@ class ReviewTest extends TestCase
         $token = $this->customer->issueApiToken();
 
         $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->postJson("/api/auth/bookings/{$this->completedBooking->id}/reviews", [
+            ->postJson("/api/v1/auth/bookings/{$this->completedBooking->id}/reviews", [
                 'rating' => 3,
                 'comment' => 'Duplicate attempt',
             ])->assertStatus(422);
@@ -161,9 +161,30 @@ class ReviewTest extends TestCase
             'comment' => 'Excellent service!',
         ]);
 
-        $this->getJson("/api/workers/{$this->worker->id}/reviews")
+        $this->getJson("/api/v1/workers/{$this->worker->id}/reviews")
             ->assertOk()
             ->assertJsonPath('data.0.comment', 'Excellent service!')
             ->assertJsonPath('data.0.customer.name', $this->customer->name);
+    }
+
+    public function test_reviews_table_has_database_level_uniqueness_for_booking_id(): void
+    {
+        Review::create([
+            'booking_id' => $this->completedBooking->id,
+            'customer_id' => $this->customer->id,
+            'worker_id' => $this->worker->id,
+            'rating' => 5,
+            'comment' => 'First review',
+        ]);
+
+        $this->expectException(\Illuminate\Database\QueryException::class);
+
+        Review::create([
+            'booking_id' => $this->completedBooking->id,
+            'customer_id' => $this->customer->id,
+            'worker_id' => $this->worker->id,
+            'rating' => 4,
+            'comment' => 'Second review',
+        ]);
     }
 }

@@ -1,4 +1,7 @@
-const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8000/api';
+// Security Note: Bearer token is stored in localStorage for SPA simplicity.
+// To mitigate XSS impact, all user inputs are sanitized on both frontend and backend.
+// In a true production environment, it is highly recommended to migrate to HttpOnly secure cookies with CSRF protection.
+const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
 const SESSION_TOKEN_KEY = 'skilledlk_token';
 const SESSION_USER_KEY = 'skilledlk_user';
 

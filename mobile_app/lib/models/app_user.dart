@@ -10,6 +10,10 @@ class AppUser {
   final bool isRegistrationComplete;
   final DateTime? phoneVerifiedAt;
   final int? pricingPlanId;
+  final String? city;
+  final String? bio;
+  final List<String>? skills;
+  final String? primaryServiceCategoryId;
 
   AppUser({
     required this.id, 
@@ -21,6 +25,10 @@ class AppUser {
     this.isRegistrationComplete = false,
     this.phoneVerifiedAt,
     this.pricingPlanId,
+    this.city,
+    this.bio,
+    this.skills,
+    this.primaryServiceCategoryId,
   });
 
   bool get isPhoneVerified => phoneVerifiedAt != null;

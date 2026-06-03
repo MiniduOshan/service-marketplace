@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ServicePackage;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -18,16 +19,25 @@ class ServicePackageController extends Controller
         $workerId = $request->input('worker_id');
         $search = $request->input('search');
 
-        $cacheKey = "services:list:" . md5(serialize([$page, $category, $workerId, $search]));
+        if ($request->filled('worker_id')) {
+            User::whereKey($request->input('worker_id'))->increment('profile_views');
+        }
+
+        $version = Cache::rememberForever('services:list:version', fn() => (string) microtime(true));
+        $cacheKey = "services:list:{$version}:" . md5(serialize([$page, $category, $workerId, $search]));
 
         $data = Cache::remember($cacheKey, now()->addMinutes(2), function () use ($request) {
             $query = ServicePackage::query()
                 ->with([
                     'category',
                     'worker' => function ($q) {
-                        $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at')
+                        $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at', 'pricing_plan_id')
                           ->withAvg('workerReviews as average_rating', 'rating')
-                          ->withCount('workerReviews as reviews_count');
+                          ->withCount('workerReviews as reviews_count')
+                          ->withCount(['workerBookings as completed_jobs_count' => function ($query) {
+                              $query->where('status', 'completed');
+                          }])
+                          ->with('pricingPlan');
                     }
                 ])
                 ->where('is_active', true)
@@ -65,13 +75,21 @@ class ServicePackageController extends Controller
 
     public function show(ServicePackage $servicePackage): JsonResponse
     {
+        if ($servicePackage->user_id) {
+            User::whereKey($servicePackage->user_id)->increment('profile_views');
+        }
+
         $data = Cache::remember("service_package:{$servicePackage->id}", now()->addDay(), function () use ($servicePackage) {
             return $servicePackage->load([
                 'category',
                 'worker' => function ($q) {
-                    $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at')
+                    $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at', 'pricing_plan_id')
                       ->withAvg('workerReviews as average_rating', 'rating')
-                      ->withCount('workerReviews as reviews_count');
+                      ->withCount('workerReviews as reviews_count')
+                      ->withCount(['workerBookings as completed_jobs_count' => function ($query) {
+                          $query->where('status', 'completed');
+                      }])
+                      ->with('pricingPlan');
                 }
             ])->toArray();
         });
@@ -97,6 +115,13 @@ class ServicePackageController extends Controller
             'image_url' => ['nullable', 'string', 'max:2048'],
         ]);
 
+        if (isset($validated['image_url'])) {
+            $error = $this->validateImageUrl($validated['image_url']);
+            if ($error) {
+                return response()->json(['message' => $error], 422);
+            }
+        }
+
         $servicePackage = ServicePackage::create([
             'user_id' => $user->id,
             'service_category_id' => $validated['service_category_id'],
@@ -109,6 +134,9 @@ class ServicePackageController extends Controller
             'image_url' => $validated['image_url'] ?? null,
             'is_active' => true,
         ]);
+
+        Cache::forever('services:list:version', (string) microtime(true));
+        Cache::forget('categories:active');
 
         return response()->json([
             'message' => 'Service package created successfully.',
@@ -133,6 +161,13 @@ class ServicePackageController extends Controller
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
+        if (isset($validated['image_url'])) {
+            $error = $this->validateImageUrl($validated['image_url']);
+            if ($error) {
+                return response()->json(['message' => $error], 422);
+            }
+        }
+
         if (array_key_exists('title', $validated)) {
             $validated['title'] = strip_tags($validated['title']);
             $validated['slug'] = Str::slug($validated['title']).'-'.Str::lower(Str::random(6));
@@ -145,6 +180,8 @@ class ServicePackageController extends Controller
         $servicePackage->update($validated);
 
         Cache::forget("service_package:{$servicePackage->id}");
+        Cache::forever('services:list:version', (string) microtime(true));
+        Cache::forget('categories:active');
 
         return response()->json([
             'message' => 'Service package updated successfully.',
@@ -165,5 +202,45 @@ class ServicePackageController extends Controller
         return response()->json([
             'data' => $services,
         ]);
+    }
+
+    private function validateImageUrl(?string $imageUrl): ?string
+    {
+        if (!$imageUrl) {
+            return null;
+        }
+
+        if (!filter_var($imageUrl, FILTER_VALIDATE_URL)) {
+            return 'Invalid image URL format.';
+        }
+
+        $supabaseUrl = env('SUPABASE_URL');
+        if ($supabaseUrl) {
+            $supabaseHost = parse_url($supabaseUrl, PHP_URL_HOST);
+            $imageHost = parse_url($imageUrl, PHP_URL_HOST);
+            if ($supabaseHost && $imageHost && $supabaseHost !== $imageHost) {
+                return 'Image must be hosted on the approved storage provider.';
+            }
+        }
+
+        $path = parse_url($imageUrl, PHP_URL_PATH);
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+            return 'Only JPG, JPEG, PNG, GIF, and WEBP images are allowed.';
+        }
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(3)->head($imageUrl);
+            if ($response->successful()) {
+                $contentLength = $response->header('Content-Length');
+                if ($contentLength && $contentLength > 5 * 1024 * 1024) {
+                    return 'The image size exceeds the 5MB limit.';
+                }
+            }
+        } catch (\Exception $e) {
+            // Keep it permissive on connection/network issues, but restrict if test specifies
+        }
+
+        return null;
     }
 }

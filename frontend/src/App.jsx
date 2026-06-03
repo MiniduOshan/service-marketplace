@@ -45,14 +45,56 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/worker/:id" element={<WorkerPublicProfile />} />
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/bookings" element={<CustomerBookings />} />
+          <Route
+            path="/chat"
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'worker']}>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/bookings"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <CustomerBookings />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Booking Flow */}
-          <Route path="/book/details" element={<BookingDetails />} />
-          <Route path="/book/review" element={<BookingReview />} />
-          <Route path="/book/payment" element={<BookingPayment />} />
-          <Route path="/cancel-booking/:id" element={<CancelBooking />} />
+          <Route
+            path="/book/details"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <BookingDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/book/review"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <BookingReview />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/book/payment"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <BookingPayment />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cancel-booking/:id"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <CancelBooking />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Customer Routes */}
           <Route

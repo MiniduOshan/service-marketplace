@@ -13,7 +13,7 @@ use App\Http\Middleware\AuthenticateApiToken;
 use App\Http\Middleware\EnsureUserRole;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('throttle:api')->group(function () {
+$registerRoutes = function () {
     Route::get('/health', function () {
         return response()->json([
             'status' => 'ok',
@@ -25,6 +25,7 @@ Route::middleware('throttle:api')->group(function () {
     Route::get('/services', [ServicePackageController::class, 'index']);
     Route::get('/services/{servicePackage}', [ServicePackageController::class, 'show']);
     Route::get('/workers/{workerId}/reviews', [ReviewController::class, 'index']);
+    Route::get('/pricing-plans', [PricingPlanController::class, 'publicIndex']);
 
     Route::prefix('auth')->group(function () {
         Route::middleware('throttle:auth')->group(function () {
@@ -84,4 +85,7 @@ Route::middleware('throttle:api')->group(function () {
             Route::patch('/admin/users/{id}/pricing-plan', [AdminController::class, 'assignPricingPlan']);
         });
     });
-});
+};
+
+Route::prefix('v1')->middleware('throttle:api')->group($registerRoutes);
+Route::middleware('throttle:api')->group($registerRoutes);

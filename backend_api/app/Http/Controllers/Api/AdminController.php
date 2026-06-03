@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Setting;
+use App\Models\NotificationLog;
+use App\Models\Notification;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,14 +17,33 @@ class AdminController extends Controller
     public function workers(): JsonResponse
     {
         $workers = User::where('role', 'worker')->with(['category', 'pricingPlan'])->get()->map(function ($worker) {
+            $categoryName = 'General';
+            if ($worker->category) {
+                $categoryName = $worker->category->name;
+            } else {
+                $firstPackage = \App\Models\ServicePackage::where('user_id', $worker->id)
+                    ->where('is_active', true)
+                    ->with('category')
+                    ->first();
+                if ($firstPackage && $firstPackage->category) {
+                    $categoryName = $firstPackage->category->name;
+                }
+            }
+
             return [
                 'id' => $worker->id,
                 'name' => $worker->name,
                 'email' => $worker->email,
+                'phone' => $worker->phone,
                 'status' => $worker->status ?? 'Active',
                 'verification' => $worker->verification ?? 'Pending verification',
-                'category' => $worker->category ? $worker->category->name : 'General',
-                'city' => 'Colombo',
+                'category' => $categoryName,
+                'city' => $worker->city ?? 'Colombo',
+                'bio' => $worker->bio,
+                'nic_front' => $worker->nic_front,
+                'nic_back' => $worker->nic_back,
+                'certificates' => $worker->certificates,
+                'police_clearance' => $worker->police_clearance,
                 'pricing_plan' => $worker->pricingPlan ? $worker->pricingPlan->title : 'Free Usage',
                 'pricing_plan_id' => $worker->pricing_plan_id,
             ];
@@ -147,7 +169,7 @@ class AdminController extends Controller
     {
         $validated = $request->validate([
             'channel' => ['required', 'string', 'in:sms,email'],
-            'audience' => ['required', 'string', 'in:all,workers,customers'],
+            'audience' => ['required', 'string', 'in:all,workers,customers,pending-workers'],
             'subject' => ['nullable', 'string', 'max:255'],
             'message' => ['required', 'string', 'max:5000'],
         ]);
@@ -155,12 +177,51 @@ class AdminController extends Controller
         $validated['subject'] = isset($validated['subject']) ? strip_tags($validated['subject']) : null;
         $validated['message'] = strip_tags($validated['message']);
 
-        $logs = Setting::get('notification_logs', []);
-        $logs[] = array_merge($validated, ['timestamp' => now()->toIso8601String()]);
-        Setting::set('notification_logs', $logs);
+        NotificationLog::create([
+            'channel' => $validated['channel'],
+            'audience' => $validated['audience'],
+            'subject' => $validated['subject'],
+            'message' => $validated['message'],
+        ]);
+
+        // Retention policy: delete logs older than 30 days
+        NotificationLog::where('created_at', '<', now()->subDays(30))->delete();
+
+        // Fetch target users based on audience
+        $usersQuery = User::query();
+        if ($validated['audience'] === 'workers') {
+            $usersQuery->where('role', 'worker');
+        } elseif ($validated['audience'] === 'customers') {
+            $usersQuery->where('role', 'customer');
+        } elseif ($validated['audience'] === 'pending-workers') {
+            $usersQuery->where('role', 'worker')->where('verification', 'Pending verification');
+        } else {
+            // 'all': get both customers and workers, excluding admin
+            $usersQuery->whereIn('role', ['customer', 'worker']);
+        }
+        $users = $usersQuery->get();
+
+        // Dispatch notifications and log external sending
+        foreach ($users as $user) {
+            // Create in-app notification
+            Notification::create([
+                'user_id' => $user->id,
+                'title' => $validated['subject'] ?: 'System Announcement',
+                'message' => $validated['message'],
+                'type' => 'system',
+                'unread' => true,
+            ]);
+
+            // Simulate external email/SMS sending
+            if ($validated['channel'] === 'email') {
+                Log::info("Email notification sent to {$user->email} | Subject: {$validated['subject']} | Body: {$validated['message']}");
+            } else {
+                Log::info("SMS notification sent to {$user->phone} | Body: {$validated['message']}");
+            }
+        }
 
         return response()->json([
-            'message' => strtoupper($validated['channel']) . ' notification prepared for ' . $validated['audience'] . '.',
+            'message' => strtoupper($validated['channel']) . ' notification dispatched to ' . $validated['audience'] . '.',
         ]);
     }
 

@@ -11,11 +11,20 @@ export async function uploadImageToSupabase(file, folder = 'service-packages') {
     throw new Error('Only image files are supported.');
   }
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+  const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+  if (file.size > MAX_SIZE) {
+    throw new Error('Image size must be less than 5MB.');
   }
 
   const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png';
+  const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+  if (!allowedExtensions.includes(fileExt)) {
+    throw new Error('Only JPG, JPEG, PNG, GIF, and WEBP images are allowed.');
+  }
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+  }
   const fileName = `${folder}/${crypto.randomUUID()}.${fileExt}`;
   const uploadUrl = `${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/${supabaseBucket}/${encodeURIComponent(fileName)}`;
 

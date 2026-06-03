@@ -43,24 +43,65 @@ class BookingController extends Controller
             'address' => ['required', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
             'payment_option' => ['nullable', 'string', 'in:advance,full,after'],
-            'advance_paid' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        $servicePackage = ServicePackage::query()->whereKey($validated['service_package_id'])->firstOrFail();
+        $servicePackage = ServicePackage::query()
+            ->with('worker')
+            ->whereKey($validated['service_package_id'])
+            ->firstOrFail();
 
-        $booking = Booking::create([
-            'customer_id' => $user->id,
-            'worker_id' => $servicePackage->user_id,
-            'service_package_id' => $servicePackage->id,
-            'scheduled_at' => $validated['scheduled_at'],
-            'address' => strip_tags($validated['address']),
-            'notes' => isset($validated['notes']) ? strip_tags($validated['notes']) : null,
-            'total_price' => $servicePackage->price,
-            'status' => 'pending',
-            'payment_option' => $validated['payment_option'] ?? 'after',
-            'advance_paid' => $validated['advance_paid'] ?? 0.00,
-            'payout_status' => 'pending',
-        ]);
+        abort_unless($servicePackage->is_active, 422, 'This service package is no longer active.');
+
+        $worker = $servicePackage->worker;
+        abort_unless($worker && $worker->status === 'Active', 422, 'The service provider is currently unavailable.');
+        abort_unless($worker && $worker->verification === 'Verified', 422, 'The service provider is not verified.');
+
+        $hasConflict = Booking::query()
+            ->where('worker_id', $worker->id)
+            ->where('scheduled_at', $validated['scheduled_at'])
+            ->where('status', '!=', 'cancelled')
+            ->exists();
+
+        abort_if($hasConflict, 422, 'The service provider is already booked for this time slot.');
+
+        $paymentOption = $validated['payment_option'] ?? 'after';
+        $advancePaid = 0.00;
+
+        if ($paymentOption === 'advance') {
+            $totalToPay = round($servicePackage->price * 1.05, 2);
+            $advancePaid = round($totalToPay / 2, 2);
+        } elseif ($paymentOption === 'full') {
+            $totalToPay = round($servicePackage->price * 1.05, 2);
+            $advancePaid = $totalToPay;
+        }
+
+        $booking = DB::transaction(function () use ($user, $servicePackage, $validated, $paymentOption, $advancePaid) {
+            $booking = Booking::create([
+                'customer_id' => $user->id,
+                'worker_id' => $servicePackage->user_id,
+                'service_package_id' => $servicePackage->id,
+                'scheduled_at' => $validated['scheduled_at'],
+                'address' => strip_tags($validated['address']),
+                'notes' => isset($validated['notes']) ? strip_tags($validated['notes']) : null,
+                'total_price' => $servicePackage->price,
+                'status' => 'pending',
+                'payment_option' => $paymentOption,
+                'advance_paid' => $advancePaid,
+                'payout_status' => 'pending',
+            ]);
+
+            if ($paymentOption === 'advance' || $paymentOption === 'full') {
+                $booking->payments()->create([
+                    'gateway_reference' => 'pay_' . \Illuminate\Support\Str::random(16),
+                    'status' => 'completed',
+                    'amount' => $advancePaid,
+                    'currency' => 'LKR',
+                    'verified_at' => now(),
+                ]);
+            }
+
+            return $booking;
+        });
 
         \App\Models\Notification::create([
             'user_id' => $booking->worker_id,
@@ -72,7 +113,7 @@ class BookingController extends Controller
 
         return response()->json([
             'message' => 'Booking created successfully.',
-            'data' => $booking->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
+            'data' => $booking->load(['servicePackage.category', 'worker:id,name', 'customer:id,name', 'payments']),
         ], 201);
     }
 
@@ -80,11 +121,16 @@ class BookingController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($user && ($user->id === $booking->customer_id || $user->id === $booking->worker_id), 403, 'You cannot cancel this booking.');
+        $booking = DB::transaction(function () use ($booking, $user) {
+            $lockedBooking = Booking::whereKey($booking->id)->lockForUpdate()->firstOrFail();
+            abort_unless($user && ($user->id === $lockedBooking->customer_id || $user->id === $lockedBooking->worker_id), 403, 'You cannot cancel this booking.');
+            abort_unless(in_array($lockedBooking->status, ['pending', 'confirmed']), 422, 'Only pending or confirmed bookings can be cancelled.');
 
-        $booking->update([
-            'status' => 'cancelled',
-        ]);
+            $lockedBooking->update([
+                'status' => 'cancelled',
+            ]);
+            return $lockedBooking;
+        });
 
         $recipientId = ($user->id === $booking->customer_id) ? $booking->worker_id : $booking->customer_id;
         \App\Models\Notification::create([
@@ -97,7 +143,7 @@ class BookingController extends Controller
 
         return response()->json([
             'message' => 'Booking cancelled successfully.',
-            'data' => $booking->fresh()->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
+            'data' => $booking->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
         ]);
     }
 
@@ -105,11 +151,16 @@ class BookingController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($user && $user->id === $booking->worker_id, 403, 'Only the assigned worker can accept this booking.');
+        $booking = DB::transaction(function () use ($booking, $user) {
+            $lockedBooking = Booking::whereKey($booking->id)->lockForUpdate()->firstOrFail();
+            abort_unless($user && $user->id === $lockedBooking->worker_id, 403, 'Only the assigned worker can accept this booking.');
+            abort_unless($lockedBooking->status === 'pending', 422, 'Only pending bookings can be accepted.');
 
-        $booking->update([
-            'status' => 'confirmed',
-        ]);
+            $lockedBooking->update([
+                'status' => 'confirmed',
+            ]);
+            return $lockedBooking;
+        });
 
         \App\Models\Notification::create([
             'user_id' => $booking->customer_id,
@@ -121,7 +172,7 @@ class BookingController extends Controller
 
         return response()->json([
             'message' => 'Booking accepted successfully.',
-            'data' => $booking->fresh()->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
+            'data' => $booking->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
         ]);
     }
 
@@ -129,31 +180,35 @@ class BookingController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($user && $user->id === $booking->worker_id, 403, 'Only the assigned worker can mark this booking as completed.');
+        $booking = DB::transaction(function () use ($booking, $user) {
+            $lockedBooking = Booking::whereKey($booking->id)->lockForUpdate()->firstOrFail();
+            abort_unless($user && $user->id === $lockedBooking->worker_id, 403, 'Only the assigned worker can mark this booking as completed.');
+            abort_unless($lockedBooking->status === 'confirmed', 422, 'Only confirmed bookings can be completed.');
 
-        DB::transaction(function () use ($booking, $user): void {
-            $booking->update([
+            $lockedBooking->update([
                 'status' => 'completed',
             ]);
 
-            $worker = $booking->worker;
-            $wallet = $worker->wallet()->firstOrCreate([], [
+            $worker = $lockedBooking->worker;
+            $wallet = $worker->wallet()->lockForUpdate()->firstOrCreate([], [
                 'balance' => 0.00,
             ]);
-            $wallet->increment('balance', $booking->total_price);
+            $wallet->increment('balance', $lockedBooking->total_price);
 
-            \App\Models\Notification::create([
-                'user_id' => $booking->customer_id,
-                'title' => 'Booking Completed',
-                'message' => "Your service for {$booking->servicePackage->title} has been marked as completed by {$user->name}.",
-                'type' => 'booking',
-                'related_id' => $booking->id,
-            ]);
+            return $lockedBooking;
         });
+
+        \App\Models\Notification::create([
+            'user_id' => $booking->customer_id,
+            'title' => 'Booking Completed',
+            'message' => "Your service for {$booking->servicePackage->title} has been marked as completed by {$user->name}.",
+            'type' => 'booking',
+            'related_id' => $booking->id,
+        ]);
 
         return response()->json([
             'message' => 'Booking completed successfully.',
-            'data' => $booking->fresh()->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
+            'data' => $booking->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
         ]);
     }
 
@@ -161,15 +216,21 @@ class BookingController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($user && ($user->id === $booking->worker_id || $user->role === 'admin'), 403, 'Unauthorized.');
+        $booking = DB::transaction(function () use ($booking, $user) {
+            $lockedBooking = Booking::whereKey($booking->id)->lockForUpdate()->firstOrFail();
+            abort_unless($user && ($user->id === $lockedBooking->worker_id || $user->role === 'admin'), 403, 'Unauthorized.');
+            abort_unless($lockedBooking->status === 'completed', 422, 'Only completed bookings can be settled.');
+            abort_unless($lockedBooking->payout_status === 'pending', 422, 'Payout is already settled or not eligible.');
 
-        $booking->update([
-            'payout_status' => 'settled',
-        ]);
+            $lockedBooking->update([
+                'payout_status' => 'settled',
+            ]);
+            return $lockedBooking;
+        });
 
         return response()->json([
             'message' => 'Payout settled successfully.',
-            'data' => $booking->fresh()->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
+            'data' => $booking->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
         ]);
     }
 }

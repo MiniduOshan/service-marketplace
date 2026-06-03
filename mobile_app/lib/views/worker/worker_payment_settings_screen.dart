@@ -95,76 +95,76 @@ class WorkerPaymentSettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBankCard(BuildContext context, String bankName, String accNumber, String type, {bool isPrimary = false}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: accentBlue,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: accentBlue.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Icon(Icons.account_balance, color: Colors.white70, size: 24),
-              if (isPrimary)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: primaryGreen,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    "PRIMARY",
-                    style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 25),
-          Text(
-            accNumber,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 2,
-            ),
-          ),
-          const SizedBox(height: 25),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("BANK", style: TextStyle(color: Colors.white54, fontSize: 10)),
-                  Text(bankName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text("TYPE", style: TextStyle(color: Colors.white54, fontSize: 10)),
-                  Text(type, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  // Widget _buildBankCard(BuildContext context, String bankName, String accNumber, String type, {bool isPrimary = false}) {
+  //   return Container(
+  //     margin: const EdgeInsets.symmetric(horizontal: 20),
+  //     padding: const EdgeInsets.all(20),
+  //     decoration: BoxDecoration(
+  //       color: accentBlue,
+  //       borderRadius: BorderRadius.circular(20),
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: accentBlue.withValues(alpha: 0.3),
+  //           blurRadius: 10,
+  //           offset: const Offset(0, 5),
+  //         ),
+  //       ],
+  //     ),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         Row(
+  //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //           children: [
+  //             const Icon(Icons.account_balance, color: Colors.white70, size: 24),
+  //             if (isPrimary)
+  //               Container(
+  //                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+  //                 decoration: BoxDecoration(
+  //                   color: primaryGreen,
+  //                   borderRadius: BorderRadius.circular(20),
+  //                 ),
+  //                 child: const Text(
+  //                   "PRIMARY",
+  //                   style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+  //                 ),
+  //               ),
+  //           ],
+  //         ),
+  //         const SizedBox(height: 25),
+  //         Text(
+  //           accNumber,
+  //           style: const TextStyle(
+  //             color: Colors.white,
+  //             fontSize: 22,
+  //             fontWeight: FontWeight.bold,
+  //             letterSpacing: 2,
+  //           ),
+  //         ),
+  //         const SizedBox(height: 25),
+  //         Row(
+  //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //           children: [
+  //             Column(
+  //               crossAxisAlignment: CrossAxisAlignment.start,
+  //               children: [
+  //                 const Text("BANK", style: TextStyle(color: Colors.white54, fontSize: 10)),
+  //                 Text(bankName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+  //               ],
+  //             ),
+  //             Column(
+  //               crossAxisAlignment: CrossAxisAlignment.end,
+  //               children: [
+  //                 const Text("TYPE", style: TextStyle(color: Colors.white54, fontSize: 10)),
+  //                 Text(type, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+  //               ],
+  //             ),
+  //           ],
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildAddMethodTile(BuildContext context) {
     return Container(

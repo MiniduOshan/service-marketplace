@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../controllers/auth_controller.dart';
 import '../../services/api_client.dart';
 
@@ -22,6 +23,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
     'profile_views': 0,
   };
   List<Map<String, dynamic>> _bookings = [];
+  String _proPriceStr = 'LKR 0';
 
   @override
   void initState() {
@@ -36,12 +38,33 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
     });
     try {
       final token = authController.sessionToken;
-      final statsRes = await ApiClient.instance.getWorkerStats(token: token);
-      final bookingsRes = await ApiClient.instance.getBookings(token: token);
+      final results = await Future.wait([
+        ApiClient.instance.getWorkerStats(token: token),
+        ApiClient.instance.getBookings(token: token),
+        ApiClient.instance.fetchPricingPlans(),
+      ]);
+      final statsRes = results[0] as Map<String, dynamic>;
+      final bookingsRes = results[1] as List<Map<String, dynamic>>;
+      final plansRes = results[2] as Map<String, dynamic>;
+
+      String proPriceStr = 'LKR 0';
+      final plansList = plansRes['data'];
+      if (plansList is List && plansList.isNotEmpty) {
+        try {
+          final paidPlan = plansList.firstWhere(
+            (p) => (double.tryParse(p['price'].toString()) ?? 0) > 0,
+          );
+          final numPrice = double.tryParse(paidPlan['price'].toString()) ?? 0;
+          final formatter = NumberFormat('#,##0', 'en_US');
+          proPriceStr = 'LKR ${formatter.format(numPrice)}';
+        } catch (_) {}
+      }
+
       if (mounted) {
         setState(() {
           _stats = statsRes;
           _bookings = bookingsRes;
+          _proPriceStr = proPriceStr;
           _isLoading = false;
         });
       }
@@ -247,7 +270,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                   ],
                   const SizedBox(height: 28),
                   if (authController.currentUser?.pricingPlanId != null) ...[
-                    _buildProPlanCard(renewalStr),
+                    _buildProPlanCard(renewalStr, _proPriceStr),
                     const SizedBox(height: 28),
                   ],
                   const SizedBox(height: 4),
@@ -541,7 +564,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
     );
   }
 
-  Widget _buildProPlanCard(String renewalStr) {
+  Widget _buildProPlanCard(String renewalStr, String proPriceStr) {
     return Container(padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: const Color(0xFFFFFBEB), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFFED7AA))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start,
@@ -555,7 +578,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
               TextButton(onPressed: () => Navigator.pushNamed(context, '/worker-subscription'), child: const Text("Manage plan", style: TextStyle(color: Color(0xFF1B434D), fontWeight: FontWeight.bold, decoration: TextDecoration.underline))),
           ]),
           const SizedBox(height: 12),
-          Text("$renewalStr • LKR 2,500/month", style: const TextStyle(color: Colors.grey, fontSize: 14)),
+          Text("$renewalStr • $proPriceStr/month", style: const TextStyle(color: Colors.grey, fontSize: 14)),
           const SizedBox(height: 16),
           Container(padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: const Color(0xFFECFDF5), borderRadius: BorderRadius.circular(12)),

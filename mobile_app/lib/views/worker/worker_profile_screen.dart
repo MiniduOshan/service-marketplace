@@ -4,6 +4,7 @@ import '../../models/app_user.dart';
 import '../../services/api_client.dart';
 import '../auth/otp_screen.dart';
 import 'document_verification_screen.dart';
+import 'worker_registration_screen.dart';
 import 'worker_service_packages_screen.dart';
 
 class WorkerProfileScreen extends StatefulWidget {
@@ -21,7 +22,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
   List<Map<String, dynamic>>? _services;
   Map<String, dynamic>? _stats;
   bool _isLoading = true;
-  bool _isIdVerified = false;
+  final bool _isIdVerified = false;
   bool _hasCertificate = false;
   final List<String> _portfolioUrls = [];
 
@@ -204,7 +205,12 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                 ),
               ),
               InkWell(
-                onTap: () => _showEditProfileBottomSheet(context),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const WorkerRegistrationScreen(isEditing: true),
+                  ),
+                ),
                 child: const Text(
                   "Manage",
                   style: TextStyle(
@@ -858,10 +864,15 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
       unselectedItemColor: Colors.grey,
       currentIndex: 3,
       onTap: (index) {
-        if (index == 0)
+        if (index == 0) {
           Navigator.pushReplacementNamed(context, '/worker-dashboard');
-        if (index == 1) Navigator.pushNamed(context, '/job-requests');
-        if (index == 2) Navigator.pushNamed(context, '/worker-wallet');
+        }
+        if (index == 1) {
+          Navigator.pushNamed(context, '/job-requests');
+        }
+        if (index == 2) {
+          Navigator.pushNamed(context, '/worker-wallet');
+        }
       },
       selectedLabelStyle: const TextStyle(
         fontWeight: FontWeight.bold,
@@ -882,57 +893,57 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
     );
   }
 
-  Future<void> _startPhoneVerification(BuildContext context) async {
-    final currentUser = authController.currentUser;
-    final phone = currentUser?.phone?.trim() ?? '';
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-
-    if (currentUser == null) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Please sign in again to verify phone.')),
-      );
-      return;
-    }
-
-    if (phone.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Please add your phone number first.')),
-      );
-      _showEditProfileBottomSheet(context);
-      return;
-    }
-
-    try {
-      final response = await authController.requestPhoneOtp(
-        (currentUser.name ?? 'Worker').trim().isNotEmpty
-            ? currentUser.name!.trim()
-            : 'Worker',
-        phone,
-        currentUser.role,
-      );
-
-      final verificationPhone = response['data']?['phone']?.toString() ?? phone;
-
-      if (!context.mounted) return;
-
-      navigator.push(
-        MaterialPageRoute(
-          builder: (_) => OTPVerificationScreen(
-            verificationTarget: verificationPhone,
-            phoneNumber: verificationPhone,
-            isFromProfile: true,
-          ),
-        ),
-      );
-    } catch (error) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(error.toString().replaceFirst('Exception: ', '')),
-        ),
-      );
-    }
-  }
+  // Future<void> _startPhoneVerification(BuildContext context) async {
+  //   final currentUser = authController.currentUser;
+  //   final phone = currentUser?.phone?.trim() ?? '';
+  //   final messenger = ScaffoldMessenger.of(context);
+  //   final navigator = Navigator.of(context);
+  // 
+  //   if (currentUser == null) {
+  //     messenger.showSnackBar(
+  //       const SnackBar(content: Text('Please sign in again to verify phone.')),
+  //     );
+  //     return;
+  //   }
+  // 
+  //   if (phone.isEmpty) {
+  //     messenger.showSnackBar(
+  //       const SnackBar(content: Text('Please add your phone number first.')),
+  //     );
+  //     _showEditProfileBottomSheet(context);
+  //     return;
+  //   }
+  // 
+  //   try {
+  //     final response = await authController.requestPhoneOtp(
+  //       (currentUser.name ?? 'Worker').trim().isNotEmpty
+  //           ? currentUser.name!.trim()
+  //           : 'Worker',
+  //       phone,
+  //       currentUser.role,
+  //     );
+  // 
+  //     final verificationPhone = response['data']?['phone']?.toString() ?? phone;
+  // 
+  //     if (!context.mounted) return;
+  // 
+  //     navigator.push(
+  //       MaterialPageRoute(
+  //         builder: (_) => OTPVerificationScreen(
+  //           verificationTarget: verificationPhone,
+  //           phoneNumber: verificationPhone,
+  //           isFromProfile: true,
+  //         ),
+  //       ),
+  //     );
+  //   } catch (error) {
+  //     messenger.showSnackBar(
+  //       SnackBar(
+  //         content: Text(error.toString().replaceFirst('Exception: ', '')),
+  //       ),
+  //     );
+  //   }
+  // }
 
   void _startDocumentVerification(BuildContext context) {
     Navigator.of(context).push(
