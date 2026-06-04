@@ -65,6 +65,7 @@ $registerRoutes = function () {
                 Route::get('/worker/stats', [AuthController::class, 'workerStats']);
                 Route::post('/worker/services', [ServicePackageController::class, 'store']);
                 Route::patch('/worker/services/{servicePackage}', [ServicePackageController::class, 'update']);
+                Route::delete('/worker/services/{servicePackage}', [ServicePackageController::class, 'destroy']);
             });
         });
     });

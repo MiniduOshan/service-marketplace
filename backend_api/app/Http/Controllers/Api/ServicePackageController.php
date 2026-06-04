@@ -192,6 +192,22 @@ class ServicePackageController extends Controller
         ]);
     }
 
+    public function destroy(ServicePackage $servicePackage): JsonResponse
+    {
+        $user = request()->user();
+        abort_unless($user?->id === $servicePackage->user_id, 403, 'You can only delete your own service packages.');
+
+        $servicePackage->delete();
+
+        Cache::forget("service_package:{$servicePackage->id}");
+        Cache::forever('services:list:version', (string) microtime(true));
+        Cache::forget('categories:active');
+
+        return response()->json([
+            'message' => 'Service package deleted successfully.',
+        ]);
+    }
+
     public function workerServices(Request $request): JsonResponse
     {
         $user = $request->user();

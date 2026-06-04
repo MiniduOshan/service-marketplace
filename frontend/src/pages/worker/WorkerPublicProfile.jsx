@@ -91,6 +91,7 @@ export default function WorkerPublicProfile() {
       state: {
         workerId: id,
         workerName: workerInfo?.name || 'Verified Pro',
+        servicePackageId: services.length > 0 ? services[0].id : null,
       },
     });
   };

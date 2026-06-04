@@ -161,8 +161,26 @@ export default function ChatPage() {
       try {
         const res = await apiRequest('/auth/bookings');
         const list = res.data?.data || res.data || [];
-        const mapped = list.map((b) => {
-          const isWorker = currentUser?.role === 'worker';
+        const isWorker = currentUser?.role === 'worker';
+        const targetBookingId = location.state?.bookingId ? Number(location.state.bookingId) : null;
+
+        const deduplicate = (listToDedupe) => {
+          const seen = new Set();
+          return listToDedupe.filter((item) => {
+            const counterpartId = isWorker ? item.customerId : item.workerId;
+            if (targetBookingId && item.id === targetBookingId) {
+              seen.add(counterpartId);
+              return true;
+            }
+            if (seen.has(counterpartId)) {
+              return false;
+            }
+            seen.add(counterpartId);
+            return true;
+          });
+        };
+
+        const mapped = deduplicate(list.map((b) => {
           const counterpartName = isWorker ? (b.customer?.name || 'Customer') : (b.worker?.name || 'Worker Pro');
           return {
             id: b.id,
@@ -179,18 +197,81 @@ export default function ChatPage() {
             status: b.status,
             phone: isWorker ? b.customer?.phone : b.worker?.phone,
           };
-        });
+        }));
         setConversations(mapped);
 
         // Auto select active conversation
-        if (location.state?.bookingId) {
-          setActiveConversationId(Number(location.state.bookingId));
+        if (targetBookingId) {
+          setActiveConversationId(targetBookingId);
         } else if (location.state?.workerId) {
-          const existing = mapped.find((c) => c.workerId === Number(location.state.workerId));
+          const workerIdNum = Number(location.state.workerId);
+          const existing = mapped.find((c) => c.workerId === workerIdNum);
           if (existing) {
             setActiveConversationId(existing.id);
-          } else if (mapped.length > 0) {
-            setActiveConversationId(mapped[0].id);
+          } else {
+            // No booking exists with this worker. Create one on-the-fly!
+            let servicePackageId = location.state?.servicePackageId;
+            if (!servicePackageId) {
+              try {
+                const servicesRes = await apiRequest(`/services?worker_id=${workerIdNum}`);
+                const packages = servicesRes.data?.data || servicesRes.data || [];
+                if (packages.length > 0) {
+                  servicePackageId = packages[0].id;
+                }
+              } catch (e) {
+                console.error(e);
+              }
+            }
+
+            if (servicePackageId) {
+              try {
+                const bookingRes = await apiRequest('/auth/bookings', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    service_package_id: servicePackageId,
+                    scheduled_at: new Date(Date.now() + 86400000 * 2).toISOString(), // 2 days from now
+                    address: 'Inquiry Address',
+                    notes: 'Initial Chat Inquiry',
+                    payment_option: 'after',
+                  }),
+                });
+                const newBooking = bookingRes.data || bookingRes;
+                if (newBooking && newBooking.id) {
+                  // Reload conversations to select the newly created booking conversation
+                  const reloadRes = await apiRequest('/auth/bookings');
+                  const reloadList = reloadRes.data?.data || reloadRes.data || [];
+                  const reloadMapped = deduplicate(reloadList.map((b) => {
+                    const counterpartName = isWorker ? (b.customer?.name || 'Customer') : (b.worker?.name || 'Worker Pro');
+                    return {
+                      id: b.id,
+                      workerId: b.worker_id,
+                      customerId: b.customer_id,
+                      name: counterpartName,
+                      role: b.service_package?.category?.name || 'Verified Pro',
+                      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(counterpartName)}&background=006D44&color=fff`,
+                      lastMessage: `Booking status: ${b.status}`,
+                      time: new Date(b.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+                      unread: false,
+                      online: true,
+                      starred: false,
+                      status: b.status,
+                      phone: isWorker ? b.customer?.phone : b.worker?.phone,
+                    };
+                  }));
+                  setConversations(reloadMapped);
+                  setActiveConversationId(newBooking.id);
+                }
+              } catch (err) {
+                console.error("Failed to create inquiry booking:", err);
+                if (mapped.length > 0) {
+                  setActiveConversationId(mapped[0].id);
+                }
+              }
+            } else {
+              if (mapped.length > 0) {
+                setActiveConversationId(mapped[0].id);
+              }
+            }
           }
         } else if (mapped.length > 0) {
           setActiveConversationId(mapped[0].id);

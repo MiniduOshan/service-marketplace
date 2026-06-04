@@ -853,4 +853,65 @@ class MarketplaceTest extends TestCase
             'title' => 'Attention Workers',
         ]);
     }
+
+    public function test_worker_can_delete_their_own_service_package(): void
+    {
+        $category = ServiceCategory::create([
+            'name' => 'Gardening',
+            'slug' => 'gardening',
+            'is_active' => true,
+        ]);
+
+        $worker = User::factory()->create(['role' => 'worker']);
+        $token = $worker->issueApiToken();
+
+        $servicePackage = ServicePackage::create([
+            'user_id' => $worker->id,
+            'service_category_id' => $category->id,
+            'title' => 'Lawn Mowing',
+            'slug' => 'lawn-mowing',
+            'price' => 1500,
+            'is_active' => true,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->deleteJson('/api/v1/auth/worker/services/'.$servicePackage->id)
+            ->assertOk()
+            ->assertJsonPath('message', 'Service package deleted successfully.');
+
+        $this->assertSoftDeleted('service_packages', [
+            'id' => $servicePackage->id,
+        ]);
+    }
+
+    public function test_worker_cannot_delete_other_workers_service_package(): void
+    {
+        $category = ServiceCategory::create([
+            'name' => 'Gardening',
+            'slug' => 'gardening',
+            'is_active' => true,
+        ]);
+
+        $worker1 = User::factory()->create(['role' => 'worker']);
+        $worker2 = User::factory()->create(['role' => 'worker']);
+        $token = $worker1->issueApiToken();
+
+        $servicePackage = ServicePackage::create([
+            'user_id' => $worker2->id,
+            'service_category_id' => $category->id,
+            'title' => 'Lawn Mowing',
+            'slug' => 'lawn-mowing',
+            'price' => 1500,
+            'is_active' => true,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->deleteJson('/api/v1/auth/worker/services/'.$servicePackage->id)
+            ->assertStatus(403);
+
+        $this->assertDatabaseHas('service_packages', [
+            'id' => $servicePackage->id,
+            'deleted_at' => null,
+        ]);
+    }
 }

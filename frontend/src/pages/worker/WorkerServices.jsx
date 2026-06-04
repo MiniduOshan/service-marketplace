@@ -197,16 +197,15 @@ export default function WorkerServices() {
   }
 
   async function handleDelete(id) {
-    if (!confirm('Are you sure you want to disable this service package? It will no longer be visible to customers.')) return;
+    if (!confirm('Are you sure you want to delete this service package? This action cannot be undone.')) return;
     try {
       await apiRequest(`/auth/worker/services/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ is_active: false }),
+        method: 'DELETE',
       });
       setServices(current => current.filter(s => s.id !== id));
-      triggerSuccess('Service package removed.');
+      triggerSuccess('Service package deleted successfully.');
     } catch (err) {
-      alert(err.message || 'Failed to remove service.');
+      alert(err.message || 'Failed to delete service.');
     }
   }
 

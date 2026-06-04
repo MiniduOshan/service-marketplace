@@ -134,7 +134,24 @@ export default function WorkerMessages() {
       try {
         const res = await apiRequest('/auth/bookings');
         const list = res.data?.data || res.data || [];
-        const mapped = list.map((b) => {
+        const targetBookingId = location.state?.bookingId ? Number(location.state.bookingId) : null;
+        
+        const deduplicate = (listToDedupe) => {
+          const seen = new Set();
+          return listToDedupe.filter((item) => {
+            if (targetBookingId && item.id === targetBookingId) {
+              seen.add(item.customerId);
+              return true;
+            }
+            if (seen.has(item.customerId)) {
+              return false;
+            }
+            seen.add(item.customerId);
+            return true;
+          });
+        };
+
+        const mapped = deduplicate(list.map((b) => {
           const counterpartName = b.customer?.name || 'Customer';
           return {
             id: b.id,
@@ -151,12 +168,12 @@ export default function WorkerMessages() {
             bookingStatus: b.status,
             phone: b.customer?.phone,
           };
-        });
+        }));
         setConversations(mapped);
 
         // Auto select active conversation
-        if (location.state?.bookingId) {
-          setActiveConversationId(Number(location.state.bookingId));
+        if (targetBookingId) {
+          setActiveConversationId(targetBookingId);
         } else if (mapped.length > 0) {
           setActiveConversationId(mapped[0].id);
         }
