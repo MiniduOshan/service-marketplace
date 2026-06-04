@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import WorkerLayout from '../../components/layout/WorkerLayout';
 import { apiRequest } from '../../lib/api';
+import { compressImage } from '../../lib/image';
 
 const initialServices = [];
 
@@ -100,7 +101,7 @@ function SettingsRow({ icon: Icon, label, onClick }) {
 
 function ProfileCompleteness({ onManage, user }) {
   const checks = [
-    { label: 'Identity Verified', done: !!user?.phone_verified_at },
+    { label: 'Identity Verified', done: user?.verification === 'Verified' },
     { label: 'Phone Linked', done: !!user?.phone },
     { label: 'Certificates', done: false },
   ];
@@ -415,7 +416,7 @@ export default function WorkerProfile() {
       const servicesRes = await apiRequest('/auth/worker/services');
       const statsRes = await apiRequest('/auth/worker/stats');
 
-      setUser(meRes.data || meRes);
+      setUser(meRes.data?.user || meRes.data || meRes);
       setServices(servicesRes.data || servicesRes);
       setStats(statsRes.data || statsRes);
       setLoading(false);
@@ -455,12 +456,13 @@ export default function WorkerProfile() {
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const result = e.target.result;
+        const rawBase64 = e.target.result;
+        const compressedBase64 = await compressImage(rawBase64, 1200, 800, 0.75);
         await apiRequest('/auth/profile', {
           method: 'POST',
-          body: JSON.stringify({ cover_photo: result }),
+          body: JSON.stringify({ cover_photo: compressedBase64 }),
         });
-        setUser(prev => ({ ...prev, cover_photo: result }));
+        setUser(prev => ({ ...prev, cover_photo: compressedBase64 }));
       } catch (err) {
         alert(err.message || 'Failed to upload cover photo');
       }
@@ -475,12 +477,13 @@ export default function WorkerProfile() {
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const result = e.target.result;
+        const rawBase64 = e.target.result;
+        const compressedBase64 = await compressImage(rawBase64, 600, 600, 0.75);
         await apiRequest('/auth/profile', {
           method: 'POST',
-          body: JSON.stringify({ avatar_url: result }),
+          body: JSON.stringify({ avatar_url: compressedBase64 }),
         });
-        setUser(prev => ({ ...prev, avatar_url: result }));
+        setUser(prev => ({ ...prev, avatar_url: compressedBase64 }));
       } catch (err) {
         alert(err.message || 'Failed to upload profile photo');
       }
@@ -497,14 +500,27 @@ export default function WorkerProfile() {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (e) => {
-      setPortfolio((current) => [
-        ...current,
-        {
-          id: Date.now(),
-          image: e.target.result,
-        },
-      ]);
+    reader.onload = async (e) => {
+      try {
+        const rawBase64 = e.target.result;
+        const compressedBase64 = await compressImage(rawBase64, 1000, 1000, 0.75);
+        setPortfolio((current) => [
+          ...current,
+          {
+            id: Date.now(),
+            image: compressedBase64,
+          },
+        ]);
+      } catch (err) {
+        // Fallback to original if compression fails
+        setPortfolio((current) => [
+          ...current,
+          {
+            id: Date.now(),
+            image: e.target.result,
+          },
+        ]);
+      }
     };
     reader.readAsDataURL(file);
     event.target.value = '';
@@ -593,7 +609,7 @@ export default function WorkerProfile() {
                     {user?.name || 'Worker'}
                   </h1>
 
-                  {user?.phone_verified_at ? (
+                  {user?.verification === 'Verified' ? (
                     <span className="inline-flex items-center gap-1 rounded bg-emerald-500 px-3 py-1 text-[10px] font-bold uppercase text-white">
                       <ShieldCheck size={13} />
                       Verified Professional

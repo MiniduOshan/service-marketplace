@@ -17,9 +17,10 @@ class BookingController extends Controller
 
         $bookings = Booking::query()
             ->with(['servicePackage.category', 'worker:id,name,phone', 'customer:id,name,phone', 'review'])
-            ->where(function ($query) use ($user): void {
-                $query->where('customer_id', $user->id)
-                    ->orWhere('worker_id', $user->id);
+            ->when($user->isWorker(), function ($query) use ($user) {
+                $query->where('worker_id', $user->id);
+            }, function ($query) use ($user) {
+                $query->where('customer_id', $user->id);
             })
             ->latest()
             ->paginate(12);

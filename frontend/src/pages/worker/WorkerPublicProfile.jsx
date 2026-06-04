@@ -111,6 +111,14 @@ export default function WorkerPublicProfile() {
   const displayInitials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   const skills = services.map(s => s.title);
 
+  const workerPrivileges = workerInfo?.pricing_plan?.privileges || [];
+  const hasPlanChatAccess = workerInfo?.pricing_plan 
+    ? workerPrivileges.includes('chat') 
+    : true; // Default full access if no plan assigned
+  const hasPlanBookingAccess = workerInfo?.pricing_plan 
+    ? workerPrivileges.includes('bookings') 
+    : true;
+
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {isLoggedIn ? <CustomerNavbar activePage="search" /> : <Navbar />}
@@ -128,9 +136,9 @@ export default function WorkerPublicProfile() {
         {/* Hero */}
         <section className="relative">
           <div className="h-[250px] overflow-hidden rounded-xl bg-slate-200 sm:h-[300px]">
-            {workerInfo?.cover_photo_url ? (
+            {workerInfo?.cover_photo ? (
               <img
-                src={workerInfo.cover_photo_url}
+                src={workerInfo.cover_photo}
                 alt="Worker banner"
                 className="h-full w-full object-cover"
               />
@@ -142,7 +150,15 @@ export default function WorkerPublicProfile() {
 
           <div className="absolute bottom-[-24px] left-7 flex items-end gap-4 sm:left-9">
             <div className="h-[118px] w-[118px] flex items-center justify-center overflow-hidden rounded-lg border-4 border-white bg-emerald-700 text-white text-4xl font-bold shadow-lg sm:h-[130px] sm:w-[130px]">
-              {displayInitials}
+              {workerInfo?.avatar_url ? (
+                <img
+                  src={workerInfo.avatar_url}
+                  alt={name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                displayInitials
+              )}
             </div>
 
             <div className="mb-7 flex flex-wrap items-center gap-2">
@@ -150,7 +166,7 @@ export default function WorkerPublicProfile() {
                 {name}
               </h1>
 
-              {workerInfo?.phone_verified_at ? (
+              {workerInfo?.verification === 'Verified' ? (
                 <span className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2 py-1 text-[9px] font-bold uppercase text-white">
                   <BadgeCheck size={11} />
                   Verified
@@ -207,9 +223,17 @@ export default function WorkerPublicProfile() {
                       className="flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="flex gap-4">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-emerald-700">
-                          <Building2 size={20} />
-                        </div>
+                        {service.image_url ? (
+                          <img
+                            src={service.image_url}
+                            alt={service.title}
+                            className="h-11 w-11 shrink-0 rounded-lg object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-emerald-700">
+                            <Building2 size={20} />
+                          </div>
+                        )}
 
                         <div>
                           <h3 className="text-base font-semibold text-slate-800">
@@ -226,7 +250,7 @@ export default function WorkerPublicProfile() {
                           {priceLabel}
                         </p>
 
-                        {config?.bookings !== false && (
+                        {config?.bookings !== false && hasPlanBookingAccess && (
                           <button
                             type="button"
                             onClick={() => handleBookNow(service.id, service.title, priceLabel)}
@@ -254,7 +278,7 @@ export default function WorkerPublicProfile() {
 
                   <div className="flex shrink-0 items-center justify-between gap-5 sm:flex-col sm:items-end sm:gap-2">
                     <p className="text-sm font-medium text-emerald-700">Contact for Price</p>
-                    {config?.chat !== false && (
+                    {config?.chat !== false && hasPlanChatAccess && (
                       <button
                         type="button"
                         onClick={handleChat}
@@ -338,7 +362,7 @@ export default function WorkerPublicProfile() {
               </p>
 
               <div className="mt-6 grid gap-3">
-                {config?.bookings !== false && (
+                {config?.bookings !== false && hasPlanBookingAccess && (
                   <button
                     type="button"
                     onClick={() => handleBookNow(services.length > 0 ? services[0].id : null, roleName, services.length > 0 && services[0].price ? `LKR ${parseFloat(services[0].price).toLocaleString()}` : 'Negotiable')}
@@ -349,7 +373,7 @@ export default function WorkerPublicProfile() {
                   </button>
                 )}
 
-                {config?.chat !== false && (
+                {config?.chat !== false && hasPlanChatAccess && (
                   <button
                     type="button"
                     onClick={handleChat}

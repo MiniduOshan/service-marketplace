@@ -78,6 +78,7 @@ $registerRoutes = function () {
             
             Route::get('/admin/workers', [AdminController::class, 'workers']);
             Route::patch('/admin/workers/{id}', [AdminController::class, 'updateWorker']);
+            Route::delete('/admin/users/{id}', [AdminController::class, 'deleteUser']);
             Route::get('/admin/stats', [AdminController::class, 'dashboardStats']);
             Route::get('/admin/customers', [AdminController::class, 'customers']);
             Route::patch('/admin/customers/{id}', [AdminController::class, 'updateCustomer']);

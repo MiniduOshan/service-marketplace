@@ -31,7 +31,7 @@ class ServicePackageController extends Controller
                 ->with([
                     'category',
                     'worker' => function ($q) {
-                        $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at', 'pricing_plan_id')
+                        $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at', 'pricing_plan_id', 'verification', 'avatar_url', 'cover_photo')
                           ->withAvg('workerReviews as average_rating', 'rating')
                           ->withCount('workerReviews as reviews_count')
                           ->withCount(['workerBookings as completed_jobs_count' => function ($query) {
@@ -40,6 +40,9 @@ class ServicePackageController extends Controller
                           ->with('pricingPlan');
                     }
                 ])
+                ->whereHas('worker', function ($q) {
+                    $q->where('verification', '!=', 'Rejected');
+                })
                 ->where('is_active', true)
                 ->latest();
 
@@ -83,7 +86,7 @@ class ServicePackageController extends Controller
             return $servicePackage->load([
                 'category',
                 'worker' => function ($q) {
-                    $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at', 'pricing_plan_id')
+                    $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at', 'pricing_plan_id', 'verification', 'avatar_url', 'cover_photo')
                       ->withAvg('workerReviews as average_rating', 'rating')
                       ->withCount('workerReviews as reviews_count')
                       ->withCount(['workerBookings as completed_jobs_count' => function ($query) {
@@ -214,12 +217,14 @@ class ServicePackageController extends Controller
             return 'Invalid image URL format.';
         }
 
-        $supabaseUrl = env('SUPABASE_URL');
+        $supabaseUrl = env('SUPABASE_URL') ?: 'https://jaqwysogwxwkpykcmpjq.supabase.co';
         if ($supabaseUrl) {
-            $supabaseHost = parse_url($supabaseUrl, PHP_URL_HOST);
-            $imageHost = parse_url($imageUrl, PHP_URL_HOST);
+            $supabaseHost = strtolower(parse_url($supabaseUrl, PHP_URL_HOST));
+            $imageHost = strtolower(parse_url($imageUrl, PHP_URL_HOST));
             if ($supabaseHost && $imageHost && $supabaseHost !== $imageHost) {
-                return 'Image must be hosted on the approved storage provider.';
+                if (!(str_ends_with($supabaseHost, 'supabase.co') && str_ends_with($imageHost, 'supabase.co'))) {
+                    return 'Image must be hosted on the approved storage provider.';
+                }
             }
         }
 

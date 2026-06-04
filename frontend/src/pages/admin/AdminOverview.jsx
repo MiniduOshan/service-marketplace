@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { CheckCircle2, DollarSign, Activity, Users, ShieldCheck, Sparkles, MessageSquareText, FileText, ArrowRight } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { apiRequest } from '../../lib/api';
@@ -100,9 +101,9 @@ export default function AdminOverview() {
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-900">Recent User Registrations</h3>
-              <button className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 transition">
+              <Link to="/admin/customers" className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 transition">
                 View all <ArrowRight size={14} />
-              </button>
+              </Link>
             </div>
             
             <div className="overflow-x-auto">
@@ -146,7 +147,7 @@ export default function AdminOverview() {
           </section>
 
           <section className="flex flex-col gap-4">
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-200">
+            <Link to="/admin/privileges" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-200 text-left block cursor-pointer">
               <div className="flex items-center gap-3">
                 <div className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-600">
                   <ShieldCheck size={20} />
@@ -156,9 +157,9 @@ export default function AdminOverview() {
                   <p className="text-xs text-slate-500">Toggle system features globally.</p>
                 </div>
               </div>
-            </div>
+            </Link>
             
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-200">
+            <Link to="/admin/pricing-plans" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-200 text-left block cursor-pointer">
               <div className="flex items-center gap-3">
                 <div className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-600">
                   <Sparkles size={20} />
@@ -168,9 +169,9 @@ export default function AdminOverview() {
                   <p className="text-xs text-slate-500">Manage user subscriptions.</p>
                 </div>
               </div>
-            </div>
+            </Link>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-200">
+            <Link to="/admin/notifications" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-200 text-left block cursor-pointer">
               <div className="flex items-center gap-3">
                 <div className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-600">
                   <MessageSquareText size={20} />
@@ -180,7 +181,7 @@ export default function AdminOverview() {
                   <p className="text-xs text-slate-500">Send bulk SMS & Emails.</p>
                 </div>
               </div>
-            </div>
+            </Link>
           </section>
         </div>
       </div>

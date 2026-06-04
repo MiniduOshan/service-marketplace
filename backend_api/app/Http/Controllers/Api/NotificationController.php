@@ -15,6 +15,7 @@ class NotificationController extends Controller
 
         $notifications = Notification::where('user_id', $user->id)
             ->latest()
+            ->take(50)
             ->get();
 
         return response()->json([

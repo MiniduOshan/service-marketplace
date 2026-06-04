@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CircleDollarSign, ShieldCheck, Users, Check, RefreshCw } from 'lucide-react';
+import { CircleDollarSign, Check, RefreshCw } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { apiRequest } from '../../lib/api';
 
@@ -7,7 +7,6 @@ export default function AdminUserPlans() {
   const [plans, setPlans] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('worker'); // 'worker' or 'customer'
   const [errorMessage, setErrorMessage] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
 
@@ -23,9 +22,10 @@ export default function AdminUserPlans() {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const endpoint = activeTab === 'worker' ? '/admin/workers' : '/admin/customers';
+      const endpoint = '/admin/workers';
       const response = await apiRequest(endpoint);
-      setUsers(Array.isArray(response.data) ? response.data : []);
+      const workersData = response.data?.data ? response.data.data : response.data;
+      setUsers(Array.isArray(workersData) ? workersData : []);
       setErrorMessage('');
     } catch (error) {
       setErrorMessage(error.message || 'Failed to load users.');
@@ -40,7 +40,7 @@ export default function AdminUserPlans() {
 
   useEffect(() => {
     loadUsers();
-  }, [activeTab]);
+  }, []);
 
   const handleAssignPlan = async (userId, planId) => {
     try {
@@ -48,7 +48,7 @@ export default function AdminUserPlans() {
       await apiRequest(`/admin/users/${userId}/pricing-plan`, {
         method: 'PATCH',
         body: JSON.stringify({
-          pricing_plan_id: planId === 'free' ? null : planId,
+          pricing_plan_id: planId,
         }),
       });
       setStatusMessage('User pricing plan updated successfully.');
@@ -84,33 +84,7 @@ export default function AdminUserPlans() {
           </div>
         </div>
 
-        {/* Tab Selection */}
-        <div className="mb-4 flex border-b border-slate-200">
-          <button
-            type="button"
-            onClick={() => setActiveTab('worker')}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-semibold transition ${
-              activeTab === 'worker'
-                ? 'border-emerald-600 text-emerald-700 font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-950'
-            }`}
-          >
-            <ShieldCheck size={14} />
-            Workers
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('customer')}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-semibold transition ${
-              activeTab === 'customer'
-                ? 'border-emerald-600 text-emerald-700 font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-950'
-            }`}
-          >
-            <Users size={14} />
-            Customers
-          </button>
-        </div>
+        {/* Tabs removed as only workers have pricing plans */}
 
         {errorMessage && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
@@ -150,16 +124,15 @@ export default function AdminUserPlans() {
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' 
                           : 'bg-slate-50 text-slate-650 border-slate-200/55'
                       }`}>
-                        {user.pricing_plan || 'Free Usage'}
+                        {user.pricing_plan || 'Free'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 self-center">
                       <select
-                        value={user.pricing_plan_id || 'free'}
+                        value={user.pricing_plan_id || ''}
                         onChange={(event) => handleAssignPlan(user.id, event.target.value)}
                         className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none transition focus:border-emerald-600"
                       >
-                        <option value="free">Free Usage</option>
                         {plans.map((plan) => (
                           <option key={plan.id} value={plan.id}>
                             {plan.title} (LKR {Number(plan.price).toLocaleString()})

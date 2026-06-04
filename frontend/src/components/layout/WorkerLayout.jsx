@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { getStoredSessionUser, clearSession, apiRequest } from '../../lib/api';
+import { getStoredSessionUser, clearSession, apiRequest, storeSession, getStoredSessionToken } from '../../lib/api';
 import {
   Bell,
   BriefcaseBusiness,
@@ -160,11 +160,15 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
   const [notificationExpanded, setNotificationExpanded] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
-  const currentUser = getStoredSessionUser();
+  const [currentUser, setCurrentUser] = useState(() => getStoredSessionUser());
   const firstName = currentUser?.name?.split(' ')[0] || 'Worker';
   const { config } = useConfig();
 
-  const visibleSidebarItems = config?.chat !== false 
+  const hasPlanChatAccess = currentUser?.pricing_plan 
+    ? (currentUser.pricing_plan.privileges || []).includes('chat')
+    : true; // Default full access if no plan is assigned
+
+  const visibleSidebarItems = config?.chat !== false && hasPlanChatAccess
     ? sidebarItems 
     : sidebarItems.filter(item => item.name !== 'Messages');
 
@@ -173,6 +177,8 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
       navigate('/login');
       return;
     }
+
+    // Refresh user data is handled with notifications now
 
     const fetchNotifications = () => {
       apiRequest('/auth/notifications')
@@ -207,12 +213,22 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
           }
         })
         .catch(err => console.error(err));
+
+      // Refresh user data (including verification and pricing plan)
+      apiRequest('/auth/me')
+        .then((res) => {
+          if (res.data?.user) {
+            storeSession(getStoredSessionToken(), res.data.user);
+            setCurrentUser(res.data.user);
+          }
+        })
+        .catch((err) => console.error('Failed to refresh user:', err));
     };
 
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 10000);
     return () => clearInterval(interval);
-  }, [currentUser, navigate]);
+  }, [navigate]);
 
   const unreadCount = useMemo(
     () => notifications.filter((notification) => notification.unread).length,
@@ -325,7 +341,7 @@ export default function WorkerLayout({ children, noMainPadding = false }) {
                 )}
               </button>
 
-              {config?.chat !== false && (
+              {config?.chat !== false && hasPlanChatAccess && (
                 <button
                   className="rounded-full bg-emerald-50 p-2 text-emerald-700 transition hover:bg-emerald-100"
                   aria-label="Messages"

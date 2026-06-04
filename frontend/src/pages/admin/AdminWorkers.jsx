@@ -5,10 +5,19 @@ import { apiRequest } from '../../lib/api';
 
 export default function AdminWorkers() {
   const [workers, setWorkers] = useState([]);
+  const [filter, setFilter] = useState('All');
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [expandedWorkerId, setExpandedWorkerId] = useState(null);
   const [lightboxImage, setLightboxImage] = useState(null);
+
+  const filteredWorkers = workers.filter((worker) => {
+    if (worker.verification === 'Rejected') return false;
+    if (filter === 'All') return true;
+    if (filter === 'Approved') return worker.verification === 'Verified';
+    if (filter === 'Hold') return worker.verification === 'Pending verification';
+    return false;
+  });
 
   const loadWorkers = async () => {
     setLoading(true);
@@ -40,6 +49,20 @@ export default function AdminWorkers() {
     }
   };
 
+  const handleDeleteWorker = async (workerId) => {
+    if (!window.confirm('Are you sure you want to delete this worker and all associated packages, bookings, reviews, and wallet records? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await apiRequest(`/admin/users/${workerId}`, {
+        method: 'DELETE',
+      });
+      loadWorkers();
+    } catch (error) {
+      setErrorMessage(error.message || 'Failed to delete worker.');
+    }
+  };
+
   const toggleExpand = (workerId) => {
     setExpandedWorkerId((prev) => (prev === workerId ? null : workerId));
   };
@@ -56,12 +79,6 @@ export default function AdminWorkers() {
             <CheckCircle2 size={10} /> Verified
           </span>
         );
-      case 'Rejected':
-        return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-red-50 border border-red-200/50 px-2 py-0.5 text-[10px] font-semibold text-red-700">
-            <X size={10} /> Rejected
-          </span>
-        );
       default:
         return (
           <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
@@ -74,13 +91,27 @@ export default function AdminWorkers() {
   return (
     <AdminLayout>
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="mb-4 flex items-center gap-2.5">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100/50">
-            <ShieldCheck size={18} />
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100/50">
+              <ShieldCheck size={18} />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">Monitor Workers</h2>
+              <p className="text-xs text-slate-500">Review documents, approve, suspend, or remove worker accounts.</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-sm font-bold text-slate-900">Monitor Workers</h2>
-            <p className="text-xs text-slate-500">Review documents, approve, suspend, or remove worker accounts.</p>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-600">Filter:</span>
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="text-xs border-slate-200 rounded-md shadow-sm focus:border-emerald-500 focus:ring-emerald-500 px-3 py-1.5"
+            >
+              <option value="All">All</option>
+              <option value="Approved">Approved</option>
+              <option value="Hold">Hold</option>
+            </select>
           </div>
         </div>
 
@@ -101,8 +132,8 @@ export default function AdminWorkers() {
             </div>
 
             <div className="divide-y divide-slate-100 bg-white">
-              {workers.length > 0 ? (
-                workers.map((worker) => (
+              {filteredWorkers.length > 0 ? (
+                filteredWorkers.map((worker) => (
                   <div key={worker.id}>
                     {/* Main Row */}
                     <div className="grid gap-4 px-4 py-3 sm:grid-cols-[1.2fr_1fr_0.8fr_0.6fr_1.2fr] sm:px-6">
@@ -117,29 +148,38 @@ export default function AdminWorkers() {
                       <div className="text-xs text-slate-600 self-center">{worker.city}</div>
                       <div className="self-center">{getVerificationBadge(worker.verification)}</div>
                       <div className="flex flex-wrap gap-1.5 self-center">
-                        {hasDocuments(worker) && (
-                          <button
-                            type="button"
-                            onClick={() => toggleExpand(worker.id)}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/50 px-2.5 py-1 text-xs font-semibold text-indigo-700 transition-colors"
-                          >
-                            <FileText size={12} />
-                            Docs
-                            {expandedWorkerId === worker.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                          </button>
-                        )}
-                        <button type="button" onClick={() => updateWorker(worker.id, 'Active', 'Verified')} className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition-colors"><CheckCircle2 size={12} /> Approve</button>
-                        <button type="button" onClick={() => updateWorker(worker.id, 'Paused', 'Pending verification')} className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 hover:bg-amber-100 border border-amber-200/50 px-2.5 py-1 text-xs font-semibold text-amber-700 transition-colors"><PauseCircle size={12} /> Hold</button>
-                        <button type="button" onClick={() => updateWorker(worker.id, 'Removed', 'Removed by admin')} className="inline-flex items-center gap-1.5 rounded-full bg-red-50 hover:bg-red-100 border border-red-200/50 px-2.5 py-1 text-xs font-semibold text-red-700 transition-colors"><Trash2 size={12} /> Remove</button>
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(worker.id)}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/50 px-3 py-1 text-xs font-semibold text-indigo-700 transition-colors cursor-pointer"
+                        >
+                          <FileText size={12} />
+                          View Form
+                          {expandedWorkerId === worker.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteWorker(worker.id)}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-red-50 hover:bg-red-100 border border-red-200/50 px-3 py-1 text-xs font-semibold text-red-700 transition-colors cursor-pointer"
+                        >
+                          <Trash2 size={12} />
+                          Delete
+                        </button>
                       </div>
                     </div>
 
                     {/* Expandable Document Review Panel */}
                     {expandedWorkerId === worker.id && (
                       <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-4 sm:px-6">
-                        <div className="mb-3 flex items-center gap-2">
-                          <FileText size={14} className="text-indigo-600" />
-                          <h3 className="text-xs font-bold text-slate-800">Verification Documents — {worker.name}</h3>
+                        <div className="mb-4 flex items-center justify-between border-b border-slate-200/60 pb-3">
+                          <div className="flex items-center gap-2">
+                            <FileText size={16} className="text-indigo-600" />
+                            <h3 className="text-sm font-bold text-slate-800">Registration Details — {worker.name}</h3>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={() => updateWorker(worker.id, 'Active', 'Verified')} className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors shadow-sm"><CheckCircle2 size={14} /> Approve</button>
+                            <button type="button" onClick={() => updateWorker(worker.id, 'Suspended', 'Pending verification')} className="inline-flex items-center gap-1.5 rounded-md bg-amber-500 hover:bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors shadow-sm"><PauseCircle size={14} /> Hold</button>
+                          </div>
                         </div>
 
                         {worker.bio && (

@@ -7,10 +7,13 @@ import {
   X, 
   Sparkles, 
   Check, 
-  AlertCircle 
+  AlertCircle,
+  Image,
+  ImagePlus
 } from 'lucide-react';
 import WorkerLayout from '../../components/layout/WorkerLayout';
 import { apiRequest, getStoredSessionUser } from '../../lib/api';
+import { uploadImageToSupabase } from '../../lib/supabase';
 
 function Modal({ title, children, onClose }) {
   return (
@@ -50,6 +53,8 @@ export default function WorkerServices() {
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [duration, setDuration] = useState('60');
+  const [imageUrl, setImageUrl] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const currentUser = getStoredSessionUser();
 
@@ -98,6 +103,7 @@ export default function WorkerServices() {
       setCategoryId(categories[0].id.toString());
     }
     setDuration('60');
+    setImageUrl('');
     setIsModalOpen(true);
   }
 
@@ -108,7 +114,22 @@ export default function WorkerServices() {
     setDescription(service.description || '');
     setCategoryId(service.service_category_id.toString());
     setDuration(service.duration_minutes ? service.duration_minutes.toString() : '60');
+    setImageUrl(service.image_url || '');
     setIsModalOpen(true);
+  }
+
+  async function handleImageSelect(file) {
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    try {
+      const publicUrl = await uploadImageToSupabase(file, 'service-packages');
+      setImageUrl(publicUrl);
+    } catch (err) {
+      alert(err.message || 'Failed to upload image.');
+    } finally {
+      setIsUploadingImage(false);
+    }
   }
 
   async function handleSave(e) {
@@ -127,6 +148,7 @@ export default function WorkerServices() {
             description: description.trim(),
             service_category_id: parseInt(categoryId),
             duration_minutes: parseInt(duration) || null,
+            image_url: imageUrl || null,
           }),
         });
         const updated = res.data || res;
@@ -145,6 +167,7 @@ export default function WorkerServices() {
             service_category_id: parseInt(categoryId),
             duration_minutes: parseInt(duration) || null,
             location_type: 'onsite',
+            image_url: imageUrl || null,
           }),
         });
         const newPkg = res.data || res;
@@ -258,6 +281,16 @@ export default function WorkerServices() {
                     isActive ? 'border-slate-200' : 'border-slate-200 opacity-70'
                   }`}
                 >
+                  {service.image_url ? (
+                    <div className="h-44 w-full overflow-hidden border-b border-slate-100">
+                      <img src={service.image_url} alt={service.title} className="h-full w-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="h-44 w-full bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center border-b border-slate-100 text-slate-300">
+                      <Image size={32} />
+                    </div>
+                  )}
+
                   <div className="p-6">
                     <div className="flex items-start justify-between gap-4">
                       <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
@@ -397,6 +430,50 @@ export default function WorkerServices() {
                 placeholder="Describe what is included in this package, what materials you use, and details about the workflow..."
                 className="min-h-32 w-full resize-none rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wide text-slate-600 mb-2">
+                Service Package Image
+              </label>
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {imageUrl ? 'Replace package image' : 'Add package image'}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Images make your service package stand out to customers.
+                    </p>
+                  </div>
+
+                  <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800 shrink-0">
+                    <ImagePlus size={17} />
+                    {isUploadingImage ? 'Uploading...' : 'Select Image'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleImageSelect(e.target.files?.[0])}
+                      disabled={isUploadingImage}
+                    />
+                  </label>
+                </div>
+
+                {imageUrl && (
+                  <div className="relative mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                    <img src={imageUrl} alt="Package preview" className="h-40 w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setImageUrl('')}
+                      className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-slate-950/60 text-white hover:bg-red-600 transition"
+                      aria-label="Remove image"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex gap-3 justify-end pt-3 border-t border-slate-100">

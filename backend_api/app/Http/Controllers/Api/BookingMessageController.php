@@ -24,8 +24,11 @@ class BookingMessageController extends Controller
 
         $messages = $booking->messages()
             ->with('sender:id,name,role')
-            ->orderBy('created_at')
-            ->get();
+            ->orderBy('created_at', 'desc')
+            ->take(100)
+            ->get()
+            ->reverse()
+            ->values();
 
         return response()->json([
             'data' => $messages,

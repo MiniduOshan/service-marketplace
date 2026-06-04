@@ -299,4 +299,51 @@ class AdminController extends Controller
             'data' => $user->load('pricingPlan'),
         ]);
     }
+
+    public function deleteUser($id): JsonResponse
+    {
+        $user = User::findOrFail($id);
+
+        DB::transaction(function () use ($user) {
+            // Delete wallet
+            if ($user->wallet) {
+                $user->wallet->delete();
+            }
+
+            // Delete service packages
+            $user->servicePackages()->delete();
+
+            // Delete bookings
+            DB::table('bookings')->where('customer_id', $user->id)->orWhere('worker_id', $user->id)->delete();
+
+            // Delete reviews
+            DB::table('reviews')->where('worker_id', $user->id)->orWhere('customer_id', $user->id)->delete();
+
+            // Delete notifications
+            DB::table('notifications')->where('user_id', $user->id)->delete();
+
+            // Delete booking messages
+            DB::table('booking_messages')->where('sender_id', $user->id)->orWhere('receiver_id', $user->id)->delete();
+
+            // Delete payments
+            DB::table('payments')->whereIn('booking_id', function ($query) use ($user) {
+                $query->select('id')->from('bookings')->where('customer_id', $user->id)->orWhere('worker_id', $user->id);
+            })->delete();
+
+            // Delete notifications logs
+            DB::table('notification_logs')->where('user_id', $user->id)->delete();
+
+            // Finally, delete the user
+            $user->delete();
+        });
+
+        // Clear general caches
+        \Illuminate\Support\Facades\Cache::forget('public:stats');
+        \Illuminate\Support\Facades\Cache::forget('admin:dashboard:stats');
+        \Illuminate\Support\Facades\Cache::forever('services:list:version', (string) microtime(true));
+
+        return response()->json([
+            'message' => 'User and all associated data deleted successfully.',
+        ]);
+    }
 }

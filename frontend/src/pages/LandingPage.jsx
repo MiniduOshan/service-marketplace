@@ -293,13 +293,14 @@ export default function LandingPage() {
             }
           }
 
-          const mapped = uniqueServices.slice(0, 3).map((service, idx) => {
+          const mapped = uniqueServices.slice(0, 3).map((service) => {
             const workerName = service.worker?.name || 'Verified Pro';
-            const defaultImages = [
-              'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=800&q=80',
-              'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=800&q=80',
-              'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80'
-            ];
+            const initials = workerName
+              .split(' ')
+              .map((n) => n[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2);
             const avgRating = service.worker?.average_rating;
             const completedJobs = service.worker?.completed_jobs_count || 0;
             const planTitle = service.worker?.pricing_plan?.title;
@@ -311,8 +312,9 @@ export default function LandingPage() {
                 ? parseFloat(avgRating).toFixed(1)
                 : 'New',
               jobs: `${completedJobs} Job` + (completedJobs === 1 ? '' : 's'),
-              badge: service.worker?.phone_verified_at ? 'Verified ID' : 'Basic ID',
-              image: defaultImages[idx % defaultImages.length],
+              badge: service.worker?.verification === 'Verified' ? 'Verified ID' : 'Basic ID',
+              image: service.image_url || null,
+              initials,
               label: planTitle ? planTitle.replace(' Plan', '').toUpperCase() : null,
             };
           });
@@ -678,13 +680,21 @@ export default function LandingPage() {
                   key={pro.id || pro.name}
                   className="lp-fade-up lp-card-hover overflow-hidden rounded-2xl bg-white shadow-md shadow-slate-200 ring-1 ring-slate-100"
                 >
-                  <div className="relative h-48 overflow-hidden sm:h-52 md:h-44 lg:h-52">
-                    <img
-                      src={pro.image}
-                      alt={pro.name}
-                      className="h-full w-full object-cover cursor-pointer hover:scale-105 transition duration-300"
-                      onClick={() => navigate(`/worker/${pro.id}`)}
-                    />
+                  <div className="relative h-48 overflow-hidden sm:h-52 md:h-44 lg:h-52 bg-slate-100 flex items-center justify-center">
+                    {pro.image ? (
+                      <img
+                        src={pro.image}
+                        alt={pro.name}
+                        className="h-full w-full object-cover cursor-pointer hover:scale-105 transition duration-300"
+                        onClick={() => navigate(`/worker/${pro.id}`)}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#05735f] text-xl font-bold shadow-sm">
+                          {pro.initials}
+                        </div>
+                      </div>
+                    )}
 
                     {pro.label && (
                       <span className="absolute left-4 top-4 rounded bg-yellow-500 px-2 py-1 text-[10px] font-bold text-white">

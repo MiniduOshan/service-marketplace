@@ -28,14 +28,15 @@ export function getStoredSessionToken() {
 
 export async function apiRequest(path, options = {}) {
   const token = getStoredSessionToken();
+  const { headers: optionHeaders, ...restOptions } = options;
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
+    ...restOptions,
     headers: {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
+      ...(optionHeaders || {}),
     },
-    ...options,
   });
 
   const contentType = response.headers.get('content-type') || '';

@@ -46,6 +46,8 @@ class AuthController extends Controller
             'role' => $role,
         ]);
 
+        $user->load(['category', 'pricingPlan']);
+
         $token = $user->issueApiToken();
 
         return response()->json([
@@ -72,6 +74,8 @@ class AuthController extends Controller
                 'message' => 'Invalid email or password.',
             ], 422);
         }
+
+        $user->load(['category', 'pricingPlan']);
 
         $token = $user->issueApiToken();
 
@@ -129,11 +133,12 @@ class AuthController extends Controller
         }
 
         $token = $user->issueApiToken();
+        $user->load(['category', 'pricingPlan']);
 
         return response()->json([
             'message' => 'Logged in with Google successfully.',
             'data' => [
-                'user' => $user->fresh(),
+                'user' => $user,
                 'token' => $token,
             ],
         ]);
@@ -238,11 +243,12 @@ class AuthController extends Controller
         }
 
         $token = $user->issueApiToken();
+        $user->load(['category', 'pricingPlan']);
 
         return response()->json([
             'message' => 'Phone number verified successfully.',
             'data' => [
-                'user' => $user->fresh(),
+                'user' => $user,
                 'token' => $token,
             ],
         ]);

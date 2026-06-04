@@ -16,6 +16,7 @@ import {
 import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
 import BookingProgress from './BookingProgress';
+import { compressImage } from '../../lib/image';
 
 export default function BookingDetails() {
   const navigate = useNavigate();
@@ -66,7 +67,10 @@ export default function BookingDetails() {
     files.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (event) => {
-        setPhotos((prev) => [...prev, event.target.result]);
+        const rawBase64 = event.target.result;
+        compressImage(rawBase64, 1200, 1200, 0.75).then((compressedBase64) => {
+          setPhotos((prev) => [...prev, compressedBase64]);
+        });
       };
       reader.readAsDataURL(file);
     });

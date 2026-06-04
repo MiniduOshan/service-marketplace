@@ -105,9 +105,17 @@ function ProfessionalCard({ professional }) {
     >
       <div className="flex items-start justify-between">
         <div
-          className={`flex h-14 w-14 items-center justify-center rounded-full ${professional.avatarBg}`}
+          className={`flex h-14 w-14 items-center justify-center overflow-hidden rounded-full ${professional.image && !professional.image.includes('ui-avatars.com') ? '' : professional.avatarBg}`}
         >
-          <span className="text-lg font-bold text-slate-900">{professional.initials}</span>
+          {professional.image && !professional.image.includes('ui-avatars.com') ? (
+            <img
+              src={professional.image}
+              alt={professional.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="text-lg font-bold text-slate-900">{professional.initials}</span>
+          )}
         </div>
 
         {professional.verified && (
@@ -254,10 +262,10 @@ export default function CustomerDashboard() {
               rating,
               distance: `${(1.2 + idx * 0.7).toFixed(1)} km`,
               price: `LKR ${parseFloat(service.price).toLocaleString()}`,
-              verified: !!service.worker?.phone_verified_at,
+              verified: service.worker?.verification === 'Verified',
               avatarBg: bgColors[idx % bgColors.length],
               reviews: `${reviewsCount} reviews`,
-              image: service.worker?.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(workerName)}&background=random`,
+              image: service.worker?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(workerName)}&background=random`,
             };
           });
           setServicesList(mapped);

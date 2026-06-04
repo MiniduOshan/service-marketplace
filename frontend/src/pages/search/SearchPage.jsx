@@ -397,9 +397,17 @@ function WorkerCard({ worker }) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div
             onClick={() => navigate(`/worker/${worker.id}`)}
-            className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-xl font-bold cursor-pointer hover:opacity-90 transition ${worker.avatarClass}`}
+            className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full text-xl font-bold cursor-pointer hover:opacity-90 transition ${worker.avatar_url ? '' : worker.avatarClass}`}
           >
-            {worker.avatar}
+            {worker.avatar_url ? (
+              <img
+                src={worker.avatar_url}
+                alt={worker.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              worker.avatar
+            )}
           </div>
 
           <div className="min-w-0">
@@ -650,7 +658,8 @@ export default function SearchPage() {
             id: workerId || '1',
             servicePackageId: service.id,
             name: workerName,
-            avatar: workerName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2),
+             avatar: workerName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2),
+            avatar_url: service.worker?.avatar_url || null,
             role: service.title || 'Service Pro',
             category: service.category?.name || 'All',
             location: 'Colombo',
@@ -665,9 +674,9 @@ export default function SearchPage() {
             price: parseFloat(service.price) || 0,
             unit: '/ task',
             distance: 4,
-            verified: !!service.worker?.phone_verified_at,
+            verified: service.worker?.verification === 'Verified',
             featured: service.is_active,
-            pro: !!service.worker?.phone_verified_at,
+            pro: service.worker?.verification === 'Verified',
             avatarClass: 'bg-emerald-700 text-white',
           });
         });
