@@ -335,14 +335,17 @@ export default function WorkerJobs() {
   };
 
   const handleDecline = async (id) => {
+    const reason = window.prompt('Please enter a reason for declining this request:');
+    if (reason === null) return;
+
     try {
-      await apiRequest(`/auth/bookings/${id}/cancel`, {
+      await apiRequest(`/bookings/${id}/decline`, {
         method: 'PATCH',
-        body: JSON.stringify({ reason: 'Declined by worker' }),
+        body: JSON.stringify({ reason: reason || 'Declined without specific reason' }),
       });
       alert('Job declined.');
       setBookings((current) =>
-        current.map((b) => (b.id === id ? { ...b, status: 'cancelled' } : b))
+        current.map((b) => (b.id === id ? { ...b, status: 'declined' } : b))
       );
     } catch (err) {
       alert(err.message || 'Failed to decline job.');

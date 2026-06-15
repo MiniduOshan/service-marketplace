@@ -46,7 +46,7 @@ class BookingController extends Controller
 
         $validated = $request->validate([
             'service_package_id' => ['required', 'exists:service_packages,id'],
-            'scheduled_at' => ['required', 'date', 'after:now'],
+            'scheduled_at' => ['nullable', 'date', 'after:now'],
             'address' => ['required', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
             'payment_option' => ['nullable', 'string', 'in:advance,full,after'],
@@ -65,13 +65,15 @@ class BookingController extends Controller
         abort_unless($worker && $worker->status === 'Active', 422, 'The service provider is currently unavailable.');
         abort_unless($worker && $worker->verification === 'Verified', 422, 'The service provider is not verified.');
 
-        $hasConflict = Booking::query()
-            ->where('worker_id', $worker->id)
-            ->where('scheduled_at', $validated['scheduled_at'])
-            ->where('status', '!=', 'cancelled')
-            ->exists();
+        if (!empty($validated['scheduled_at'])) {
+            $hasConflict = Booking::query()
+                ->where('worker_id', $worker->id)
+                ->where('scheduled_at', $validated['scheduled_at'])
+                ->where('status', '!=', 'cancelled')
+                ->exists();
 
-        abort_if($hasConflict, 422, 'The service provider is already booked for this time slot.');
+            abort_if($hasConflict, 422, 'The service provider is already booked for this time slot.');
+        }
 
         $paymentOption = $validated['payment_option'] ?? 'after';
         $advancePaid = 0.00;
@@ -89,7 +91,7 @@ class BookingController extends Controller
                 'customer_id' => $user->id,
                 'worker_id' => $servicePackage->user_id,
                 'service_package_id' => $servicePackage->id,
-                'scheduled_at' => $validated['scheduled_at'],
+                'scheduled_at' => $validated['scheduled_at'] ?? null,
                 'address' => strip_tags($validated['address']),
                 'notes' => isset($validated['notes']) ? strip_tags($validated['notes']) : null,
                 'total_price' => $servicePackage->price,
@@ -127,17 +129,62 @@ class BookingController extends Controller
         ], 201);
     }
 
-    public function cancel(Request $request, Booking $booking): JsonResponse
+    public function updateSchedule(Request $request, Booking $booking): JsonResponse
     {
         $user = $request->user();
 
-        $booking = DB::transaction(function () use ($booking, $user) {
+        $validated = $request->validate([
+            'scheduled_at' => ['required', 'date', 'after:now'],
+        ]);
+
+        $booking = DB::transaction(function () use ($booking, $user, $validated) {
+            $lockedBooking = Booking::whereKey($booking->id)->lockForUpdate()->firstOrFail();
+            abort_unless($user && ($user->id === $lockedBooking->customer_id || $user->id === $lockedBooking->worker_id), 403, 'You cannot update this booking.');
+            abort_unless(in_array($lockedBooking->status, ['pending', 'confirmed']), 422, 'Only pending or confirmed bookings can be updated.');
+
+            $hasConflict = Booking::query()
+                ->where('worker_id', $lockedBooking->worker_id)
+                ->where('id', '!=', $lockedBooking->id)
+                ->where('scheduled_at', $validated['scheduled_at'])
+                ->where('status', '!=', 'cancelled')
+                ->exists();
+
+            abort_if($hasConflict, 422, 'The service provider is already booked for this time slot.');
+
+            $lockedBooking->update([
+                'scheduled_at' => $validated['scheduled_at'],
+            ]);
+            return $lockedBooking;
+        });
+
+        $recipientId = ($user->id === $booking->customer_id) ? $booking->worker_id : $booking->customer_id;
+        \App\Models\Notification::create([
+            'user_id' => $recipientId,
+            'title' => 'Booking Schedule Updated',
+            'message' => "The schedule for booking #{$booking->id} has been updated to {$booking->scheduled_at} by {$user->name}.",
+            'type' => 'booking',
+            'related_id' => $booking->id,
+        ]);
+
+        return response()->json([
+            'message' => 'Booking schedule updated successfully.',
+            'data' => $booking,
+        ]);
+    }
+
+    public function cancel(Request $request, Booking $booking): JsonResponse
+    {
+        $user = $request->user();
+        $reason = $request->input('reason');
+
+        $booking = DB::transaction(function () use ($booking, $user, $reason) {
             $lockedBooking = Booking::whereKey($booking->id)->lockForUpdate()->firstOrFail();
             abort_unless($user && ($user->id === $lockedBooking->customer_id || $user->id === $lockedBooking->worker_id), 403, 'You cannot cancel this booking.');
             abort_unless(in_array($lockedBooking->status, ['pending', 'confirmed']), 422, 'Only pending or confirmed bookings can be cancelled.');
 
             $lockedBooking->update([
                 'status' => 'cancelled',
+                'cancel_reason' => $reason,
             ]);
             return $lockedBooking;
         });
@@ -153,6 +200,37 @@ class BookingController extends Controller
 
         return response()->json([
             'message' => 'Booking cancelled successfully.',
+            'data' => $booking->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
+        ]);
+    }
+
+    public function decline(Request $request, Booking $booking): JsonResponse
+    {
+        $user = $request->user();
+        $reason = $request->input('reason');
+
+        $booking = DB::transaction(function () use ($booking, $user, $reason) {
+            $lockedBooking = Booking::whereKey($booking->id)->lockForUpdate()->firstOrFail();
+            abort_unless($user && $user->id === $lockedBooking->worker_id, 403, 'Only the assigned worker can decline this booking.');
+            abort_unless($lockedBooking->status === 'pending', 422, 'Only pending bookings can be declined.');
+
+            $lockedBooking->update([
+                'status' => 'declined',
+                'cancel_reason' => $reason,
+            ]);
+            return $lockedBooking;
+        });
+
+        \App\Models\Notification::create([
+            'user_id' => $booking->customer_id,
+            'title' => 'Booking Declined',
+            'message' => "Booking #{$booking->id} has been declined by {$user->name}.",
+            'type' => 'booking',
+            'related_id' => $booking->id,
+        ]);
+
+        return response()->json([
+            'message' => 'Booking declined successfully.',
             'data' => $booking->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
         ]);
     }

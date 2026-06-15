@@ -100,10 +100,18 @@ export default function BookingReview() {
                       Schedule
                     </h2>
                     <div className="mt-4 text-base leading-7 text-slate-600">
-                      <p className="font-semibold text-slate-900">
-                        {new Date(bookingDetails.date).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}
-                      </p>
-                      <p>{bookingDetails.time}</p>
+                      {bookingDetails.date ? (
+                        <>
+                          <p className="font-semibold text-slate-900">
+                            {new Date(bookingDetails.date).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}
+                          </p>
+                          <p>{bookingDetails.time}</p>
+                        </>
+                      ) : (
+                        <p className="font-semibold italic text-slate-500">
+                          TBD (Discuss in chat)
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

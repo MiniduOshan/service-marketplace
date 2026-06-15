@@ -156,6 +156,28 @@ export default function ChatPage() {
   const [mobileListOpen, setMobileListOpen] = useState(false);
   const { config } = useConfig();
 
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('09:00:00');
+  const [isUpdatingSchedule, setIsUpdatingSchedule] = useState(false);
+
+  const handleUpdateSchedule = async () => {
+    if (!scheduleDate) return;
+    setIsUpdatingSchedule(true);
+    try {
+      await apiRequest(`/bookings/${activeConversationId}/schedule`, {
+        method: 'PATCH',
+        body: JSON.stringify({ scheduled_at: `${scheduleDate} ${scheduleTime}` })
+      });
+      setShowScheduleModal(false);
+      alert('Schedule updated successfully!');
+    } catch (err) {
+      alert(err.message || 'Failed to update schedule.');
+    } finally {
+      setIsUpdatingSchedule(false);
+    }
+  };
+
   useEffect(() => {
     async function loadConversations() {
       try {
@@ -542,12 +564,21 @@ export default function ChatPage() {
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  className="shrink-0 cursor-pointer font-bold text-emerald-700 hover:text-emerald-800"
-                >
-                  Book now
-                </button>
+                <div className="flex shrink-0 gap-3 items-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowScheduleModal(true)}
+                    className="cursor-pointer font-bold text-amber-700 hover:text-amber-800"
+                  >
+                    Update Schedule
+                  </button>
+                  <button
+                    type="button"
+                    className="cursor-pointer font-bold text-emerald-700 hover:text-emerald-800"
+                  >
+                    Book now
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex shrink-0 items-center justify-between gap-4 border-b border-emerald-200 bg-emerald-50 px-5 py-3 text-sm">
@@ -557,12 +588,61 @@ export default function ChatPage() {
                     Booking Confirmed! Worker Contact: <span className="font-bold text-emerald-900">{activeConversation.phone || '077 123 4567'}</span>
                   </p>
                 </div>
+
+                {activeConversation.status === 'confirmed' && (
+                  <button
+                    type="button"
+                    onClick={() => setShowScheduleModal(true)}
+                    className="shrink-0 cursor-pointer font-bold text-emerald-700 hover:text-emerald-800"
+                  >
+                    Update Schedule
+                  </button>
+                )}
+              </div>
+            )}
+
+            {showScheduleModal && (
+              <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 text-sm">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="date"
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    className="h-9 rounded-md border border-slate-300 px-3 py-1 outline-none focus:border-emerald-500"
+                  />
+                  <select
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                    className="h-9 rounded-md border border-slate-300 px-3 py-1 outline-none focus:border-emerald-500"
+                  >
+                    <option value="09:00:00">Morning (08:00 AM - 12:00 PM)</option>
+                    <option value="13:00:00">Afternoon (12:00 PM - 04:00 PM)</option>
+                    <option value="17:00:00">Evening (04:00 PM - 08:00 PM)</option>
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowScheduleModal(false)}
+                    className="px-3 py-1.5 text-slate-600 hover:text-slate-900 font-medium cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUpdateSchedule}
+                    disabled={!scheduleDate || isUpdatingSchedule}
+                    className="rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-white hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
+                  >
+                    {isUpdatingSchedule ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
               </div>
             )}
 
             {/* Messages area scrolls */}
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8 lg:px-16">
-              <div className="mx-auto flex max-w-5xl flex-col gap-7">
+              <div className="flex flex-col gap-7">
                 {activeMessages.map((message) => (
                   <ChatBubble
                     key={message.id}
@@ -575,8 +655,8 @@ export default function ChatPage() {
             </div>
 
             {/* Message typing box */}
-            <footer className="shrink-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
-              <div className="mx-auto flex max-w-6xl items-center gap-3 rounded-xl bg-slate-100 px-4 py-2">
+            <footer className="shrink-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6 lg:px-16">
+              <div className="flex items-center gap-3 rounded-xl bg-slate-100 px-4 py-2">
                 <button
                   type="button"
                   className="cursor-pointer text-slate-500 transition hover:text-emerald-700"

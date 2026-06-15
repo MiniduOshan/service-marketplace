@@ -152,6 +152,7 @@ export default function CustomerNavbar({
   locationValue = '',
   onServiceChange,
   onLocationChange,
+  isLoggedIn = true,
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -159,6 +160,8 @@ export default function CustomerNavbar({
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
+    if (!isLoggedIn) return;
+
     const fetchNotifications = () => {
       apiRequest('/auth/notifications')
         .then((res) => {
@@ -210,11 +213,11 @@ export default function CustomerNavbar({
   const { config } = useConfig();
 
   const navLinks = [
-    { label: t.home, href: '/customer/dashboard', key: 'home' },
+    { label: t.home, href: isLoggedIn ? '/customer/dashboard' : '/', key: 'home' },
     { label: t.search_nav, href: '/search', key: 'search' },
   ];
 
-  if (config?.bookings !== false) {
+  if (config?.bookings !== false && isLoggedIn) {
     navLinks.push({ label: t.bookings, href: '/bookings', key: 'bookings' });
   }
 
@@ -331,17 +334,19 @@ export default function CustomerNavbar({
                 : 'hidden shrink-0 items-center justify-end gap-5 lg:flex'
             }
           >
-            <button
-              type="button"
-              onClick={toggleNotifications}
-              className={`relative cursor-pointer rounded-full p-2 transition ${
-                notificationOpen
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-emerald-700'
-              }`}
-              aria-label={t.notifications}
-            >
-              <Bell size={22} strokeWidth={1.9} />
+            {isLoggedIn ? (
+              <>
+                <button
+                  type="button"
+                  onClick={toggleNotifications}
+                  className={`relative cursor-pointer rounded-full p-2 transition ${
+                    notificationOpen
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-emerald-700'
+                  }`}
+                  aria-label={t.notifications}
+                >
+                  <Bell size={22} strokeWidth={1.9} />
 
               {unreadCount > 0 && (
                 <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-emerald-600" />
@@ -359,14 +364,31 @@ export default function CustomerNavbar({
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => goTo('/customer/profile')}
-              className="flex h-10 w-10 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-emerald-700 text-white shadow-sm transition hover:bg-emerald-800"
-              aria-label={t.profile}
-            >
-              <User size={20} />
-            </button>
+              <button
+                type="button"
+                onClick={() => goTo('/customer/profile')}
+                className="flex h-10 w-10 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-emerald-700 text-white shadow-sm transition hover:bg-emerald-800"
+                aria-label={t.profile}
+              >
+                <User size={20} />
+              </button>
+            </>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="rounded-xl px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 2xl:px-6 2xl:py-3 min-[1920px]:text-base"
+                >
+                  Log in
+                </button>
+                <button
+                  onClick={() => navigate('/signup')}
+                  className="rounded-xl bg-[#05735f] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#045c4c] 2xl:px-6 2xl:py-3 min-[1920px]:text-base"
+                >
+                  Sign up
+                </button>
+              </>
+            )}
           </div>
 
           <button
@@ -429,17 +451,19 @@ export default function CustomerNavbar({
             </nav>
 
             <div className="mt-4 flex items-center gap-4 border-t border-slate-100 pt-4">
-              <button
-                type="button"
-                onClick={toggleNotifications}
-                className={`relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-slate-200 ${
-                  notificationOpen
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'text-slate-700'
-                }`}
-                aria-label={t.notifications}
-              >
-                <Bell size={20} />
+              {isLoggedIn ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={toggleNotifications}
+                    className={`relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-slate-200 ${
+                      notificationOpen
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : 'text-slate-700'
+                    }`}
+                    aria-label={t.notifications}
+                  >
+                    <Bell size={20} />
 
                 {unreadCount > 0 && (
                   <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-emerald-600" />
@@ -465,6 +489,23 @@ export default function CustomerNavbar({
               >
                 <User size={19} />
               </button>
+            </>
+            ) : (
+              <div className="flex flex-1 gap-3">
+                <button
+                  onClick={() => navigate('/login')}
+                  className="flex-1 rounded-lg px-4 py-2 text-sm font-bold text-slate-700 border border-slate-200 transition hover:bg-slate-50"
+                >
+                  Log in
+                </button>
+                <button
+                  onClick={() => navigate('/signup')}
+                  className="flex-1 rounded-lg bg-[#05735f] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#045c4c]"
+                >
+                  Sign up
+                </button>
+              </div>
+            )}
             </div>
           </div>
         )}

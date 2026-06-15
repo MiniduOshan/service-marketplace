@@ -882,18 +882,15 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
-      {isLoggedIn ? (
-        <CustomerNavbar
-          activePage="search"
-          showSearchBar
-          serviceValue={filters.serviceQuery}
-          locationValue={filters.locationQuery}
-          onServiceChange={updateServiceSearch}
-          onLocationChange={(value) => updateFilter('locationQuery', value)}
-        />
-      ) : (
-        <Navbar />
-      )}
+      <CustomerNavbar
+        activePage="search"
+        showSearchBar
+        serviceValue={filters.serviceQuery}
+        locationValue={filters.locationQuery}
+        onServiceChange={updateServiceSearch}
+        onLocationChange={(value) => updateFilter('locationQuery', value)}
+        isLoggedIn={isLoggedIn}
+      />
 
       <main className={`flex min-h-[calc(100vh-80px)] ${!isLoggedIn ? 'pt-16' : ''}`}>
         <FilterPanel

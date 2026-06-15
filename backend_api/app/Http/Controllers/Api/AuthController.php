@@ -254,6 +254,96 @@ class AuthController extends Controller
         ]);
     }
 
+    public function requestUserPhoneOtp(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        $validated = $request->validate([
+            'phone' => ['nullable', 'string', 'max:30'],
+        ]);
+
+        $phone = $validated['phone'] ?? $user->phone;
+        $phone = User::normalizePhone($phone);
+
+        if (! $phone) {
+            return response()->json([
+                'message' => 'Enter a valid phone number.',
+            ], 422);
+        }
+
+        $otp = $this->generatePhoneOtp();
+        $otpExpiresAt = now()->addMinutes(10);
+
+        $cacheData = [
+            'phone' => $phone,
+            'otp_hash' => Hash::make($otp),
+            'expires_at' => $otpExpiresAt->toIso8601String(),
+            'attempts' => 0,
+        ];
+
+        Cache::put("user_phone_otp:{$user->id}", $cacheData, $otpExpiresAt);
+
+        $this->sendSMSOtp($phone, $otp);
+
+        return response()->json([
+            'message' => 'OTP sent successfully.',
+            'data' => [
+                'phone' => $phone,
+                'otp' => app()->isProduction() ? null : $otp,
+            ],
+        ]);
+    }
+
+    public function verifyUserPhoneOtp(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'otp' => ['required', 'string', 'size:6'],
+        ]);
+
+        $cacheData = Cache::get("user_phone_otp:{$user->id}");
+
+        if (! $cacheData || now()->parse($cacheData['expires_at'])->isPast()) {
+            return response()->json([
+                'message' => 'Invalid or expired OTP.',
+            ], 422);
+        }
+
+        if ($cacheData['attempts'] >= 5) {
+            return response()->json([
+                'message' => 'Too many failed attempts. Please request a new OTP.',
+            ], 422);
+        }
+
+        if (! Hash::check($validated['otp'], $cacheData['otp_hash'])) {
+            $cacheData['attempts']++;
+            $expiry = now()->parse($cacheData['expires_at']);
+            Cache::put("user_phone_otp:{$user->id}", $cacheData, $expiry);
+
+            return response()->json([
+                'message' => 'Invalid or expired OTP.',
+            ], 422);
+        }
+
+        // OTP verified successfully, remove cache entry
+        Cache::forget("user_phone_otp:{$user->id}");
+
+        // Update user phone if it changed during verification
+        if ($user->phone !== $cacheData['phone']) {
+            $user->update(['phone' => $cacheData['phone']]);
+        }
+        
+        $user->markPhoneVerified();
+        $user->load(['category', 'pricingPlan']);
+
+        return response()->json([
+            'message' => 'Phone number verified successfully.',
+            'data' => [
+                'user' => $user,
+            ],
+        ]);
+    }
+
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();

@@ -95,15 +95,16 @@ export default function BookingPayment() {
   const handleConfirmBooking = async () => {
     try {
       setLoading(true);
-      // Format scheduled_at time to backend format (YYYY-MM-DD HH:MM:SS)
-      // Since time is select option text, let's map it or use 09:00:00 as default morning slot
-      let timeSlot = '09:00:00';
-      if (bookingDetails.time.includes('Afternoon')) {
-        timeSlot = '13:00:00';
-      } else if (bookingDetails.time.includes('Evening')) {
-        timeSlot = '17:00:00';
+      let scheduledAt = null;
+      if (bookingDetails.date) {
+        let timeSlot = '09:00:00';
+        if (bookingDetails.time?.includes('Afternoon')) {
+          timeSlot = '13:00:00';
+        } else if (bookingDetails.time?.includes('Evening')) {
+          timeSlot = '17:00:00';
+        }
+        scheduledAt = `${bookingDetails.date} ${timeSlot}`;
       }
-      const scheduledAt = `${bookingDetails.date} ${timeSlot}`;
 
       await apiRequest('/auth/bookings', {
         method: 'POST',

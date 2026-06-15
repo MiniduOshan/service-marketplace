@@ -300,14 +300,17 @@ export default function WorkerDashboard() {
   };
 
   const handleDeclineJob = async (bookingId) => {
+    const reason = window.prompt('Please enter a reason for declining this request:');
+    if (reason === null) return;
+
     try {
-      await apiRequest(`/auth/bookings/${bookingId}/cancel`, {
+      await apiRequest(`/bookings/${bookingId}/decline`, {
         method: 'PATCH',
-        body: JSON.stringify({ reason: 'Worker declined' }),
+        body: JSON.stringify({ reason: reason || 'Declined without specific reason' }),
       });
       alert('Job request declined.');
       setBookings((current) =>
-        current.map((b) => (b.id === bookingId ? { ...b, status: 'cancelled' } : b))
+        current.map((b) => (b.id === bookingId ? { ...b, status: 'declined' } : b))
       );
     } catch (err) {
       alert(err.message || 'Failed to decline job request.');
@@ -329,10 +332,13 @@ export default function WorkerDashboard() {
   };
 
   const handleCancelJob = async (bookingId) => {
+    const reason = window.prompt('Please enter a reason for cancelling this job:');
+    if (reason === null) return;
+
     try {
       await apiRequest(`/auth/bookings/${bookingId}/cancel`, {
         method: 'PATCH',
-        body: JSON.stringify({ reason: 'Cancelled by worker' }),
+        body: JSON.stringify({ reason: reason || 'Cancelled by worker' }),
       });
       alert('Job cancelled.');
       setBookings((current) =>

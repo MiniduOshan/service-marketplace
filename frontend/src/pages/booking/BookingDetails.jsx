@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useConfig } from '../../context/ConfigContext';
 import {
   ArrowRight,
@@ -17,13 +17,13 @@ import CustomerNavbar from '../../components/layout/CustomerNavbar';
 import CustomerFooter from '../../components/layout/CustomerFooter';
 import BookingProgress from './BookingProgress';
 import { compressImage } from '../../lib/image';
+import { getStoredSessionUser, storeSession, getStoredSessionToken, apiRequest } from '../../lib/api';
 
 export default function BookingDetails() {
   const navigate = useNavigate();
   const location = useLocation();
   const { config } = useConfig();
 
-  // Load from location state, fallback if page is refreshed or visited directly
   const stateWorker = location.state?.worker || (location.state?.workerId ? {
     id: location.state.workerId,
     name: location.state.workerName || 'Verified Pro',
@@ -38,26 +38,38 @@ export default function BookingDetails() {
     price: location.state.priceLabel ? parseFloat(location.state.priceLabel.replace(/[^0-9.]/g, '')) || 3500 : 3500,
   } : null);
 
-  const worker = stateWorker || {
-    name: 'Verified Pro',
-    rating: '4.8',
-    reviews: '24 reviews',
-    avatar: 'https://ui-avatars.com/api/?name=Pro&background=006D44&color=fff',
-  };
+  if (!stateWorker || !statePackage) {
+    return <Navigate to="/" replace />;
+  }
 
-  const servicePackage = statePackage || {
-    id: 1,
-    title: 'Professional Service',
-    price: '3500',
-  };
+  const worker = stateWorker;
+  const servicePackage = statePackage;
 
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('Morning (08:00 AM - 12:00 PM)');
-  const [streetAddress, setStreetAddress] = useState('');
-  const [city, setCity] = useState('Colombo');
-  const [landmark, setLandmark] = useState('');
-  const [description, setDescription] = useState('');
-  const [photos, setPhotos] = useState([]);
+  const storedDraft = React.useMemo(() => {
+    try {
+      const data = JSON.parse(sessionStorage.getItem('bookingDraft') || '{}');
+      if (data.servicePackageId === servicePackage.id) {
+        return data;
+      }
+    } catch(e){}
+    return {};
+  }, [servicePackage.id]);
+
+  const [date, setDate] = useState(storedDraft.date || '');
+  const [time, setTime] = useState(storedDraft.time || 'Morning (08:00 AM - 12:00 PM)');
+  const [isTBD, setIsTBD] = useState(storedDraft.isTBD || false);
+  const [streetAddress, setStreetAddress] = useState(storedDraft.streetAddress || '');
+  const [city, setCity] = useState(storedDraft.city || 'Colombo');
+  const [landmark, setLandmark] = useState(storedDraft.landmark || '');
+  const [description, setDescription] = useState(storedDraft.description || '');
+  const [photos, setPhotos] = useState(storedDraft.photos || []);
+
+  React.useEffect(() => {
+    sessionStorage.setItem('bookingDraft', JSON.stringify({
+      servicePackageId: servicePackage.id,
+      date, time, isTBD, streetAddress, city, landmark, description, photos
+    }));
+  }, [servicePackage.id, date, time, isTBD, streetAddress, city, landmark, description, photos]);
   const fileInputRef = React.useRef(null);
 
   const handleFileChange = (e) => {
@@ -82,8 +94,8 @@ export default function BookingDetails() {
   };
 
   const handleContinue = () => {
-    if (!date) {
-      alert('Please select a preferred date.');
+    if (!isTBD && !date) {
+      alert('Please select a preferred date or choose to discuss it later.');
       return;
     }
     if (!streetAddress) {
@@ -98,8 +110,8 @@ export default function BookingDetails() {
         worker,
         servicePackage,
         bookingDetails: {
-          date,
-          time,
+          date: isTBD ? null : date,
+          time: isTBD ? null : time,
           address: fullAddress,
           description: description || 'No description provided.',
           photos,
@@ -110,6 +122,82 @@ export default function BookingDetails() {
 
   const displayPrice = `LKR ${parseFloat(servicePackage.price || 0).toLocaleString()}`;
 
+  const [currentUser, setCurrentUser] = useState(getStoredSessionUser());
+  const [isVerifyingPhone, setIsVerifyingPhone] = useState(!currentUser?.phone_verified_at);
+  const [verificationPhone, setVerificationPhone] = useState(currentUser?.phone || '');
+  const [verificationOtp, setVerificationOtp] = useState(['', '', '', '', '', '']);
+  const [verificationStep, setVerificationStep] = useState(1); // 1 = request, 2 = enter otp
+  const [verificationError, setVerificationError] = useState('');
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const otpInputRefs = React.useRef([]);
+
+  const handleRequestOtp = async (e) => {
+    e?.preventDefault();
+    setVerificationError('');
+    setIsSendingOtp(true);
+    try {
+      await apiRequest('/auth/user/request-phone-otp', {
+        method: 'POST',
+        body: JSON.stringify({ phone: verificationPhone }),
+      });
+      setVerificationStep(2);
+    } catch (err) {
+      setVerificationError(err.message || 'Failed to send OTP.');
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e?.preventDefault();
+    const code = verificationOtp.join('');
+    if (code.length !== 6) return;
+    setVerificationError('');
+    setIsSendingOtp(true);
+    try {
+      const res = await apiRequest('/auth/user/verify-phone-otp', {
+        method: 'POST',
+        body: JSON.stringify({ otp: code }),
+      });
+      const updatedUser = res.data.user;
+      storeSession(getStoredSessionToken(), updatedUser);
+      setCurrentUser(updatedUser);
+      setIsVerifyingPhone(false);
+    } catch (err) {
+      setVerificationError(err.message || 'Invalid OTP.');
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleOtpChange = (index, value) => {
+    const cleanValue = value.replace(/\D/g, '').slice(0, 1);
+    const updatedOtp = [...verificationOtp];
+    updatedOtp[index] = cleanValue;
+    setVerificationOtp(updatedOtp);
+    if (cleanValue && index < verificationOtp.length - 1) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !verificationOtp[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+    const nextOtp = [...verificationOtp];
+    pasted.split('').forEach((digit, index) => {
+      nextOtp[index] = digit;
+    });
+    setVerificationOtp(nextOtp);
+    otpInputRefs.current[Math.min(pasted.length, 5)]?.focus();
+  };
+
   if (config?.bookings === false) {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -118,6 +206,92 @@ export default function BookingDetails() {
           <div className="text-center">
             <h2 className="text-xl font-bold text-slate-900">Bookings Disabled</h2>
             <p className="mt-2 text-slate-500">The booking feature is currently disabled by the administrator.</p>
+          </div>
+        </main>
+        <CustomerFooter />
+      </div>
+    );
+  }
+
+  if (isVerifyingPhone) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900">
+        <CustomerNavbar activePage="bookings" />
+        <main className="flex min-h-[calc(100vh-80px)] flex-col items-center justify-center p-6 sm:p-10">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
+              <Shield size={32} className="text-emerald-700" />
+            </div>
+            
+            <h1 className="mb-2 text-center text-2xl font-bold text-slate-900">
+              Verify Your Phone Number
+            </h1>
+            <p className="mb-8 text-center text-sm text-slate-500">
+              For security and to coordinate with workers, we need to verify your phone number before you can book.
+            </p>
+
+            {verificationError && (
+              <p className="mb-6 text-center text-sm font-medium text-red-600">
+                {verificationError}
+              </p>
+            )}
+
+            {verificationStep === 1 ? (
+              <form onSubmit={handleRequestOtp} className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={verificationPhone}
+                    onChange={(e) => setVerificationPhone(e.target.value)}
+                    placeholder="e.g. 077 123 4567"
+                    className="h-12 w-full rounded-lg border border-slate-200 px-4 text-slate-900 outline-none transition focus:border-emerald-600"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isSendingOtp}
+                  className="flex h-12 w-full items-center justify-center rounded-lg bg-emerald-700 font-bold text-white transition hover:bg-emerald-800 disabled:opacity-70"
+                >
+                  {isSendingOtp ? 'Sending...' : 'Send Verification Code'}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOtp} className="space-y-6">
+                <div className="flex justify-center gap-2">
+                  {verificationOtp.map((digit, index) => (
+                    <input
+                      key={index}
+                      ref={(el) => (otpInputRefs.current[index] = el)}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                      onPaste={index === 0 ? handleOtpPaste : undefined}
+                      className="h-12 w-12 rounded-lg border border-slate-200 bg-slate-50 text-center text-lg font-bold text-slate-900 outline-none transition focus:border-emerald-600 focus:bg-white sm:h-14 sm:w-14"
+                    />
+                  ))}
+                </div>
+                <button
+                  type="submit"
+                  disabled={isSendingOtp || verificationOtp.join('').length !== 6}
+                  className="flex h-12 w-full items-center justify-center rounded-lg bg-emerald-700 font-bold text-white transition hover:bg-emerald-800 disabled:opacity-70"
+                >
+                  {isSendingOtp ? 'Verifying...' : 'Verify & Continue'}
+                </button>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setVerificationStep(1)}
+                    className="text-sm font-bold text-emerald-700 transition hover:underline"
+                  >
+                    Change Phone Number
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </main>
         <CustomerFooter />
@@ -145,11 +319,22 @@ export default function BookingDetails() {
             <div className="space-y-8">
               {/* Preferred Date & Time */}
               <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-                <div className="mb-6 flex items-center gap-3">
-                  <CalendarDays size={23} className="text-emerald-700" />
-                  <h2 className="text-xl font-semibold text-slate-900">
-                    Preferred Date & Time
-                  </h2>
+                <div className="mb-6 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CalendarDays size={23} className="text-emerald-700" />
+                    <h2 className="text-xl font-semibold text-slate-900">
+                      Preferred Date & Time
+                    </h2>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isTBD}
+                      onChange={(e) => setIsTBD(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-600"
+                    />
+                    <span className="text-sm text-slate-600">Discuss in chat later</span>
+                  </label>
                 </div>
 
                 <div className="grid gap-5 md:grid-cols-2">
@@ -161,7 +346,8 @@ export default function BookingDetails() {
                       type="date"
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-emerald-600"
+                      disabled={isTBD}
+                      className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-emerald-600 disabled:opacity-50 disabled:bg-slate-50"
                     />
                   </div>
 
@@ -172,7 +358,8 @@ export default function BookingDetails() {
                     <select
                       value={time}
                       onChange={(e) => setTime(e.target.value)}
-                      className="h-12 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-emerald-600"
+                      disabled={isTBD}
+                      className="h-12 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-emerald-600 disabled:opacity-50 disabled:bg-slate-50"
                     >
                       <option>Morning (08:00 AM - 12:00 PM)</option>
                       <option>Afternoon (12:00 PM - 04:00 PM)</option>

@@ -28,43 +28,43 @@ const freeComparison = [
   {
     feature: 'Lead Fees',
     free: 'LKR 150 per lead',
-    pro: 'Zero Fees',
-    proSub: 'Keep 100% of lead price',
-    enterprise: 'Zero Fees',
-    enterpriseSub: 'Keep 100% + early invites',
+    pro: 'LKR 150 per lead',
+    proSub: 'Pay per lead applied',
+    premium: 'LKR 150 per lead',
+    premiumSub: 'Pay per lead applied',
   },
   {
     feature: 'Search Visibility',
     free: 'Standard listing',
     pro: 'Priority Ranking',
     proSub: 'Top of search results',
-    enterprise: 'Top Boost',
-    enterpriseSub: 'Featured top rank visibility',
+    premium: 'Top Boost',
+    premiumSub: 'Featured top rank visibility',
   },
   {
     feature: 'Profile Badge',
     free: 'No special badge',
     pro: "'Featured' Badge",
     proSub: 'Build instant trust',
-    enterprise: "'Elite' Badge",
-    enterpriseSub: 'Premium verification badge',
+    premium: "'Elite' Badge",
+    premiumSub: 'Premium verification badge',
   },
   {
     feature: 'Monthly Bookings',
     free: 'Limited to 3/mo',
     pro: 'Unlimited',
     proSub: 'Unlimited bookings & leads',
-    enterprise: 'Unlimited + priority support',
-    enterpriseSub: 'Dedicated help desk support',
+    premium: 'Unlimited + priority support',
+    premiumSub: 'Dedicated help desk support',
   },
 ];
 
 const featureRows = [
-  { feature: 'Lead Invitations', free: '5 / Month', pro: 'Unlimited', enterprise: 'Unlimited + Early Access' },
-  { feature: 'Commission Rate', free: '10%', pro: '5% Fixed', enterprise: '0% First 5 Jobs, then 3%' },
-  { feature: 'Skill Badges', free: 'Max 2', pro: 'Unlimited', enterprise: 'Unlimited' },
-  { feature: 'Profile Analytics', free: 'Basic', pro: 'Advanced', enterprise: 'Custom Reporting' },
-  { feature: 'Lead Fees', free: 'Pay-per-lead', pro: 'Zero', enterprise: 'Zero' },
+  { feature: 'Lead Invitations', free: '5 / Month', pro: 'Unlimited', premium: 'Unlimited + Early Access' },
+  { feature: 'Commission Rate', free: '10%', pro: '5% Fixed', premium: '0% First 5 Jobs, then 3%' },
+  { feature: 'Skill Badges', free: 'Max 2', pro: 'Unlimited', premium: 'Unlimited' },
+  { feature: 'Profile Analytics', free: 'Basic', pro: 'Advanced', premium: 'Custom Reporting' },
+  { feature: 'Lead Fees', free: 'Pay-per-lead', pro: 'Pay-per-lead', premium: 'Pay-per-lead' },
 ];
 
 function ScoreRow({ label, points }) {
@@ -77,9 +77,9 @@ function ScoreRow({ label, points }) {
 }
 
 function PriorityScoreCard({ plan }) {
-  const isEnterprise = plan === 'enterprise';
+  const ispremium = plan === 'premium';
   const isPro = plan === 'pro';
-  const score = isEnterprise ? 98 : isPro ? 87 : 62;
+  const score = ispremium ? 98 : isPro ? 87 : 62;
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -102,9 +102,9 @@ function PriorityScoreCard({ plan }) {
       </div>
 
       <div className="mt-7 space-y-5">
-        {isEnterprise ? (
+        {ispremium ? (
           <>
-            <ScoreRow label="Enterprise Subscription" points="+35" />
+            <ScoreRow label="premium Subscription" points="+35" />
             <ScoreRow label="Response Rate" points="+20" />
             <ScoreRow label="Rating Average" points="+22" />
             <ScoreRow label="Featured Worker Bonus" points="+21" />
@@ -141,7 +141,7 @@ function PriorityScoreCard({ plan }) {
   );
 }
 
-function PaidPlanHero({ title, onManageBilling, onCancelPlan, onUpgradeEnterprise, enterprisePrice, formattedPrice }) {
+function PaidPlanHero({ title, onManageBilling, onCancelPlan, onUpgradepremium, premiumPrice, formattedPrice }) {
   const isPro = title?.toLowerCase() === 'pro';
 
   return (
@@ -179,7 +179,7 @@ function PaidPlanHero({ title, onManageBilling, onCancelPlan, onUpgradeEnterpris
                 Profile Boost
               </p>
               <p className="text-2xl font-bold leading-tight">
-                {title?.toLowerCase() === 'enterprise' ? '+50 points' : '+25 points'}
+                {title?.toLowerCase() === 'premium' ? '+50 points' : '+25 points'}
               </p>
             </div>
           </div>
@@ -198,12 +198,12 @@ function PaidPlanHero({ title, onManageBilling, onCancelPlan, onUpgradeEnterpris
         {isPro && (
           <button
             type="button"
-            onClick={onUpgradeEnterprise}
+            onClick={onUpgradepremium}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-600 px-7 py-3.5 text-sm font-bold text-slate-950 transition shadow-md whitespace-nowrap"
           >
             <Sparkles size={16} className="text-slate-950" />
-            Upgrade to ENTERPRISE
-            {enterprisePrice && <span className="text-[10px] font-semibold opacity-90 ml-1">({enterprisePrice}/mo)</span>}
+            Upgrade to premium
+            {premiumPrice && <span className="text-[10px] font-semibold opacity-90 ml-1">({premiumPrice}/mo)</span>}
           </button>
         )}
 
@@ -219,7 +219,7 @@ function PaidPlanHero({ title, onManageBilling, onCancelPlan, onUpgradeEnterpris
   );
 }
 
-function FreePlanHero({ onUpgradePro, onUpgradeEnterprise, proPrice, enterprisePrice }) {
+function FreePlanHero({ onUpgradePro, onUpgradepremium, proPrice, premiumPrice }) {
   return (
     <div
       className="rounded-xl p-6 text-white shadow-xl sm:p-7"
@@ -264,14 +264,14 @@ function FreePlanHero({ onUpgradePro, onUpgradeEnterprise, proPrice, enterpriseP
 
           <button
             type="button"
-            onClick={onUpgradeEnterprise}
+            onClick={onUpgradepremium}
             className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-transparent bg-amber-500 hover:bg-amber-600 px-6 py-4 text-sm font-bold text-slate-950 transition active:scale-[0.98] shadow-lg whitespace-nowrap min-w-[200px]"
           >
             <div className="flex items-center gap-2">
               <Sparkles size={18} className="text-slate-950" />
-              Upgrade to ENTERPRISE
+              Upgrade to premium
             </div>
-            {enterprisePrice && <span className="text-xs font-normal text-slate-900 opacity-90">({enterprisePrice}/mo)</span>}
+            {premiumPrice && <span className="text-xs font-normal text-slate-900 opacity-90">({premiumPrice}/mo)</span>}
           </button>
         </div>
       </div>
@@ -321,7 +321,7 @@ function FreePlanComparison() {
           </div>
 
           <div className="px-6 py-5 text-center text-xs font-bold uppercase tracking-widest text-amber-600">
-            Enterprise Tier
+            premium Tier
           </div>
         </div>
 
@@ -341,8 +341,8 @@ function FreePlanComparison() {
             </div>
 
             <div className="px-6 py-6">
-              <p className="font-bold text-amber-600">{row.enterprise}</p>
-              <p className="mt-1 text-sm text-slate-500">{row.enterpriseSub}</p>
+              <p className="font-bold text-amber-600">{row.premium}</p>
+              <p className="mt-1 text-sm text-slate-500">{row.premiumSub}</p>
             </div>
           </div>
         ))}
@@ -354,7 +354,7 @@ function FreePlanComparison() {
 function FeatureTable({ plan }) {
   const isFree = plan?.toLowerCase() === 'free';
   const isPro = plan?.toLowerCase() === 'pro';
-  const isEnterprise = plan?.toLowerCase() === 'enterprise';
+  const ispremium = plan?.toLowerCase() === 'premium';
 
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -391,11 +391,11 @@ function FeatureTable({ plan }) {
 
         <div
           className={`relative px-4 py-6 text-center text-lg font-bold flex flex-col justify-center items-center gap-1.5 ${
-            isEnterprise ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'
+            ispremium ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'
           }`}
         >
-          ENTERPRISE
-          {isEnterprise && (
+          premium
+          {ispremium && (
             <span className="rounded bg-emerald-700 px-2 py-0.5 text-[10px] font-bold uppercase text-white tracking-wider">
               Active
             </span>
@@ -430,10 +430,10 @@ function FeatureTable({ plan }) {
 
           <div
             className={`px-4 py-6 text-center font-bold text-sm flex items-center justify-center ${
-              isEnterprise ? 'bg-emerald-50/30 text-slate-950 font-bold' : 'text-slate-700'
+              ispremium ? 'bg-emerald-50/30 text-slate-950 font-bold' : 'text-slate-700'
             }`}
           >
-            {row.enterprise}
+            {row.premium}
           </div>
         </div>
       ))}
@@ -442,7 +442,7 @@ function FeatureTable({ plan }) {
 }
 
 function LeadFeeModelCard({ plan }) {
-  const isPaid = plan === 'pro' || plan === 'enterprise';
+  const isPaid = plan === 'pro' || plan === 'premium';
   const enabled = !isPaid;
 
   return (
@@ -600,7 +600,7 @@ export default function WorkerSubscription() {
   const isPaid = currentPlan !== 'Free';
 
   const proPlan = allPlans.find((p) => p.title?.toLowerCase() === 'pro');
-  const enterprisePlan = allPlans.find((p) => p.title?.toLowerCase() === 'enterprise');
+  const premiumPlan = allPlans.find((p) => p.title?.toLowerCase() === 'premium');
 
   const formattedPrice = isPaid 
     ? `LKR ${currentPlanPrice.toLocaleString()}`
@@ -709,16 +709,16 @@ export default function WorkerSubscription() {
                 title={currentPlan}
                 onManageBilling={() => setBillingModalOpen(true)}
                 onCancelPlan={handleCancelTrigger}
-                onUpgradeEnterprise={() => handleUpgrade(enterprisePlan)}
-                enterprisePrice={enterprisePlan ? `${Number(enterprisePlan.price).toLocaleString()}` : ''}
+                onUpgradepremium={() => handleUpgrade(premiumPlan)}
+                premiumPrice={premiumPlan ? `${Number(premiumPlan.price).toLocaleString()}` : ''}
                 formattedPrice={formattedPrice}
               />
             ) : (
               <FreePlanHero
                 onUpgradePro={() => handleUpgrade(proPlan)}
-                onUpgradeEnterprise={() => handleUpgrade(enterprisePlan)}
+                onUpgradepremium={() => handleUpgrade(premiumPlan)}
                 proPrice={proPlan ? `${Number(proPlan.price).toLocaleString()}` : ''}
-                enterprisePrice={enterprisePlan ? `${Number(enterprisePlan.price).toLocaleString()}` : ''}
+                premiumPrice={premiumPlan ? `${Number(premiumPlan.price).toLocaleString()}` : ''}
               />
             )}
 

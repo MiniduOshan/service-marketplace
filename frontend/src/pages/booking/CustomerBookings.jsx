@@ -255,6 +255,7 @@ function ActiveBookingCard({ booking, onComplete, onViewDetails }) {
 function PendingBookingCard({ booking, onAccept, onDecline, onCancel, onViewDetails }) {
   const currentUser = getStoredSessionUser();
   const isWorker = currentUser?.role === 'worker';
+  const navigate = useNavigate();
 
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 transition hover:border-emerald-200 hover:shadow-md">
@@ -303,6 +304,14 @@ function PendingBookingCard({ booking, onAccept, onDecline, onCancel, onViewDeta
             >
               View Details
             </button>
+            <button
+              type="button"
+              onClick={() => navigate('/chat', { state: { bookingId: booking.id } })}
+              className="inline-flex h-9 cursor-pointer items-center justify-center whitespace-nowrap gap-2 rounded-lg border border-emerald-700 bg-white px-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+            >
+              <MessageSquare size={15} />
+              Chat
+            </button>
 
             {isWorker ? (
               <div className="flex gap-2">
@@ -338,6 +347,8 @@ function PendingBookingCard({ booking, onAccept, onDecline, onCancel, onViewDeta
 }
 
 function CompletedBookingCard({ booking, onViewDetails, onLeaveFeedback }) {
+  const navigate = useNavigate();
+
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 transition hover:border-emerald-200 hover:shadow-md">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -382,13 +393,23 @@ function CompletedBookingCard({ booking, onViewDetails, onLeaveFeedback }) {
         </div>
 
         <div className="flex shrink-0 flex-wrap lg:flex-col lg:justify-end gap-2 lg:items-end lg:min-w-fit">
-          <button
-            type="button"
-            onClick={() => onViewDetails(booking)}
-            className="inline-flex whitespace-nowrap h-9 cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            View Details
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => onViewDetails(booking)}
+              className="inline-flex whitespace-nowrap h-9 cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              View Details
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/chat', { state: { bookingId: booking.id } })}
+              className="inline-flex h-9 cursor-pointer items-center justify-center whitespace-nowrap gap-2 rounded-lg border border-emerald-700 bg-white px-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+            >
+              <MessageSquare size={15} />
+              Chat
+            </button>
+          </div>
           
           {booking.rawBooking?.review ? (
             <span className="inline-flex items-center gap-1 text-xs text-slate-500 font-semibold px-4 py-2">
@@ -796,10 +817,13 @@ export default function CustomerBookings() {
   };
 
   const handleDecline = async (id) => {
+    const reason = window.prompt('Please enter a reason for declining this booking:');
+    if (reason === null) return; // User cancelled the prompt
+
     try {
-      await apiRequest(`/auth/bookings/${id}/cancel`, {
+      await apiRequest(`/bookings/${id}/decline`, {
         method: 'PATCH',
-        body: JSON.stringify({ reason: 'Declined by worker' }),
+        body: JSON.stringify({ reason: reason || 'Declined without specific reason' }),
       });
       alert('Booking declined.');
       loadBookings();
@@ -809,9 +833,13 @@ export default function CustomerBookings() {
   };
 
   const handleCancel = async (id) => {
+    const reason = window.prompt('Please enter a reason for cancelling this booking:');
+    if (reason === null) return; // User cancelled the prompt
+
     try {
       await apiRequest(`/auth/bookings/${id}/cancel`, {
         method: 'PATCH',
+        body: JSON.stringify({ reason: reason || 'Cancelled without specific reason' }),
       });
       alert('Booking cancelled successfully!');
       loadBookings();

@@ -43,6 +43,8 @@ $registerRoutes = function () {
         Route::middleware(AuthenticateApiToken::class)->group(function () {
             Route::get('/me', [AuthController::class, 'me']);
             Route::post('/logout', [AuthController::class, 'logout']);
+            Route::post('/user/request-phone-otp', [AuthController::class, 'requestUserPhoneOtp']);
+            Route::post('/user/verify-phone-otp', [AuthController::class, 'verifyUserPhoneOtp']);
             Route::post('/profile', [AuthController::class, 'updateProfile']);
             Route::post('/user/pricing-plan', [AuthController::class, 'updatePricingPlan']);
             Route::get('/customer/stats', [AuthController::class, 'customerStats']);
@@ -50,9 +52,11 @@ $registerRoutes = function () {
             Route::get('/bookings', [BookingController::class, 'index']);
             Route::post('/bookings', [BookingController::class, 'store']);
             Route::patch('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
+            Route::patch('/bookings/{booking}/decline', [BookingController::class, 'decline']);
             Route::patch('/bookings/{booking}/accept', [BookingController::class, 'accept']);
             Route::patch('/bookings/{booking}/complete', [BookingController::class, 'complete']);
             Route::patch('/bookings/{booking}/settle', [BookingController::class, 'settle']);
+            Route::patch('/bookings/{booking}/schedule', [BookingController::class, 'updateSchedule']);
             Route::get('/bookings/{booking}/messages', [BookingMessageController::class, 'index']);
             Route::post('/bookings/{booking}/messages', [BookingMessageController::class, 'store']);
             Route::post('/bookings/{booking}/reviews', [ReviewController::class, 'store']);
