@@ -509,12 +509,10 @@ export default function CustomerProfile() {
     setIsSendingOtp(true);
 
     try {
-      const response = await apiRequest('/auth/phone/request-otp', {
+      const response = await apiRequest('/auth/user/request-phone-otp', {
         method: 'POST',
         body: JSON.stringify({
-          name,
           phone,
-          role: sessionUser?.role || 'customer',
         }),
       });
 
@@ -553,19 +551,17 @@ export default function CustomerProfile() {
     setIsVerifyingOtp(true);
 
     try {
-      const response = await apiRequest('/auth/phone/verify-otp', {
+      const response = await apiRequest('/auth/user/verify-phone-otp', {
         method: 'POST',
         body: JSON.stringify({
-          phone,
           otp,
         }),
       });
 
       const verifiedUser = response?.data?.user;
-      const token = response?.data?.token;
 
-      if (verifiedUser && token) {
-        storeSession(token, verifiedUser);
+      if (verifiedUser) {
+        storeSession(undefined, verifiedUser);
         setSessionUser(verifiedUser);
       }
 
