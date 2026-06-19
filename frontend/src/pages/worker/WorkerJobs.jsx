@@ -339,7 +339,7 @@ export default function WorkerJobs() {
     if (reason === null) return;
 
     try {
-      await apiRequest(`/bookings/${id}/decline`, {
+      await apiRequest(`/auth/bookings/${id}/decline`, {
         method: 'PATCH',
         body: JSON.stringify({ reason: reason || 'Declined without specific reason' }),
       });
