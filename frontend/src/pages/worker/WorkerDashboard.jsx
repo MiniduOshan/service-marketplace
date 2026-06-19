@@ -304,7 +304,7 @@ export default function WorkerDashboard() {
     if (reason === null) return;
 
     try {
-      await apiRequest(`/bookings/${bookingId}/decline`, {
+      await apiRequest(`/auth/bookings/${bookingId}/decline`, {
         method: 'PATCH',
         body: JSON.stringify({ reason: reason || 'Declined without specific reason' }),
       });
