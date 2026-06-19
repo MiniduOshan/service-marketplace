@@ -22,6 +22,7 @@ class Booking extends Model
         'notes',
         'total_price',
         'status',
+        'cancel_reason',
         'payment_option',
         'advance_paid',
         'payout_status',
