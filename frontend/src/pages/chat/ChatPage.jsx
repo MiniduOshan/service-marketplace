@@ -165,7 +165,7 @@ export default function ChatPage() {
     if (!scheduleDate) return;
     setIsUpdatingSchedule(true);
     try {
-      await apiRequest(`/bookings/${activeConversationId}/schedule`, {
+      await apiRequest(`/auth/bookings/${activeConversationId}/schedule`, {
         method: 'PATCH',
         body: JSON.stringify({ scheduled_at: `${scheduleDate} ${scheduleTime}` })
       });
