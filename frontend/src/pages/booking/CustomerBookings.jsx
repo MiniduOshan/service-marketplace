@@ -821,7 +821,7 @@ export default function CustomerBookings() {
     if (reason === null) return; // User cancelled the prompt
 
     try {
-      await apiRequest(`/bookings/${id}/decline`, {
+      await apiRequest(`/auth/bookings/${id}/decline`, {
         method: 'PATCH',
         body: JSON.stringify({ reason: reason || 'Declined without specific reason' }),
       });
