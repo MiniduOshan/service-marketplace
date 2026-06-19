@@ -305,35 +305,29 @@ class AdminController extends Controller
         $user = User::findOrFail($id);
 
         DB::transaction(function () use ($user) {
-            // Delete wallet
-            if ($user->wallet) {
-                $user->wallet->delete();
+            $bookingIds = DB::table('bookings')
+                ->where('customer_id', $user->id)
+                ->orWhere('worker_id', $user->id)
+                ->pluck('id');
+
+            // Delete records that depend on bookings first.
+            if ($bookingIds->isNotEmpty()) {
+                DB::table('booking_messages')->whereIn('booking_id', $bookingIds)->delete();
+                DB::table('payments')->whereIn('booking_id', $bookingIds)->delete();
+                DB::table('reviews')->whereIn('booking_id', $bookingIds)->delete();
+                DB::table('bookings')->whereIn('id', $bookingIds)->delete();
             }
 
-            // Delete service packages
-            $user->servicePackages()->delete();
-
-            // Delete bookings
-            DB::table('bookings')->where('customer_id', $user->id)->orWhere('worker_id', $user->id)->delete();
-
-            // Delete reviews
+            // Delete remaining user-linked records.
+            DB::table('booking_messages')->where('sender_id', $user->id)->delete();
             DB::table('reviews')->where('worker_id', $user->id)->orWhere('customer_id', $user->id)->delete();
-
-            // Delete notifications
             DB::table('notifications')->where('user_id', $user->id)->delete();
+            DB::table('wallets')->where('user_id', $user->id)->delete();
+            DB::table('service_packages')->where('user_id', $user->id)->delete();
 
-            // Delete booking messages
-            DB::table('booking_messages')->where('sender_id', $user->id)->orWhere('receiver_id', $user->id)->delete();
+            // notification_logs is an admin broadcast log table in this project,
+            // so it does not have a user_id column and should not be deleted by user.
 
-            // Delete payments
-            DB::table('payments')->whereIn('booking_id', function ($query) use ($user) {
-                $query->select('id')->from('bookings')->where('customer_id', $user->id)->orWhere('worker_id', $user->id);
-            })->delete();
-
-            // Delete notifications logs
-            DB::table('notification_logs')->where('user_id', $user->id)->delete();
-
-            // Finally, delete the user
             $user->delete();
         });
 
