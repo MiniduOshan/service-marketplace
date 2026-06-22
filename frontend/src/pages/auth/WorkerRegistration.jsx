@@ -77,6 +77,34 @@ const cityOptions = [
   'Kegalle',
 ];
 
+const districtOptions = [
+  'Colombo',
+  'Gampaha',
+  'Kalutara',
+  'Kandy',
+  'Matale',
+  'Nuwara Eliya',
+  'Galle',
+  'Matara',
+  'Hambantota',
+  'Jaffna',
+  'Kilinochchi',
+  'Mannar',
+  'Vavuniya',
+  'Mullaitivu',
+  'Batticaloa',
+  'Ampara',
+  'Trincomalee',
+  'Kurunegala',
+  'Puttalam',
+  'Anuradhapura',
+  'Polonnaruwa',
+  'Badulla',
+  'Monaragala',
+  'Ratnapura',
+  'Kegalle',
+];
+
 function WorkerRegistrationHeader({ isEditMode }) {
   const navigate = useNavigate();
 
@@ -247,6 +275,8 @@ function StepTwo({
   setAvatarUrl,
   city,
   setCity,
+  district,
+  setDistrict,
   dbCategories,
   saveProfileData,
 }) {
@@ -285,6 +315,7 @@ function StepTwo({
         skills,
         avatar_url: avatarUrl,
         city,
+        district,
       });
       onNext();
     } catch (err) {
@@ -431,7 +462,16 @@ function StepTwo({
               Service Location
             </h2>
 
-            <div className="mt-5">
+            <div className="mt-5 space-y-4">
+              <Field label="District">
+                <Select value={district} onChange={(e) => setDistrict(e.target.value)}>
+                  <option value="" disabled>Select District</option>
+                  {districtOptions.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </Select>
+              </Field>
+
               <Field label="City">
                 <Select value={city} onChange={(e) => setCity(e.target.value)}>
                   <option value="" disabled>Select City</option>
@@ -1461,6 +1501,7 @@ export default function WorkerRegistration() {
   const [skills, setSkills] = useState(currentUser?.skills || []);
   const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatar_url || '');
   const [city, setCity] = useState(currentUser?.city || '');
+  const [district, setDistrict] = useState(currentUser?.district || '');
 
   // Step 3 state
   const [nicFrontUrl, setNicFrontUrl] = useState(currentUser?.nic_front || '');
@@ -1555,6 +1596,8 @@ export default function WorkerRegistration() {
             setAvatarUrl={setAvatarUrl}
             city={city}
             setCity={setCity}
+            district={district}
+            setDistrict={setDistrict}
             dbCategories={dbCategories}
             saveProfileData={saveProfileData}
           />

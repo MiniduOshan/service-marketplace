@@ -67,4 +67,28 @@ class Booking extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    public function toArray(): array
+    {
+        $array = parent::toArray();
+
+        $showContact = in_array($this->status, ['confirmed', 'completed', 'accepted']);
+        if (!$showContact) {
+            if (isset($array['worker']) && is_array($array['worker'])) {
+                $array['worker']['phone'] = 'Masked';
+            }
+            if (isset($array['customer']) && is_array($array['customer'])) {
+                $array['customer']['phone'] = 'Masked';
+            }
+            
+            if ($this->relationLoaded('worker') && $this->worker) {
+                $this->worker->phone = 'Masked';
+            }
+            if ($this->relationLoaded('customer') && $this->customer) {
+                $this->customer->phone = 'Masked';
+            }
+        }
+
+        return $array;
+    }
 }

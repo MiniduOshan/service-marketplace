@@ -18,20 +18,21 @@ class ServicePackageController extends Controller
         $category = $request->input('category');
         $workerId = $request->input('worker_id');
         $search = $request->input('search');
+        $district = $request->input('district');
 
         if ($request->filled('worker_id')) {
             User::whereKey($request->input('worker_id'))->increment('profile_views');
         }
 
         $version = Cache::rememberForever('services:list:version', fn() => (string) microtime(true));
-        $cacheKey = "services:list:{$version}:" . md5(serialize([$page, $category, $workerId, $search]));
+        $cacheKey = "services:list:{$version}:" . md5(serialize([$page, $category, $workerId, $search, $district]));
 
         $data = Cache::remember($cacheKey, now()->addMinutes(2), function () use ($request) {
             $query = ServicePackage::query()
                 ->with([
                     'category',
                     'worker' => function ($q) {
-                        $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at', 'pricing_plan_id', 'verification', 'avatar_url', 'cover_photo')
+                        $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at', 'pricing_plan_id', 'verification', 'avatar_url', 'cover_photo', 'district')
                           ->withAvg('workerReviews as average_rating', 'rating')
                           ->withCount('workerReviews as reviews_count')
                           ->withCount(['workerBookings as completed_jobs_count' => function ($query) {
@@ -41,14 +42,41 @@ class ServicePackageController extends Controller
                     }
                 ])
                 ->whereHas('worker', function ($q) {
-                    $q->where('verification', '!=', 'Rejected');
+                    $q->where('verification', '!=', 'Rejected')
+                      ->where('status', 'Active')
+                      ->where(function ($planQuery) {
+                          $planQuery->whereNull('pricing_plan_id')
+                                    ->orWhereHas('pricingPlan', function ($subQuery) {
+                                        $subQuery->where('is_active', true);
+                                    });
+                      });
                 })
                 ->where('is_active', true)
-                ->latest();
+                ->orderBy(
+                    User::selectRaw('COALESCE(pricing_plans.price, 0)')
+                        ->leftJoin('pricing_plans', 'pricing_plans.id', '=', 'users.pricing_plan_id')
+                        ->whereColumn('users.id', 'service_packages.user_id')
+                        ->limit(1),
+                    'desc'
+                )
+                ->orderBy(
+                    \App\Models\Review::selectRaw('COALESCE(AVG(rating), 0)')
+                        ->whereColumn('reviews.worker_id', 'service_packages.user_id')
+                        ->limit(1),
+                    'desc'
+                )
+                ->orderByRaw('(SELECT CASE WHEN verification = "Verified" THEN 1 ELSE 0 END FROM users WHERE users.id = service_packages.user_id) DESC')
+                ->latest('service_packages.created_at');
 
             if ($request->filled('category')) {
                 $query->whereHas('category', function ($categoryQuery) use ($request): void {
                     $categoryQuery->where('slug', (string) $request->input('category'));
+                });
+            }
+
+            if ($request->filled('district')) {
+                $query->whereHas('worker', function ($workerQuery) use ($request): void {
+                    $workerQuery->where('district', (string) $request->input('district'));
                 });
             }
 

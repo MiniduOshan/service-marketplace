@@ -19,8 +19,10 @@ import { clearSession, getStoredSessionUser } from '../../lib/api';
 
 const sidebarItems = [
   { path: '/admin/dashboard', name: 'Overview', icon: LayoutDashboard },
+  { path: '/admin/categories', name: 'Categories', icon: Blocks },
   { path: '/admin/workers', name: 'Monitor Workers', icon: FileCheck2 },
   { path: '/admin/customers', name: 'Customers', icon: Users },
+  { path: '/admin/refunds', name: 'Refund Requests', icon: CircleDollarSign },
   { path: '/admin/privileges', name: 'Privileges', icon: ShieldCheck },
   { path: '/admin/pricing-plans', name: 'Pricing Plans', icon: CircleDollarSign },
   { path: '/admin/user-plans', name: 'User Price Plans', icon: Users },

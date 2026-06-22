@@ -52,6 +52,7 @@ $registerRoutes = function () {
             Route::get('/bookings', [BookingController::class, 'index']);
             Route::post('/bookings', [BookingController::class, 'store']);
             Route::patch('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
+            Route::post('/bookings/{booking}/refund-request', [BookingController::class, 'refundRequest']);
             Route::patch('/bookings/{booking}/decline', [BookingController::class, 'decline']);
             Route::patch('/bookings/{booking}/accept', [BookingController::class, 'accept']);
             Route::patch('/bookings/{booking}/complete', [BookingController::class, 'complete']);
@@ -93,6 +94,15 @@ $registerRoutes = function () {
             Route::post('/admin/notifications/send', [AdminController::class, 'sendNotification']);
             Route::post('/admin/credentials', [AdminController::class, 'saveCredentials']);
             Route::patch('/admin/users/{id}/pricing-plan', [AdminController::class, 'assignPricingPlan']);
+            
+            Route::get('/admin/categories', [ServiceCategoryController::class, 'adminIndex']);
+            Route::post('/admin/categories', [ServiceCategoryController::class, 'store']);
+            Route::patch('/admin/categories/{serviceCategory}', [ServiceCategoryController::class, 'update']);
+            Route::delete('/admin/categories/{serviceCategory}', [ServiceCategoryController::class, 'destroy']);
+
+            Route::get('/admin/refunds', [AdminController::class, 'listRefunds']);
+            Route::post('/admin/refunds/{payment}/approve', [AdminController::class, 'approveRefund']);
+            Route::post('/admin/refunds/{payment}/reject', [AdminController::class, 'rejectRefund']);
         });
     });
 };

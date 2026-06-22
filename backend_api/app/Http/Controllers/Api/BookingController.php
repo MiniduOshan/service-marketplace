@@ -16,7 +16,7 @@ class BookingController extends Controller
         $user = $request->user();
 
         $bookings = Booking::query()
-            ->with(['servicePackage.category', 'worker:id,name,phone', 'customer:id,name,phone', 'review'])
+            ->with(['servicePackage.category', 'worker:id,name,phone', 'customer:id,name,phone', 'review', 'payments'])
             ->when($user->isWorker(), function ($query) use ($user) {
                 $query->where('worker_id', $user->id);
             }, function ($query) use ($user) {
@@ -52,6 +52,7 @@ class BookingController extends Controller
             'payment_option' => ['nullable', 'string', 'in:advance,full,after'],
             'photos' => ['nullable', 'array'],
             'photos.*' => ['string'],
+            'simulate_payment_failure' => ['nullable', 'boolean'],
         ]);
 
         $servicePackage = ServicePackage::query()
@@ -76,17 +77,20 @@ class BookingController extends Controller
         }
 
         $paymentOption = $validated['payment_option'] ?? 'after';
+        $simulateFailure = !empty($validated['simulate_payment_failure']);
         $advancePaid = 0.00;
 
-        if ($paymentOption === 'advance') {
-            $totalToPay = round($servicePackage->price * 1.05, 2);
-            $advancePaid = round($totalToPay / 2, 2);
-        } elseif ($paymentOption === 'full') {
-            $totalToPay = round($servicePackage->price * 1.05, 2);
-            $advancePaid = $totalToPay;
+        if (!$simulateFailure) {
+            if ($paymentOption === 'advance') {
+                $totalToPay = round($servicePackage->price * 1.05, 2);
+                $advancePaid = round($totalToPay / 2, 2);
+            } elseif ($paymentOption === 'full') {
+                $totalToPay = round($servicePackage->price * 1.05, 2);
+                $advancePaid = $totalToPay;
+            }
         }
 
-        $booking = DB::transaction(function () use ($user, $servicePackage, $validated, $paymentOption, $advancePaid) {
+        $booking = DB::transaction(function () use ($user, $servicePackage, $validated, $paymentOption, $advancePaid, $simulateFailure) {
             $booking = Booking::create([
                 'customer_id' => $user->id,
                 'worker_id' => $servicePackage->user_id,
@@ -98,17 +102,22 @@ class BookingController extends Controller
                 'status' => 'pending',
                 'payment_option' => $paymentOption,
                 'advance_paid' => $advancePaid,
-                'payout_status' => 'pending',
                 'photos' => $validated['photos'] ?? null,
             ]);
 
             if ($paymentOption === 'advance' || $paymentOption === 'full') {
+                $paymentAmount = $advancePaid;
+                if ($simulateFailure) {
+                    $totalToPay = round($servicePackage->price * 1.05, 2);
+                    $paymentAmount = ($paymentOption === 'advance') ? round($totalToPay / 2, 2) : $totalToPay;
+                }
+
                 $booking->payments()->create([
                     'gateway_reference' => 'pay_' . \Illuminate\Support\Str::random(16),
-                    'status' => 'completed',
-                    'amount' => $advancePaid,
+                    'amount' => $paymentAmount,
+                    'status' => $simulateFailure ? 'failed' : 'completed',
                     'currency' => 'LKR',
-                    'verified_at' => now(),
+                    'verified_at' => $simulateFailure ? null : now(),
                 ]);
             }
 
@@ -182,10 +191,48 @@ class BookingController extends Controller
             abort_unless($user && ($user->id === $lockedBooking->customer_id || $user->id === $lockedBooking->worker_id), 403, 'You cannot cancel this booking.');
             abort_unless(in_array($lockedBooking->status, ['pending', 'confirmed']), 422, 'Only pending or confirmed bookings can be cancelled.');
 
+            $penaltyAmount = 0.00;
+            $refundAmount = 0.00;
+
+            if ($lockedBooking->status === 'confirmed' && $lockedBooking->advance_paid > 0) {
+                $scheduledAt = $lockedBooking->scheduled_at;
+
+                if ($scheduledAt) {
+                    $isNear = now()->diffInHours($scheduledAt, false) < 24;
+
+                    if ($isNear) {
+                        $penaltyAmount = round($lockedBooking->advance_paid * 0.50, 2);
+                        $refundAmount = round($lockedBooking->advance_paid - $penaltyAmount, 2);
+                    } else {
+                        $penaltyAmount = 0.00;
+                        $refundAmount = $lockedBooking->advance_paid;
+                    }
+                } else {
+                    $refundAmount = $lockedBooking->advance_paid;
+                }
+
+                if ($refundAmount > 0) {
+                    $customer = $lockedBooking->customer;
+                    if ($customer) {
+                        $wallet = $customer->wallet()->lockForUpdate()->firstOrCreate([], ['balance' => 0.00]);
+                        $wallet->increment('balance', $refundAmount);
+                    }
+
+                    $lockedBooking->payments()->create([
+                        'gateway_reference' => 'ref_' . \Illuminate\Support\Str::random(16),
+                        'amount' => -$refundAmount,
+                        'status' => 'completed',
+                        'currency' => 'LKR',
+                        'verified_at' => now(),
+                    ]);
+                }
+            }
+
             $lockedBooking->update([
                 'status' => 'cancelled',
-                'cancel_reason' => $reason,
+                'cancel_reason' => $reason . ($penaltyAmount > 0 ? " (Penalty of LKR {$penaltyAmount} applied)" : ""),
             ]);
+
             return $lockedBooking;
         });
 
@@ -202,9 +249,36 @@ class BookingController extends Controller
             'message' => 'Booking cancelled successfully.',
             'data' => $booking->load(['servicePackage.category', 'worker:id,name', 'customer:id,name']),
         ]);
-    }
+     }
 
-    public function decline(Request $request, Booking $booking): JsonResponse
+     public function refundRequest(Request $request, Booking $booking): JsonResponse
+     {
+         $user = $request->user();
+
+         $booking = DB::transaction(function () use ($booking, $user) {
+             $lockedBooking = Booking::whereKey($booking->id)->lockForUpdate()->firstOrFail();
+             abort_unless($user && $user->id === $lockedBooking->customer_id, 403, 'Unauthorized.');
+             abort_unless($lockedBooking->status === 'cancelled', 422, 'Only cancelled bookings are eligible for refund requests.');
+
+             $completedPayments = $lockedBooking->payments()->where('status', 'completed')->get();
+             abort_if($completedPayments->isEmpty(), 422, 'No eligible completed payments found for refund.');
+
+             foreach ($completedPayments as $payment) {
+                 $payment->update([
+                     'status' => 'refund_requested',
+                 ]);
+             }
+
+             return $lockedBooking;
+         });
+
+         return response()->json([
+             'message' => 'Refund request submitted successfully.',
+             'data' => $booking->load(['servicePackage.category', 'worker:id,name', 'customer:id,name', 'payments']),
+         ]);
+     }
+
+     public function decline(Request $request, Booking $booking): JsonResponse
     {
         $user = $request->user();
         $reason = $request->input('reason');

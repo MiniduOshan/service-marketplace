@@ -439,7 +439,11 @@ function CompletedBookingCard({ booking, onViewDetails, onLeaveFeedback }) {
   );
 }
 
-function CancelledBookingCard({ booking, onViewDetails }) {
+function CancelledBookingCard({ booking, onViewDetails, onRefundRequest }) {
+  const payments = booking.rawBooking?.payments || [];
+  const hasCompletedPayment = payments.some((p) => p.status === 'completed' && parseFloat(p.amount) > 0);
+  const hasRefundRequested = payments.some((p) => p.status === 'refund_requested');
+
   return (
     <article className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4 sm:p-5 transition hover:border-slate-300">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -452,6 +456,11 @@ function CancelledBookingCard({ booking, onViewDetails }) {
                 {booking.workerName}
               </h2>
               <StatusBadge type="cancelled">{booking.category}</StatusBadge>
+              {hasRefundRequested && (
+                <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-amber-100 text-amber-800">
+                  Refund Requested
+                </span>
+              )}
             </div>
 
             <p className="mt-0.5 text-sm text-slate-400">#{booking.id}</p>
@@ -465,7 +474,7 @@ function CancelledBookingCard({ booking, onViewDetails }) {
 
         <p className="flex-1 text-sm text-slate-400 border-y border-slate-100 py-4 lg:border-y-0 lg:border-x lg:px-6 lg:py-0">{booking.cancelledDate || booking.date}</p>
 
-        <div className="flex shrink-0 lg:justify-end lg:w-[150px]">
+        <div className="flex shrink-0 items-center gap-4 lg:justify-end lg:min-w-[200px]">
           <button
             type="button"
             onClick={() => onViewDetails(booking)}
@@ -473,6 +482,16 @@ function CancelledBookingCard({ booking, onViewDetails }) {
           >
             View Details
           </button>
+
+          {hasCompletedPayment && (
+            <button
+              type="button"
+              onClick={() => onRefundRequest(booking.id)}
+              className="inline-flex items-center justify-center whitespace-nowrap h-9 cursor-pointer rounded-lg bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-700 shadow-sm"
+            >
+              Request Refund
+            </button>
+          )}
         </div>
       </div>
     </article>
@@ -544,7 +563,7 @@ function DeclinedBookingCard({ booking, onViewDetails }) {
   );
 }
 
-function BookingCard({ booking, onAccept, onDecline, onCancel, onComplete, onViewDetails, onLeaveFeedback }) {
+function BookingCard({ booking, onAccept, onDecline, onCancel, onComplete, onViewDetails, onLeaveFeedback, onRefundRequest }) {
   if (booking.status === 'active' || booking.status === 'confirmed' || booking.status === 'assigned' || booking.status === 'in-progress' || booking.status === 'in_progress') {
     return <ActiveBookingCard booking={booking} onComplete={onComplete} onViewDetails={onViewDetails} />;
   }
@@ -558,7 +577,7 @@ function BookingCard({ booking, onAccept, onDecline, onCancel, onComplete, onVie
     return <DeclinedBookingCard booking={booking} onViewDetails={onViewDetails} />;
   }
 
-  return <CancelledBookingCard booking={booking} onViewDetails={onViewDetails} />;
+  return <CancelledBookingCard booking={booking} onViewDetails={onViewDetails} onRefundRequest={onRefundRequest} />;
 }
 
 function BookingDetailModal({ booking, onClose }) {
@@ -860,6 +879,18 @@ export default function CustomerBookings() {
     }
   };
 
+  const handleRefundRequest = async (id) => {
+    try {
+      await apiRequest(`/auth/bookings/${id}/refund-request`, {
+        method: 'POST',
+      });
+      alert('Refund request submitted successfully!');
+      loadBookings();
+    } catch (err) {
+      alert(err.message || 'Failed to submit refund request.');
+    }
+  };
+
   const filteredBookings = useMemo(() => {
     if (activeTab === 'all') return bookings;
     return bookings.filter((booking) => {
@@ -945,6 +976,7 @@ export default function CustomerBookings() {
                     onComplete={handleComplete}
                     onViewDetails={setDetailBooking}
                     onLeaveFeedback={setFeedbackBooking}
+                    onRefundRequest={handleRefundRequest}
                   />
                 ))
               ) : (

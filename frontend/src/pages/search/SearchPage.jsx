@@ -217,6 +217,34 @@ function FilterPanel({
     { label: t.any_distance, value: 'any' },
   ];
 
+  const districtOptions = [
+    'Colombo',
+    'Gampaha',
+    'Kalutara',
+    'Kandy',
+    'Matale',
+    'Nuwara Eliya',
+    'Galle',
+    'Matara',
+    'Hambantota',
+    'Jaffna',
+    'Kilinochchi',
+    'Mannar',
+    'Vavuniya',
+    'Mullaitivu',
+    'Batticaloa',
+    'Ampara',
+    'Trincomalee',
+    'Kurunegala',
+    'Puttalam',
+    'Anuradhapura',
+    'Polonnaruwa',
+    'Badulla',
+    'Monaragala',
+    'Ratnapura',
+    'Kegalle',
+  ];
+
   return (
     <aside
       className={`bg-white ${
@@ -285,6 +313,32 @@ function FilterPanel({
             checked={filters.rating4Plus}
             onChange={() => updateFilter('rating4Plus', !filters.rating4Plus)}
           />
+        </div>
+
+         <div>
+          <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-slate-500">
+            <MapPin size={15} />
+            District
+          </h3>
+
+          <div className="relative">
+            <select
+              value={filters.locationQuery}
+              onChange={(e) => updateFilter('locationQuery', e.target.value)}
+              className="h-9 w-full appearance-none rounded border border-slate-300 bg-slate-100 px-3 pr-9 text-sm font-medium text-slate-800 outline-none"
+            >
+              <option value="">All Districts</option>
+              {districtOptions.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={16}
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+            />
+          </div>
         </div>
 
         <div>
@@ -636,6 +690,9 @@ export default function SearchPage() {
         if (filters.serviceQuery && (!filters.category || filters.serviceQuery.toLowerCase() !== filters.category.toLowerCase())) {
           params.push(`search=${filters.serviceQuery}`);
         }
+        if (filters.locationQuery) {
+          params.push(`district=${filters.locationQuery}`);
+        }
         if (params.length > 0) path += `?${params.join('&')}`;
 
         const res = await apiRequest(path);
@@ -662,7 +719,7 @@ export default function SearchPage() {
             avatar_url: service.worker?.avatar_url || null,
             role: service.title || 'Service Pro',
             category: service.category?.name || 'All',
-            location: 'Colombo',
+            location: service.worker?.district || 'Colombo',
             experience: '6 years exp.',
             experienceYears: 6,
             rating: service.worker?.average_rating !== null && service.worker?.average_rating !== undefined

@@ -100,6 +100,8 @@ class AdminController extends Controller
 
         $worker->update($validated);
 
+        \Illuminate\Support\Facades\Cache::forever('services:list:version', (string) microtime(true));
+
         return response()->json([
             'message' => 'Worker updated successfully.',
             'data' => $worker,
@@ -294,6 +296,8 @@ class AdminController extends Controller
             'pricing_plan_id' => $validated['pricing_plan_id'],
         ]);
 
+        \Illuminate\Support\Facades\Cache::forever('services:list:version', (string) microtime(true));
+
         return response()->json([
             'message' => 'User pricing plan updated successfully.',
             'data' => $user->load('pricingPlan'),
@@ -338,6 +342,88 @@ class AdminController extends Controller
 
         return response()->json([
             'message' => 'User and all associated data deleted successfully.',
+        ]);
+    }
+
+    public function listRefunds(Request $request): JsonResponse
+    {
+        $refunds = \App\Models\Payment::query()
+            ->with(['booking.customer', 'booking.worker', 'booking.servicePackage.category'])
+            ->where('status', 'refund_requested')
+            ->latest()
+            ->paginate(50);
+
+        return response()->json([
+            'data' => $refunds,
+        ]);
+    }
+
+    public function approveRefund(Request $request, $id): JsonResponse
+    {
+        $payment = \App\Models\Payment::whereKey($id)->firstOrFail();
+        abort_unless($payment->status === 'refund_requested', 422, 'This payment does not have a pending refund request.');
+
+        $payment = DB::transaction(function () use ($payment) {
+            $payment->update([
+                'status' => 'refunded',
+            ]);
+
+            $hasNegativePayment = \App\Models\Payment::query()
+                ->where('booking_id', $payment->booking_id)
+                ->where('amount', '<', 0)
+                ->exists();
+
+            if (!$hasNegativePayment) {
+                $customer = $payment->booking->customer;
+                if ($customer) {
+                    $wallet = $customer->wallet()->lockForUpdate()->firstOrCreate([], ['balance' => 0.00]);
+                    $wallet->increment('balance', $payment->amount);
+                }
+
+                $payment->booking->payments()->create([
+                    'gateway_reference' => 'ref_' . \Illuminate\Support\Str::random(16),
+                    'amount' => -$payment->amount,
+                    'status' => 'completed',
+                    'currency' => $payment->currency,
+                    'verified_at' => now(),
+                ]);
+            }
+
+            return $payment;
+        });
+
+        \App\Models\Notification::create([
+            'user_id' => $payment->booking->customer_id,
+            'title' => 'Refund Approved',
+            'message' => "Your refund request for booking #{$payment->booking_id} has been approved.",
+            'type' => 'system',
+        ]);
+
+        return response()->json([
+            'message' => 'Refund request approved successfully.',
+            'data' => $payment->load(['booking.customer', 'booking.worker']),
+        ]);
+    }
+
+    public function rejectRefund(Request $request, $id): JsonResponse
+    {
+        $payment = \App\Models\Payment::whereKey($id)->firstOrFail();
+        abort_unless($payment->status === 'refund_requested', 422, 'This payment does not have a pending refund request.');
+
+        $payment->update([
+            'status' => 'completed',
+        ]);
+
+        \App\Models\Notification::create([
+            'user_id' => $payment->booking->customer_id,
+            'title' => 'Refund Rejected',
+            'message' => "Your refund request for booking #{$payment->booking_id} has been rejected.",
+            'type' => 'system',
+        ]);
+
+        return response()->json([
+            'message' => 'Refund request rejected successfully.',
+            'data' => $payment->load(['booking.customer', 'booking.worker']),
         ]);
     }
 }

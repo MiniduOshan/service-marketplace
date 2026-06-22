@@ -11,10 +11,12 @@ import AdminWorkers from './pages/admin/AdminWorkers';
 import AdminCustomers from './pages/admin/AdminCustomers';
 import AdminPrivileges from './pages/admin/AdminPrivileges';
 import AdminPricingPlans from './pages/admin/AdminPricingPlans';
+import AdminCategories from './pages/admin/AdminCategories';
 import AdminUserPlans from './pages/admin/AdminUserPlans';
 import AdminCredentials from './pages/admin/AdminCredentials';
 import AdminNotifications from './pages/admin/AdminNotifications';
 import AdminSystemHealth from './pages/admin/AdminSystemHealth';
+import AdminRefunds from './pages/admin/AdminRefunds';
 
 import WorkerDashboard from './pages/worker/WorkerDashboard';
 import WorkerJobs from './pages/worker/WorkerJobs';
@@ -144,6 +146,14 @@ function App() {
             }
           />
           <Route
+            path="/admin/refunds"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminRefunds />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/privileges"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
@@ -156,6 +166,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AdminPricingPlans />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/categories"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminCategories />
               </ProtectedRoute>
             }
           />

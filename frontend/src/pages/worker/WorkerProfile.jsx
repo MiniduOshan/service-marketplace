@@ -622,7 +622,7 @@ export default function WorkerProfile() {
                 </div>
 
                 <p className="mt-1 text-sm font-medium text-slate-600 sm:drop-shadow-none">
-                  Specialist Worker • {user?.phone || 'No phone linked'}
+                  Specialist Worker • {user?.phone || 'No phone linked'}{user?.district || user?.city ? ` • ${user?.district ? `${user.district}, ` : ''}${user?.city || ''}` : ''}
                 </p>
               </div>
             </div>

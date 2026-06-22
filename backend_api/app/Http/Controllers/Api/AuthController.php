@@ -369,6 +369,7 @@ class AuthController extends Controller
             'payment_methods' => ['nullable', 'array'],
             'primary_service_category_id' => ['nullable', 'exists:service_categories,id'],
             'city' => ['nullable', 'string', 'max:255'],
+            'district' => ['nullable', 'string', 'max:255'],
             'bio' => ['nullable', 'string', 'max:5000'],
             'skills' => ['nullable', 'array'],
             'avatar_url' => ['nullable', 'string'],
@@ -432,6 +433,10 @@ class AuthController extends Controller
 
         if ($request->has('city')) {
             $updates['city'] = $validated['city'];
+        }
+
+        if ($request->has('district')) {
+            $updates['district'] = $validated['district'];
         }
 
         if ($request->has('bio')) {

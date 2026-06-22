@@ -38,6 +38,7 @@ class User extends Authenticatable
         'payment_methods',
         'bio',
         'city',
+        'district',
         'skills',
         'avatar_url',
         'cover_photo',
