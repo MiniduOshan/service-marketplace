@@ -23,6 +23,7 @@ $registerRoutes = function () {
 
     Route::get('/public-stats', [\App\Http\Controllers\Api\PublicController::class, 'stats']);
     Route::get('/platform-config', [\App\Http\Controllers\Api\PublicController::class, 'config']);
+    Route::get('/workers/{workerId}/profile', [\App\Http\Controllers\Api\PublicController::class, 'workerProfile']);
     
     Route::get('/categories', [ServiceCategoryController::class, 'index']);
     Route::get('/services', [ServicePackageController::class, 'index']);

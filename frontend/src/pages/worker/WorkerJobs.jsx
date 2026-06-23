@@ -292,7 +292,7 @@ function CancelledJobCard({ job }) {
         </div>
 
         <div className="mt-6 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          {job.reason}
+          {job.cancel_reason || 'Cancelled'}
         </div>
       </div>
     </article>
@@ -345,7 +345,7 @@ export default function WorkerJobs() {
       });
       alert('Job declined.');
       setBookings((current) =>
-        current.map((b) => (b.id === id ? { ...b, status: 'declined' } : b))
+        current.map((b) => (b.id === id ? { ...b, status: 'declined', cancel_reason: reason || 'Declined without specific reason' } : b))
       );
     } catch (err) {
       alert(err.message || 'Failed to decline job.');
@@ -401,7 +401,8 @@ export default function WorkerJobs() {
       completedAt: new Date(b.updated_at || b.scheduled_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }),
       review: b.review?.comment || '',
       cancelledAt: new Date(b.updated_at || b.scheduled_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }),
-      reason: b.cancellation_reason || 'No reason provided.',
+      cancel_reason: b.cancel_reason,
+      reason: b.cancel_reason || 'No reason provided.',
       rawStatus: b.status.toLowerCase(),
       paymentOption: b.payment_option || 'after',
       advancePaid: b.advance_paid || 0,

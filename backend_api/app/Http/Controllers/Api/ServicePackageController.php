@@ -28,6 +28,22 @@ class ServicePackageController extends Controller
         $cacheKey = "services:list:{$version}:" . md5(serialize([$page, $category, $workerId, $search, $district]));
 
         $data = Cache::remember($cacheKey, now()->addMinutes(2), function () use ($request) {
+            $privileges = \App\Models\Setting::get('privileges', []);
+            $workerApprovalEnabled = false;
+            if (!empty($privileges)) {
+                $found = false;
+                foreach ($privileges as $priv) {
+                    if (($priv['key'] ?? '') === 'workerApproval') {
+                        $workerApprovalEnabled = $priv['enabled'] ?? false;
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    $workerApprovalEnabled = false;
+                }
+            }
+
             $query = ServicePackage::query()
                 ->with([
                     'category',
@@ -41,9 +57,13 @@ class ServicePackageController extends Controller
                           ->with('pricingPlan');
                     }
                 ])
-                ->whereHas('worker', function ($q) {
-                    $q->where('verification', '!=', 'Rejected')
-                      ->where('status', 'Active')
+                ->whereHas('worker', function ($q) use ($workerApprovalEnabled) {
+                    if ($workerApprovalEnabled) {
+                        $q->where('verification', 'Verified');
+                    } else {
+                        $q->where('verification', '!=', 'Rejected');
+                    }
+                    $q->where('status', 'Active')
                       ->where(function ($planQuery) {
                           $planQuery->whereNull('pricing_plan_id')
                                     ->orWhereHas('pricingPlan', function ($subQuery) {

@@ -19,7 +19,30 @@ class AdminController extends Controller
     {
         $stats = \Illuminate\Support\Facades\Cache::remember('admin:dashboard:stats', now()->addMinutes(10), function () {
             $totalWorkers = User::where('role', 'worker')->count();
-            $activeWorkers = User::where('role', 'worker')->where('status', 'Active')->count();
+            
+            $privileges = \App\Models\Setting::get('privileges', []);
+            $workerApprovalEnabled = false;
+            if (!empty($privileges)) {
+                $found = false;
+                foreach ($privileges as $priv) {
+                    if (($priv['key'] ?? '') === 'workerApproval') {
+                        $workerApprovalEnabled = $priv['enabled'] ?? false;
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    $workerApprovalEnabled = false;
+                }
+            }
+
+            $activeWorkersQuery = User::where('role', 'worker')->where('status', 'Active');
+            if ($workerApprovalEnabled) {
+                $activeWorkersQuery->where('verification', 'Verified');
+            } else {
+                $activeWorkersQuery->where('verification', '!=', 'Rejected');
+            }
+            $activeWorkers = $activeWorkersQuery->count();
             $totalCustomers = User::where('role', 'customer')->count();
             $activeCustomers = User::where('role', 'customer')->where('status', 'Active')->count();
 
@@ -155,6 +178,7 @@ class AdminController extends Controller
             ['key' => 'prioritySupport', 'label' => 'Priority support', 'description' => 'Show dedicated help lines to premium plans.', 'enabled' => false],
             ['key' => 'smsNotifications', 'label' => 'SMS notifications', 'description' => 'Send real-time alerts to phones.', 'enabled' => true],
             ['key' => 'emailNotifications', 'label' => 'Email notifications', 'description' => 'Send summaries and statements.', 'enabled' => true],
+            ['key' => 'workerApproval', 'label' => 'Worker Approval', 'description' => 'Require manual approval for workers.', 'enabled' => false],
         ];
 
         $privileges = Setting::get('privileges', $defaults);
@@ -171,6 +195,7 @@ class AdminController extends Controller
             ['key' => 'prioritySupport', 'label' => 'Priority support', 'description' => 'Show dedicated help lines to premium plans.', 'enabled' => false],
             ['key' => 'smsNotifications', 'label' => 'SMS notifications', 'description' => 'Send real-time alerts to phones.', 'enabled' => true],
             ['key' => 'emailNotifications', 'label' => 'Email notifications', 'description' => 'Send summaries and statements.', 'enabled' => true],
+            ['key' => 'workerApproval', 'label' => 'Worker Approval', 'description' => 'Require manual approval for workers.', 'enabled' => false],
         ];
 
         $privileges = Setting::get('privileges', $defaults);

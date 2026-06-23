@@ -467,7 +467,7 @@ function CancelledBookingCard({ booking, onViewDetails, onRefundRequest }) {
 
             <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-500">
               <CalendarDays size={12} />
-              {booking.refundNote || 'Booking Cancelled'}
+              {booking.reason || 'Booking Cancelled'}
             </div>
           </div>
         </div>
@@ -661,6 +661,14 @@ function BookingDetailModal({ booking, onClose }) {
               <p className="text-sm text-slate-600 mt-1 italic">"{booking.rawBooking.notes}"</p>
             </div>
           )}
+
+          {/* Cancellation Reason if available */}
+          {(booking.status === 'cancelled' || booking.status === 'declined') && booking.reason && (
+            <div className="rounded-xl border border-red-100 p-4 bg-red-50/50">
+              <span className="text-xs font-bold text-red-400 uppercase tracking-wider">{booking.status === 'cancelled' ? 'Cancellation' : 'Decline'} Reason</span>
+              <p className="text-sm text-red-600 mt-1 italic">"{booking.reason}"</p>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -807,6 +815,7 @@ export default function CustomerBookings() {
           advance: `LKR ${(parseFloat(b.total_price) / 2).toLocaleString()} advance paid`,
           status: b.status,
           progress: b.status === 'completed' ? 'done' : b.status,
+          reason: b.cancel_reason,
           rawBooking: b
         };
       });

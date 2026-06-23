@@ -47,13 +47,24 @@ export default function WorkerPublicProfile() {
     async function fetchWorkerData() {
       try {
         setLoading(true);
+        // Fetch services
         const res = await apiRequest(`/services?worker_id=${id}`);
         const packages = res.data?.data || res.data || [];
         setServices(packages);
-        if (packages.length > 0) {
-          const primaryPackage = packages[0];
-          setWorkerInfo(primaryPackage.worker);
+
+        // Fetch worker profile directly
+        try {
+          const profileRes = await apiRequest(`/workers/${id}/profile`);
+          const profileData = profileRes.data?.data || profileRes.data || profileRes;
+          setWorkerInfo(profileData);
+        } catch (e) {
+          // fallback to primary package worker if available
+          if (packages.length > 0) {
+            setWorkerInfo(packages[0].worker);
+          }
         }
+
+        // Fetch reviews
         try {
           const reviewsRes = await apiRequest(`/workers/${id}/reviews`);
           setReviews(reviewsRes.data?.data || reviewsRes.data || reviewsRes || []);

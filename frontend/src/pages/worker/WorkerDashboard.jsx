@@ -310,7 +310,7 @@ export default function WorkerDashboard() {
       });
       alert('Job request declined.');
       setBookings((current) =>
-        current.map((b) => (b.id === bookingId ? { ...b, status: 'declined' } : b))
+        current.map((b) => (b.id === bookingId ? { ...b, status: 'declined', cancel_reason: reason || 'Declined without specific reason' } : b))
       );
     } catch (err) {
       alert(err.message || 'Failed to decline job request.');
