@@ -1118,11 +1118,12 @@ class MarketplaceTest extends TestCase
             'is_active' => true,
         ]);
 
-        // 1. Worker A: Free plan, 5.0 rating, Verified, Active
+        // 1. Worker A: Free plan, 5.0 rating, Verified, Active, Priority 500
         $workerA = User::factory()->create([
             'role' => 'worker',
             'status' => 'Active',
             'verification' => 'Verified',
+            'priority_score' => 500,
         ]);
         $packageA = ServicePackage::create([
             'user_id' => $workerA->id,
@@ -1148,12 +1149,13 @@ class MarketplaceTest extends TestCase
             'rating' => 5,
         ]);
 
-        // 2. Worker B: Premium plan (5000), 3.0 rating, Verified, Active
+        // 2. Worker B: Premium plan (5000), 3.0 rating, Verified, Active, Priority 100
         $workerB = User::factory()->create([
             'role' => 'worker',
             'status' => 'Active',
             'verification' => 'Verified',
             'pricing_plan_id' => $premiumPlan->id,
+            'priority_score' => 100,
         ]);
         $packageB = ServicePackage::create([
             'user_id' => $workerB->id,
@@ -1179,11 +1181,12 @@ class MarketplaceTest extends TestCase
             'rating' => 3,
         ]);
 
-        // 3. Worker C: Free plan, 4.0 rating, Pending verification, Active
+        // 3. Worker C: Free plan, 4.0 rating, Pending verification, Active, Priority 0
         $workerC = User::factory()->create([
             'role' => 'worker',
             'status' => 'Active',
             'verification' => 'Pending verification',
+            'priority_score' => 0,
         ]);
         $packageC = ServicePackage::create([
             'user_id' => $workerC->id,
@@ -1218,13 +1221,13 @@ class MarketplaceTest extends TestCase
         $data = $response->json('data.data');
 
         // Order priority:
-        // 1. Premium Paid Plan (Worker B)
-        // 2. High rating (Worker A: 5.0 vs Worker C: 4.0)
+        // 1. Priority Score override (Worker A: 500 vs Worker B: 100)
+        // 2. Premium Paid Plan (Worker B)
         // 3. Lower rating / verification fallback (Worker C)
         $this->assertCount(3, $data);
-        $this->assertEquals('Plumbing B', $data[0]['title']); // Paid Plan first
-        $this->assertEquals('Plumbing A', $data[1]['title']); // 5.0 Rating second
-        $this->assertEquals('Plumbing C', $data[2]['title']); // 4.0 Rating third
+        $this->assertEquals('Plumbing A', $data[0]['title']); // Priority score 500 beats Premium plan
+        $this->assertEquals('Plumbing B', $data[1]['title']); // Priority score 100 but Premium plan beats Worker C
+        $this->assertEquals('Plumbing C', $data[2]['title']); // Priority score 0, Free plan
     }
 
     public function test_contact_visibility_follows_platform_rule(): void

@@ -52,6 +52,7 @@ class ServicePackageController extends Controller
                       });
                 })
                 ->where('is_active', true)
+                ->orderByRaw('(SELECT priority_score FROM users WHERE users.id = service_packages.user_id) DESC')
                 ->orderBy(
                     User::selectRaw('COALESCE(pricing_plans.price, 0)')
                         ->leftJoin('pricing_plans', 'pricing_plans.id', '=', 'users.pricing_plan_id')

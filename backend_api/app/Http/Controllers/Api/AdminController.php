@@ -75,6 +75,7 @@ class AdminController extends Controller
                 'phone' => $worker->phone,
                 'status' => $worker->status ?? 'Active',
                 'verification' => $worker->verification ?? 'Pending verification',
+                'priority_score' => (int) $worker->priority_score,
                 'category' => $categoryName,
                 'city' => $worker->city ?? 'Colombo',
                 'bio' => $worker->bio,
@@ -94,8 +95,9 @@ class AdminController extends Controller
     {
         $worker = User::where('role', 'worker')->findOrFail($id);
         $validated = $request->validate([
-            'status' => ['required', 'string', 'in:Active,Suspended'],
-            'verification' => ['required', 'string', 'in:Pending verification,Verified,Rejected'],
+            'status' => ['sometimes', 'string', 'in:Active,Suspended'],
+            'verification' => ['sometimes', 'string', 'in:Verified,Rejected,Pending verification'],
+            'priority_score' => ['sometimes', 'integer', 'min:0', 'max:999'],
         ]);
 
         $worker->update($validated);
@@ -424,6 +426,20 @@ class AdminController extends Controller
         return response()->json([
             'message' => 'Refund request rejected successfully.',
             'data' => $payment->load(['booking.customer', 'booking.worker']),
+        ]);
+    }
+
+    public function setSystemMode(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'mode' => ['required', 'string', 'in:live,maintenance'],
+        ]);
+
+        \App\Models\Setting::set('system_mode', $validated['mode']);
+
+        return response()->json([
+            'message' => 'System mode updated successfully.',
+            'mode' => $validated['mode']
         ]);
     }
 }

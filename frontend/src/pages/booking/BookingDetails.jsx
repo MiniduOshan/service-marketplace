@@ -36,14 +36,11 @@ export default function BookingDetails() {
     id: location.state.servicePackageId,
     title: location.state.serviceTitle || 'Professional Service',
     price: location.state.priceLabel ? parseFloat(location.state.priceLabel.replace(/[^0-9.]/g, '')) || 3500 : 3500,
-  } : null);
+  } : { id: 'dummy', title: 'Unknown', price: 0 });
 
-  if (!stateWorker || !statePackage) {
-    return <Navigate to="/" replace />;
-  }
-
-  const worker = stateWorker;
+  const worker = stateWorker || { id: 'dummy' };
   const servicePackage = statePackage;
+
 
   const storedDraft = React.useMemo(() => {
     try {
@@ -51,7 +48,7 @@ export default function BookingDetails() {
       if (data.servicePackageId === servicePackage.id) {
         return data;
       }
-    } catch(e){}
+    } catch(e) { console.warn(e); }
     return {};
   }, [servicePackage.id]);
 
@@ -212,6 +209,11 @@ export default function BookingDetails() {
       </div>
     );
   }
+
+  if (worker.id === 'dummy' || servicePackage.id === 'dummy') {
+    return <Navigate to="/" replace />;
+  }
+
 
   if (isVerifyingPhone) {
     return (

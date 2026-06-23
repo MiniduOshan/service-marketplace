@@ -39,7 +39,7 @@ export default function AdminNotifications() {
     }
   ];
 
-  const useTemplate = (template) => {
+  const handleUseTemplate = (template) => {
     setForm({
       channel: template.channel,
       audience: template.audience,
@@ -145,7 +145,7 @@ export default function AdminNotifications() {
               <div className="flex gap-2 mt-auto">
                 <button
                   type="button"
-                  onClick={() => useTemplate(tpl)}
+                  onClick={() => handleUseTemplate(tpl)}
                   className="flex-1 rounded border border-emerald-600 bg-white py-1 text-[10px] font-semibold text-emerald-700 transition hover:bg-emerald-50"
                 >
                   Use Template

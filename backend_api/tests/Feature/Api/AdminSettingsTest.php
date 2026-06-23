@@ -84,4 +84,43 @@ class AdminSettingsTest extends TestCase
                 'body' => 'Back online!',
             ])->assertCreated();
     }
+
+    public function test_system_mode_switch_changes_app_behavior(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create(['role' => 'customer']);
+
+        $adminToken = $admin->issueApiToken();
+        $customerToken = $customer->issueApiToken();
+
+        // Set to maintenance mode
+        $response = $this->withHeader('Authorization', 'Bearer ' . $adminToken)
+            ->postJson('/api/v1/admin/system/mode', [
+                'mode' => 'maintenance'
+            ]);
+        $response->assertOk();
+
+        // Customer should be blocked
+        $response = $this->withHeader('Authorization', 'Bearer ' . $customerToken)
+            ->getJson('/api/v1/categories');
+        $response->assertStatus(503);
+        $response->assertJsonPath('message', 'System is currently under maintenance.');
+
+        // Admin should still be allowed
+        $response = $this->withHeader('Authorization', 'Bearer ' . $adminToken)
+            ->getJson('/api/v1/admin/system/health');
+        $response->assertOk();
+
+        // Switch back to live
+        $response = $this->withHeader('Authorization', 'Bearer ' . $adminToken)
+            ->postJson('/api/v1/admin/system/mode', [
+                'mode' => 'live'
+            ]);
+        $response->assertOk();
+
+        // Customer should be allowed again
+        $response = $this->withHeader('Authorization', 'Bearer ' . $customerToken)
+            ->getJson('/api/v1/categories');
+        $response->assertOk();
+    }
 }

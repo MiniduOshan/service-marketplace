@@ -7,6 +7,7 @@ use App\Models\PricingPlan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 class PricingPlanController extends Controller
 {
@@ -48,6 +49,8 @@ class PricingPlanController extends Controller
             'is_active' => $validated['is_active'] ?? true,
         ]);
 
+        Cache::forever('services:list:version', (string) microtime(true));
+
         return response()->json([
             'message' => 'Pricing plan created successfully.',
             'data' => $pricingPlan,
@@ -77,6 +80,8 @@ class PricingPlanController extends Controller
 
         $pricingPlan->update($validated);
 
+        Cache::forever('services:list:version', (string) microtime(true));
+
         return response()->json([
             'message' => 'Pricing plan updated successfully.',
             'data' => $pricingPlan->fresh(),
@@ -86,6 +91,8 @@ class PricingPlanController extends Controller
     public function destroy(PricingPlan $pricingPlan): JsonResponse
     {
         $pricingPlan->delete();
+
+        Cache::forever('services:list:version', (string) microtime(true));
 
         return response()->json([
             'message' => 'Pricing plan deleted successfully.',

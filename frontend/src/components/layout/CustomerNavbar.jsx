@@ -158,75 +158,76 @@ export default function CustomerNavbar({
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [notificationExpanded, setNotificationExpanded] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { t } = useLanguage();
+  const { config } = useConfig();
 
-  useEffect(() => {
+  const fetchNotifications = useCallback(() => {
     if (!isLoggedIn) return;
 
-    const fetchNotifications = () => {
-      apiRequest('/auth/notifications')
-        .then((res) => {
-          const list = res.data || res;
-          if (Array.isArray(list)) {
-            setNotifications(list.map(n => {
-              let Icon = CalendarCheck;
-              let iconClassName = 'bg-blue-50 text-blue-700';
-              if (n.title.toLowerCase().includes('message') || n.type === 'message') {
-                Icon = MessageSquare;
-                iconClassName = 'bg-emerald-50 text-emerald-700';
-              } else if (n.title.toLowerCase().includes('cancel')) {
-                Icon = X;
-                iconClassName = 'bg-red-50 text-red-700';
-              } else if (n.title.toLowerCase().includes('complete')) {
-                Icon = Check;
-                iconClassName = 'bg-emerald-50 text-emerald-700';
-              }
-              
-              return {
-                id: n.id,
-                group: n.type === 'booking' ? 'Bookings' : 'System',
-                title: n.title,
-                message: n.message,
-                unread: !!n.unread,
-                time: new Date(n.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
-                icon: Icon,
-                iconClassName: iconClassName
-              };
-            }));
-          }
-        })
-        .catch(err => console.error(err));
-    };
+    apiRequest('/auth/notifications')
+      .then((res) => {
+        const list = res.data || res;
+        if (Array.isArray(list)) {
+          setNotifications(list.map(n => {
+            let Icon = CalendarCheck;
+            let iconClassName = 'bg-blue-50 text-blue-700';
+            if (n.title.toLowerCase().includes('message') || n.type === 'message') {
+              Icon = MessageSquare;
+              iconClassName = 'bg-emerald-50 text-emerald-700';
+            } else if (n.title.toLowerCase().includes('cancel')) {
+              Icon = X;
+              iconClassName = 'bg-red-50 text-red-700';
+            } else if (n.title.toLowerCase().includes('complete')) {
+              Icon = Check;
+              iconClassName = 'bg-emerald-50 text-emerald-700';
+            }
+            
+            return {
+              id: n.id,
+              group: n.type === 'booking' ? 'Bookings' : 'System',
+              title: n.title,
+              message: n.message,
+              unread: !!n.unread,
+              time: new Date(n.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+              icon: Icon,
+              iconClassName: iconClassName
+            };
+          }));
+        }
+      })
+      .catch(err => console.error(err));
+  }, [isLoggedIn]);
 
+  useEffect(() => {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 10000);
     return () => clearInterval(interval);
-  }, []);
-
-  const navigate = useNavigate();
-  const { t } = useLanguage();
+  }, [fetchNotifications, location.pathname]);
 
   const unreadCount = useMemo(
     () => notifications.filter((notification) => notification.unread).length,
     [notifications]
   );
 
-  const { config } = useConfig();
+  const navLinks = useMemo(() => {
+    const links = [
+      { label: t.home, href: isLoggedIn ? '/customer/dashboard' : '/', key: 'home' },
+      { label: t.search_nav, href: '/search', key: 'search' },
+    ];
+    if (config?.bookings !== false && isLoggedIn) {
+      links.push({ label: t.bookings, href: '/bookings', key: 'bookings' });
+    }
+    return links;
+  }, [isLoggedIn, config?.bookings, t.home, t.search_nav, t.bookings]);
 
-  const navLinks = [
-    { label: t.home, href: isLoggedIn ? '/customer/dashboard' : '/', key: 'home' },
-    { label: t.search_nav, href: '/search', key: 'search' },
-  ];
-
-  if (config?.bookings !== false && isLoggedIn) {
-    navLinks.push({ label: t.bookings, href: '/bookings', key: 'bookings' });
-  }
-
-  const goTo = (href) => {
+  const goTo = useCallback((href) => {
     setMobileMenuOpen(false);
     setNotificationOpen(false);
     setNotificationExpanded(false);
     navigate(href);
-  };
+  }, [navigate]);
 
   function closeNotifications() {
     setMobileMenuOpen(false);

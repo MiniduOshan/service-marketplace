@@ -38,14 +38,35 @@ import CustomerBookings from './pages/booking/CustomerBookings';
 
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
-import { ConfigProvider } from './context/ConfigContext';
+import { ConfigProvider, useConfig } from './context/ConfigContext';
+import { useAuth } from './context/AuthContext';
+import MaintenancePage from './pages/MaintenancePage';
+
+function SystemModeWrapper({ children }) {
+  const { config, loading: configLoading } = useConfig();
+  const { user, loading: authLoading } = useAuth();
+
+  if (configLoading || authLoading) {
+    return <div className="min-h-screen bg-white" />; // Or a spinner
+  }
+
+  const isMaintenance = config?.system_mode === 'maintenance';
+  const isAdmin = user?.role === 'admin';
+
+  if (isMaintenance && !isAdmin) {
+    return <MaintenancePage />;
+  }
+
+  return children;
+}
 
 function App() {
   return (
     <ConfigProvider>
       <Router>
         <div className="min-h-screen bg-white font-sans text-gray-900 selection:bg-emerald-100 selection:text-[#1B5E44]">
-          <Routes>
+          <SystemModeWrapper>
+            <Routes>
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/search" element={<SearchPage />} />
@@ -289,7 +310,8 @@ function App() {
           <Route path="/signup" element={<LandingPage />} />
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+            </Routes>
+          </SystemModeWrapper>
         </div>
       </Router>
     </ConfigProvider>

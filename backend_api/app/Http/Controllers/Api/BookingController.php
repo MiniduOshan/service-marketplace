@@ -8,6 +8,7 @@ use App\Models\ServicePackage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 
 class BookingController extends Controller
 {
@@ -186,6 +187,19 @@ class BookingController extends Controller
         $user = $request->user();
         $reason = $request->input('reason');
 
+        $limitConfig = \App\Models\Setting::get('cancellation_limit', [
+            'enabled' => true,
+            'max_per_day' => 3,
+        ]);
+
+        $rateLimitKey = 'cancel_booking:' . $user->id;
+        
+        if ($limitConfig['enabled'] && RateLimiter::tooManyAttempts($rateLimitKey, $limitConfig['max_per_day'])) {
+            return response()->json([
+                'message' => 'You have reached the maximum number of cancellations allowed per day. Please try again tomorrow or contact support.'
+            ], 429);
+        }
+
         $booking = DB::transaction(function () use ($booking, $user, $reason) {
             $lockedBooking = Booking::whereKey($booking->id)->lockForUpdate()->firstOrFail();
             abort_unless($user && ($user->id === $lockedBooking->customer_id || $user->id === $lockedBooking->worker_id), 403, 'You cannot cancel this booking.');
@@ -236,6 +250,10 @@ class BookingController extends Controller
             return $lockedBooking;
         });
 
+        if ($limitConfig['enabled']) {
+            RateLimiter::hit($rateLimitKey, 86400); // 24 hours
+        }
+
         $recipientId = ($user->id === $booking->customer_id) ? $booking->worker_id : $booking->customer_id;
         \App\Models\Notification::create([
             'user_id' => $recipientId,
@@ -281,19 +299,36 @@ class BookingController extends Controller
      public function decline(Request $request, Booking $booking): JsonResponse
     {
         $user = $request->user();
-        $reason = $request->input('reason');
 
-        $booking = DB::transaction(function () use ($booking, $user, $reason) {
+        $limitConfig = \App\Models\Setting::get('cancellation_limit', [
+            'enabled' => true,
+            'max_per_day' => 3,
+        ]);
+
+        $rateLimitKey = 'cancel_booking:' . $user->id;
+        
+        if ($limitConfig['enabled'] && RateLimiter::tooManyAttempts($rateLimitKey, $limitConfig['max_per_day'])) {
+            return response()->json([
+                'message' => 'You have reached the maximum number of cancellations allowed per day. Please try again tomorrow or contact support.'
+            ], 429);
+        }
+
+        $booking = DB::transaction(function () use ($booking, $user, $request) {
             $lockedBooking = Booking::whereKey($booking->id)->lockForUpdate()->firstOrFail();
-            abort_unless($user && $user->id === $lockedBooking->worker_id, 403, 'Only the assigned worker can decline this booking.');
+            abort_unless($user && $user->id === $lockedBooking->worker_id, 403, 'Unauthorized.');
             abort_unless($lockedBooking->status === 'pending', 422, 'Only pending bookings can be declined.');
 
             $lockedBooking->update([
                 'status' => 'declined',
-                'cancel_reason' => $reason,
+                'cancel_reason' => $request->input('reason', 'Declined by worker'),
             ]);
+            
             return $lockedBooking;
         });
+
+        if ($limitConfig['enabled']) {
+            RateLimiter::hit($rateLimitKey, 86400); // 24 hours
+        }
 
         \App\Models\Notification::create([
             'user_id' => $booking->customer_id,

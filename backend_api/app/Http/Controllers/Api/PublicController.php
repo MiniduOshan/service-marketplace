@@ -43,6 +43,9 @@ class PublicController extends Controller
             $config[$priv['key']] = $priv['enabled'];
         }
 
+        $systemMode = \App\Models\Setting::get('system_mode', 'live');
+        $config['system_mode'] = $systemMode;
+
         return response()->json([
             'data' => [
                 'privileges' => $config

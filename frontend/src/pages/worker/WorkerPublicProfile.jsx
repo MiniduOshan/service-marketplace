@@ -119,6 +119,9 @@ export default function WorkerPublicProfile() {
   const hasPlanBookingAccess = workerInfo?.pricing_plan 
     ? workerPrivileges.includes('bookings') 
     : true;
+  const hasPlanFeaturedProfile = workerInfo?.pricing_plan 
+    ? workerPrivileges.includes('featuredProfile') 
+    : false;
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -178,9 +181,11 @@ export default function WorkerPublicProfile() {
                 </span>
               )}
 
-              <span className="rounded bg-amber-400 px-2 py-1 text-[9px] font-bold uppercase text-slate-900">
-                Featured
-              </span>
+              {config?.featuredProfile !== false && hasPlanFeaturedProfile && (
+                <span className="rounded bg-amber-400 px-2 py-1 text-[9px] font-bold uppercase text-slate-900">
+                  Featured
+                </span>
+              )}
 
               {averageRating && (
                 <span className="inline-flex items-center gap-1 rounded bg-amber-500 px-2 py-1 text-[9px] font-bold text-white uppercase tracking-wide">

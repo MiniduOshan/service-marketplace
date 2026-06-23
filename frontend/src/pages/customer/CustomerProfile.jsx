@@ -198,7 +198,7 @@ export default function CustomerProfile() {
     } catch {
       return 'Joined April 2025';
     }
-  }, [sessionUser?.created_at]);
+  }, [sessionUser]);
 
   const customer = useMemo(
     () => ({
@@ -274,6 +274,20 @@ export default function CustomerProfile() {
     loadProfileData();
   }, []);
 
+
+
+  const [addresses, setAddresses] = useState(() => sessionUser?.addresses || []);
+  const [savedAddresses, setSavedAddresses] = useState(() => sessionUser?.addresses || []);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [addressForm, setAddressForm] = useState(emptyAddressForm);
+
+  const [paymentMethods, setPaymentMethods] = useState(() => sessionUser?.payment_methods || []);
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState(
+    () => sessionUser?.payment_methods || []
+  );
+  const [showCardForm, setShowCardForm] = useState(false);
+  const [cardForm, setCardForm] = useState(emptyCardForm);
+
   useEffect(() => {
     if (sessionUser) {
       const freshForm = {
@@ -290,18 +304,6 @@ export default function CustomerProfile() {
       setSavedPaymentMethods(sessionUser.payment_methods || []);
     }
   }, [sessionUser]);
-
-  const [addresses, setAddresses] = useState(() => sessionUser?.addresses || []);
-  const [savedAddresses, setSavedAddresses] = useState(() => sessionUser?.addresses || []);
-  const [showAddressForm, setShowAddressForm] = useState(false);
-  const [addressForm, setAddressForm] = useState(emptyAddressForm);
-
-  const [paymentMethods, setPaymentMethods] = useState(() => sessionUser?.payment_methods || []);
-  const [savedPaymentMethods, setSavedPaymentMethods] = useState(
-    () => sessionUser?.payment_methods || []
-  );
-  const [showCardForm, setShowCardForm] = useState(false);
-  const [cardForm, setCardForm] = useState(emptyCardForm);
 
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm);
   const [savedPasswordForm, setSavedPasswordForm] = useState(emptyPasswordForm);

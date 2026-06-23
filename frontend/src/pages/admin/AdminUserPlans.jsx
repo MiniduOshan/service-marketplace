@@ -130,9 +130,10 @@ export default function AdminUserPlans() {
                     <div className="flex items-center gap-2 self-center">
                       <select
                         value={user.pricing_plan_id || ''}
-                        onChange={(event) => handleAssignPlan(user.id, event.target.value)}
+                        onChange={(event) => handleAssignPlan(user.id, event.target.value ? Number(event.target.value) : null)}
                         className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none transition focus:border-emerald-600"
                       >
+                        <option value="">Free (Default)</option>
                         {plans.map((plan) => (
                           <option key={plan.id} value={plan.id}>
                             {plan.title} (LKR {Number(plan.price).toLocaleString()})

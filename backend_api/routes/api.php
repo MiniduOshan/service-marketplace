@@ -90,6 +90,7 @@ $registerRoutes = function () {
             Route::patch('/admin/customers/{id}', [AdminController::class, 'updateCustomer']);
             Route::get('/admin/privileges', [AdminController::class, 'privileges']);
             Route::post('/admin/privileges/{key}/toggle', [AdminController::class, 'togglePrivilege']);
+            Route::post('/admin/system/mode', [AdminController::class, 'setSystemMode']);
             Route::get('/admin/system/health', [AdminController::class, 'systemHealth']);
             Route::post('/admin/notifications/send', [AdminController::class, 'sendNotification']);
             Route::post('/admin/credentials', [AdminController::class, 'saveCredentials']);

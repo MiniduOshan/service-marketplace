@@ -37,11 +37,11 @@ export default function AdminWorkers() {
     loadWorkers();
   }, []);
 
-  const updateWorker = async (workerId, status, verification) => {
+  const updateWorker = async (workerId, status, verification, priority_score = undefined) => {
     try {
       await apiRequest(`/admin/workers/${workerId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ status, verification }),
+        body: JSON.stringify({ status, verification, priority_score }),
       });
       loadWorkers();
     } catch (error) {
@@ -179,6 +179,22 @@ export default function AdminWorkers() {
                           <div className="flex items-center gap-2">
                             <button type="button" onClick={() => updateWorker(worker.id, 'Active', 'Verified')} className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors shadow-sm"><CheckCircle2 size={14} /> Approve</button>
                             <button type="button" onClick={() => updateWorker(worker.id, 'Suspended', 'Pending verification')} className="inline-flex items-center gap-1.5 rounded-md bg-amber-500 hover:bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors shadow-sm"><PauseCircle size={14} /> Hold</button>
+                          </div>
+                        </div>
+
+                        <div className="mb-4 flex items-center justify-between border-b border-slate-200/60 pb-3">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Priority Score</h3>
+                            <input
+                              type="number"
+                              min="0"
+                              max="999"
+                              defaultValue={worker.priority_score || 0}
+                              onBlur={(e) => updateWorker(worker.id, worker.status, worker.verification, parseInt(e.target.value, 10))}
+                              className="ml-2 w-20 rounded-md border-slate-200 text-xs focus:border-emerald-500 focus:ring-emerald-500"
+                              title="Update priority score (0-999)"
+                            />
+                            <span className="text-[10px] text-slate-500 ml-2">Higher score ranks the worker higher in customer searches</span>
                           </div>
                         </div>
 

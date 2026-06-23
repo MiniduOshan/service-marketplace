@@ -50,6 +50,7 @@ class User extends Authenticatable
         'status',
         'verification',
         'profile_views',
+        'priority_score',
     ];
 
     /**
