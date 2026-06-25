@@ -250,7 +250,7 @@ function FilterPanel({
       className={`bg-white ${
         mobile
           ? 'h-full w-full overflow-y-auto p-6'
-          : 'hidden w-64 shrink-0 border-r border-slate-200 py-6 lg:block lg:px-8 xl:px-10'
+          : 'sticky top-20 h-[calc(100vh-80px)] overflow-y-auto hidden w-64 shrink-0 border-r border-slate-200 py-6 lg:block lg:px-8 xl:px-10'
       }`}
     >
       <div className="flex items-start justify-between">
