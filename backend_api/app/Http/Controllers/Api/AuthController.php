@@ -687,9 +687,15 @@ class AuthController extends Controller
         $resetLink = $frontendUrl . "/reset-password?token={$token}&email=" . urlencode($user->email);
         Log::info("Password reset requested for {$user->email}. Reset Link: {$resetLink}");
 
-        return response()->json([
+        $response = [
             'message' => 'If an account exists with this email, a password reset link has been sent.',
-        ]);
+        ];
+
+        if (app()->environment(['local', 'testing']) || config('app.debug')) {
+            $response['reset_link'] = $resetLink;
+        }
+
+        return response()->json($response);
     }
 
     public function resetPassword(Request $request): JsonResponse
