@@ -1,11 +1,10 @@
 services:
   - type: web
     name: service-marketplace-backend
-    env: php
+    env: docker
     rootDir: backend_api
     plan: free # Change to a paid plan if needed
-    buildCommand: composer install --no-dev --optimize-autoloader && php artisan migrate --force
-    # Render's native PHP environment automatically starts Apache/Nginx. We just need to set the document root.
+    # Docker environment handles building and starting via the Dockerfile
     envVars:
       - key: APP_ENV
         value: production
