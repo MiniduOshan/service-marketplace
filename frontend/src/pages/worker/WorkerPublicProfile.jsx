@@ -17,6 +17,7 @@ import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 import { apiRequest, getStoredSessionUser } from '../../lib/api';
 import { useConfig } from '../../context/ConfigContext';
+import { mockWorkers } from '../../lib/mockWorkers';
 
 function SectionCard({ title, children, className = '' }) {
   return (
@@ -58,8 +59,32 @@ export default function WorkerPublicProfile() {
           const profileData = profileRes.data?.data || profileRes.data || profileRes;
           setWorkerInfo(profileData);
         } catch (e) {
-          // fallback to primary package worker if available
-          if (packages.length > 0) {
+          // fallback to mock data if it's a hardcoded worker
+          const mockWorker = mockWorkers.find((w) => w.id.toString() === id.toString());
+          if (mockWorker) {
+            setWorkerInfo({
+              id: mockWorker.id,
+              name: mockWorker.name,
+              avatar: mockWorker.avatar,
+              avatarClass: mockWorker.avatarClass,
+              role: mockWorker.role,
+              verification: mockWorker.verified ? 'Verified' : 'Unverified',
+              district: mockWorker.location,
+              pricing_plan: { privileges: mockWorker.pro ? ['featuredProfile', 'bookings', 'chat'] : ['bookings', 'chat'] }
+            });
+            
+            if (packages.length === 0) {
+              setServices([
+                {
+                  id: mockWorker.id,
+                  title: mockWorker.role,
+                  price: mockWorker.price,
+                  description: 'Professional ' + mockWorker.role + ' services.',
+                  worker: { name: mockWorker.name }
+                }
+              ]);
+            }
+          } else if (packages.length > 0) {
             setWorkerInfo(packages[0].worker);
           }
         }
@@ -164,7 +189,7 @@ export default function WorkerPublicProfile() {
           </div>
 
           <div className="absolute bottom-[-24px] left-7 flex items-end gap-4 sm:left-9">
-            <div className="h-[118px] w-[118px] flex items-center justify-center overflow-hidden rounded-lg border-4 border-white bg-emerald-700 text-white text-4xl font-bold shadow-lg sm:h-[130px] sm:w-[130px]">
+            <div className={`h-[118px] w-[118px] flex items-center justify-center overflow-hidden rounded-lg border-4 border-white text-4xl font-bold shadow-lg sm:h-[130px] sm:w-[130px] ${workerInfo?.avatarClass || 'bg-emerald-700 text-white'}`}>
               {workerInfo?.avatar_url ? (
                 <img
                   src={workerInfo.avatar_url}
@@ -172,7 +197,7 @@ export default function WorkerPublicProfile() {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                displayInitials
+                workerInfo?.avatar || displayInitials
               )}
             </div>
 

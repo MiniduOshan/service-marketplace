@@ -148,8 +148,9 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'phone' => ['required', 'string', 'max:30'],
-            'name' => ['required', 'string', 'max:255'],
-            'role' => ['required', 'in:customer,worker'],
+            'name' => ['nullable', 'string', 'max:255'],
+            'role' => ['nullable', 'in:customer,worker'],
+            'is_login' => ['nullable', 'boolean'],
         ]);
 
         $phone = User::normalizePhone($validated['phone']);
@@ -160,12 +161,29 @@ class AuthController extends Controller
             ], 422);
         }
 
+        $user = User::where('phone', $phone)->first();
+        $isLogin = $request->boolean('is_login');
+
+        if ($isLogin && !$user) {
+            return response()->json([
+                'message' => 'No account found with this phone number. Please sign up.',
+            ], 404);
+        }
+
+        if (!$isLogin && !$user) {
+            if (empty($validated['name']) || empty($validated['role'])) {
+                return response()->json([
+                    'message' => 'Name and role are required for new accounts.',
+                ], 422);
+            }
+        }
+
         $otp = $this->generatePhoneOtp();
         $otpExpiresAt = now()->addMinutes(10);
 
         $cacheData = [
-            'name' => $validated['name'],
-            'role' => $validated['role'],
+            'name' => $user ? $user->name : $validated['name'],
+            'role' => $user ? $user->role : $validated['role'],
             'otp_hash' => Hash::make($otp),
             'expires_at' => $otpExpiresAt->toIso8601String(),
             'attempts' => 0,

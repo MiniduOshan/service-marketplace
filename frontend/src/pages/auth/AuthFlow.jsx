@@ -188,6 +188,7 @@ export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }
           onBack={handlePhoneBack}
           onSendOtp={handlePhoneOtpRequested}
           defaultRole={selectedRole}
+          isLogin={phoneBackStep === 'login'}
         />
       );
 

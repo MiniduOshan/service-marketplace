@@ -52,11 +52,6 @@ export default function ForgotPassword({ onBack }) {
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-2 mb-2">
-              <button onClick={onBack} className="p-1 -ml-1 text-slate-400 hover:text-slate-700 transition">
-                <ArrowLeft size={20} />
-              </button>
-            </div>
             <h1 className="text-[25px] font-medium tracking-tight text-slate-900 2xl:text-[30px] min-[1920px]:text-[34px]">
               Reset Password
             </h1>

@@ -3,7 +3,7 @@ import { ChevronDown, HardHat, UserRound } from 'lucide-react';
 import OnboardingLayout from './OnboardingLayout';
 import { apiRequest } from '../../lib/api';
 
-export default function PhoneInput({ onBack, onSendOtp, defaultRole = 'customer' }) {
+export default function PhoneInput({ onBack, onSendOtp, defaultRole = 'customer', isLogin = false }) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState(defaultRole);
@@ -20,9 +20,8 @@ export default function PhoneInput({ onBack, onSendOtp, defaultRole = 'customer'
       const response = await apiRequest('/auth/phone/request-otp', {
         method: 'POST',
         body: JSON.stringify({
-          name,
           phone,
-          role,
+          ...(isLogin ? { is_login: true } : { name, role, is_login: false }),
         }),
       });
 
@@ -57,7 +56,9 @@ export default function PhoneInput({ onBack, onSendOtp, defaultRole = 'customer'
         </h1>
 
         <p className="mt-2 text-center text-[13px] text-slate-500 2xl:mt-3 2xl:text-[15px] min-[1920px]:text-base">
-          Add your name and phone number to get a one-time code.
+          {isLogin 
+            ? 'Add your phone number to get a one-time code.' 
+            : 'Add your name and phone number to get a one-time code.'}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 2xl:mt-10 min-[1920px]:mt-12">
@@ -78,45 +79,49 @@ export default function PhoneInput({ onBack, onSendOtp, defaultRole = 'customer'
               />
             </div>
 
-            <div className="flex h-10.5 items-center gap-3 rounded-lg border border-slate-200 px-4 transition focus-within:border-[#08785d] focus-within:ring-2 focus-within:ring-emerald-100 2xl:h-12 2xl:px-5 min-[1920px]:h-14 min-[1920px]:px-6">
-              <UserRound size={17} className="text-slate-400 2xl:h-5 2xl:w-5 min-[1920px]:h-6 min-[1920px]:w-6" />
+            {!isLogin && (
+              <>
+                <div className="flex h-10.5 items-center gap-3 rounded-lg border border-slate-200 px-4 transition focus-within:border-[#08785d] focus-within:ring-2 focus-within:ring-emerald-100 2xl:h-12 2xl:px-5 min-[1920px]:h-14 min-[1920px]:px-6">
+                  <UserRound size={17} className="text-slate-400 2xl:h-5 2xl:w-5 min-[1920px]:h-6 min-[1920px]:w-6" />
 
-              <input
-                type="text"
-                placeholder="Full name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-full w-full bg-transparent text-[13px] text-slate-800 outline-none placeholder:text-slate-400 2xl:text-[15px] min-[1920px]:text-base"
-              />
-            </div>
+                  <input
+                    type="text"
+                    placeholder="Full name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-full w-full bg-transparent text-[13px] text-slate-800 outline-none placeholder:text-slate-400 2xl:text-[15px] min-[1920px]:text-base"
+                  />
+                </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setRole('customer')}
-                className={`flex items-center justify-center gap-2 rounded-lg border px-4 py-3 text-[13px] font-semibold transition 2xl:text-[15px] min-[1920px]:text-base ${
-                  role === 'customer'
-                    ? 'border-[#08785d] bg-[#e3f4ee] text-[#08785d]'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-[#08785d]/40'
-                }`}
-              >
-                <UserRound size={16} />
-                Customer
-              </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setRole('customer')}
+                    className={`flex items-center justify-center gap-2 rounded-lg border px-4 py-3 text-[13px] font-semibold transition 2xl:text-[15px] min-[1920px]:text-base ${
+                      role === 'customer'
+                        ? 'border-[#08785d] bg-[#e3f4ee] text-[#08785d]'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-[#08785d]/40'
+                    }`}
+                  >
+                    <UserRound size={16} />
+                    Customer
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setRole('worker')}
-                className={`flex items-center justify-center gap-2 rounded-lg border px-4 py-3 text-[13px] font-semibold transition 2xl:text-[15px] min-[1920px]:text-base ${
-                  role === 'worker'
-                    ? 'border-[#08785d] bg-[#e3f4ee] text-[#08785d]'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-[#08785d]/40'
-                }`}
-              >
-                <HardHat size={16} />
-                Worker
-              </button>
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => setRole('worker')}
+                    className={`flex items-center justify-center gap-2 rounded-lg border px-4 py-3 text-[13px] font-semibold transition 2xl:text-[15px] min-[1920px]:text-base ${
+                      role === 'worker'
+                        ? 'border-[#08785d] bg-[#e3f4ee] text-[#08785d]'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-[#08785d]/40'
+                    }`}
+                  >
+                    <HardHat size={16} />
+                    Worker
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           {error ? (
