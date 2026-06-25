@@ -1,4 +1,4 @@
-FROM php:8.2-fpm
+FROM php:8.3-fpm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -20,7 +20,7 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
 # Increase PHP memory limit
-RUN echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory-limit.ini
+RUN echo "memory_limit=512M" > /usr/local/etc/php/conf.d/memory-limit.ini
 
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
