@@ -29,5 +29,5 @@ frontend/*.local
 frontend/node_modules/
 frontend/dist/
 frontend/dist-ssr/
-
+.env
 
