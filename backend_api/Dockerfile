@@ -10,13 +10,14 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     nginx \
-    supervisor
+    supervisor \
+    ca-certificates
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+RUN docker-php-ext-install pdo_mysql pdo_pgsql pgsql mbstring exif pcntl bcmath gd
 
 # Increase PHP memory limit
 RUN echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory-limit.ini
