@@ -18,3 +18,13 @@ services:
         sync: false # Set this in the Render dashboard from your MySQL database URL
       - key: DOCUMENT_ROOT
         value: public
+      - key: SUPABASE_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_IDS
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
