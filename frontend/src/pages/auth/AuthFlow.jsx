@@ -6,6 +6,7 @@ import Signup from './Signup';
 import RoleSelection from './RoleSelection';
 import PhoneInput from './PhoneInput';
 import PhoneVerification from './PhoneVerification';
+import ForgotPassword from './ForgotPassword';
 
 export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }) {
   const navigate = useNavigate();
@@ -77,6 +78,11 @@ export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }
   const handlePhoneLoginFromSignup = () => {
     setPhoneBackStep('signup');
     goToStep('phone-login');
+  };
+
+  const handleForgotPassword = () => {
+    setLoginBackStep('login');
+    goToStep('forgot-password');
   };
 
   const handleLoginBack = () => {
@@ -161,6 +167,7 @@ export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }
           onCreateAccount={handleCreateAccount}
           onLoginComplete={handleLoginComplete}
           onPhoneLogin={handlePhoneLoginFromLogin}
+          onForgotPassword={handleForgotPassword}
         />
       );
 
@@ -194,6 +201,13 @@ export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }
         />
       );
 
+    case 'forgot-password':
+      return (
+        <ForgotPassword
+          onBack={() => goToStep('login')}
+        />
+      );
+
     default:
       return (
         <Login
@@ -201,6 +215,7 @@ export default function AuthFlow({ initialView = 'login', entryMode = 'signin' }
           onCreateAccount={handleCreateAccount}
           onLoginComplete={handleLoginComplete}
           onPhoneLogin={handlePhoneLoginFromLogin}
+          onForgotPassword={handleForgotPassword}
         />
       );
   }

@@ -641,4 +641,71 @@ class AuthController extends Controller
             Log::debug("SMS Gateway simulation: OTP sent to {$phone}: {$otp}");
         }
     }
+
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'string', 'email'],
+        ]);
+
+        $user = User::where('email', $validated['email'])->first();
+
+        if (! $user) {
+            // Return success even if not found to prevent email enumeration
+            return response()->json([
+                'message' => 'If an account exists with this email, a password reset link has been sent.',
+            ]);
+        }
+
+        $token = Str::random(60);
+        $expiresAt = now()->addMinutes(30);
+
+        Cache::put("password_reset:{$user->email}", [
+            'token' => Hash::make($token),
+        ], $expiresAt);
+
+        // Simulate sending email
+        $frontendUrl = config('app.frontend_url', 'http://localhost:5173');
+        $resetLink = $frontendUrl . "/reset-password?token={$token}&email=" . urlencode($user->email);
+        Log::info("Password reset requested for {$user->email}. Reset Link: {$resetLink}");
+
+        return response()->json([
+            'message' => 'If an account exists with this email, a password reset link has been sent.',
+        ]);
+    }
+
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'string', 'email'],
+            'token' => ['required', 'string'],
+            'password' => ['required', 'string', 'confirmed', \Illuminate\Validation\Rules\Password::min(8)],
+        ]);
+
+        $cacheData = Cache::get("password_reset:{$validated['email']}");
+
+        if (! $cacheData || ! Hash::check($validated['token'], $cacheData['token'])) {
+            return response()->json([
+                'message' => 'Invalid or expired password reset token.',
+            ], 422);
+        }
+
+        $user = User::where('email', $validated['email'])->first();
+
+        if (! $user) {
+            return response()->json([
+                'message' => 'User not found.',
+            ], 422);
+        }
+
+        $user->forceFill([
+            'password' => Hash::make($validated['password']),
+        ])->save();
+
+        Cache::forget("password_reset:{$validated['email']}");
+
+        return response()->json([
+            'message' => 'Password has been reset successfully.',
+        ]);
+    }
 }

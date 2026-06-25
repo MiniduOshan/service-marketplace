@@ -39,8 +39,9 @@ import CustomerBookings from './pages/booking/CustomerBookings';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 import { ConfigProvider, useConfig } from './context/ConfigContext';
-import { useAuth } from './context/AuthContext';
+import { useAuth, AuthProvider } from './context/AuthContext';
 import MaintenancePage from './pages/MaintenancePage';
+import ResetPassword from './pages/auth/ResetPassword';
 
 function SystemModeWrapper({ children }) {
   const { config, loading: configLoading } = useConfig();
@@ -63,9 +64,10 @@ function SystemModeWrapper({ children }) {
 function App() {
   return (
     <ConfigProvider>
-      <Router>
-        <div className="min-h-screen bg-white font-sans text-gray-900 selection:bg-emerald-100 selection:text-[#1B5E44]">
-          <SystemModeWrapper>
+      <AuthProvider>
+        <Router>
+          <div className="min-h-screen bg-white font-sans text-gray-900 selection:bg-emerald-100 selection:text-[#1B5E44]">
+            <SystemModeWrapper>
             <Routes>
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
@@ -308,12 +310,14 @@ function App() {
           {/* Auth routes render the landing page behind the popup */}
           <Route path="/login" element={<LandingPage />} />
           <Route path="/signup" element={<LandingPage />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-          </SystemModeWrapper>
-        </div>
-      </Router>
+            </SystemModeWrapper>
+          </div>
+        </Router>
+      </AuthProvider>
     </ConfigProvider>
   );
 }

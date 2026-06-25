@@ -4,7 +4,7 @@ import OnboardingLayout from './OnboardingLayout';
 import GoogleSignInButton from './GoogleSignInButton';
 import { apiRequest, storeSession } from '../../lib/api';
 
-export default function Login({ onBack, onCreateAccount, onLoginComplete, onPhoneLogin }) {
+export default function Login({ onBack, onCreateAccount, onLoginComplete, onPhoneLogin, onForgotPassword }) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -95,6 +95,7 @@ export default function Login({ onBack, onCreateAccount, onLoginComplete, onPhon
           <div className="flex justify-end">
             <button
               type="button"
+              onClick={onForgotPassword}
               className="cursor-pointer text-[13px] font-medium text-[#08785d] hover:underline 2xl:text-[15px] min-[1920px]:text-base"
             >
               Forgot password?

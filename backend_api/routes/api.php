@@ -39,6 +39,8 @@ $registerRoutes = function () {
             Route::post('/google', [AuthController::class, 'google']);
             Route::post('/phone/request-otp', [AuthController::class, 'requestPhoneOtp']);
             Route::post('/phone/verify-otp', [AuthController::class, 'verifyPhoneOtp']);
+            Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+            Route::post('/reset-password', [AuthController::class, 'resetPassword']);
         });
 
         Route::middleware(AuthenticateApiToken::class)->group(function () {
