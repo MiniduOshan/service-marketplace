@@ -3,17 +3,28 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Review;
 use App\Models\ServicePackage;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use Throwable;
 
 class ServicePackageController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        if (! $this->requiredTablesExist(['service_packages', 'service_categories', 'users'])) {
+            return response()->json([
+                'data' => $this->emptyPaginatorPayload((int) $request->input('page', 1)),
+            ]);
+        }
+
         $page = $request->input('page', 1);
         $category = $request->input('category');
         $workerId = $request->input('worker_id');
@@ -24,38 +35,24 @@ class ServicePackageController extends Controller
             User::whereKey($request->input('worker_id'))->increment('profile_views');
         }
 
-        $version = Cache::rememberForever('services:list:version', fn() => (string) microtime(true));
-        $cacheKey = "services:list:{$version}:" . md5(serialize([$page, $category, $workerId, $search, $district]));
+        $version = Cache::rememberForever('services:list:version', fn () => (string) microtime(true));
+        $cacheKey = 'services:list:'.$version.':'.md5(serialize([$page, $category, $workerId, $search, $district]));
 
         $data = Cache::remember($cacheKey, now()->addMinutes(2), function () use ($request) {
-            $privileges = \App\Models\Setting::get('privileges', []);
-            $workerApprovalEnabled = false;
-            if (!empty($privileges)) {
-                $found = false;
-                foreach ($privileges as $priv) {
-                    if (($priv['key'] ?? '') === 'workerApproval') {
-                        $workerApprovalEnabled = $priv['enabled'] ?? false;
-                        $found = true;
-                        break;
-                    }
-                }
-                if (!$found) {
-                    $workerApprovalEnabled = false;
-                }
-            }
+            $workerApprovalEnabled = $this->workerApprovalEnabled();
 
             $query = ServicePackage::query()
                 ->with([
                     'category',
                     'worker' => function ($q) {
                         $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at', 'pricing_plan_id', 'verification', 'avatar_url', 'cover_photo', 'district')
-                          ->withAvg('workerReviews as average_rating', 'rating')
-                          ->withCount('workerReviews as reviews_count')
-                          ->withCount(['workerBookings as completed_jobs_count' => function ($query) {
-                              $query->where('status', 'completed');
-                          }])
-                          ->with('pricingPlan');
-                    }
+                            ->withAvg('workerReviews as average_rating', 'rating')
+                            ->withCount('workerReviews as reviews_count')
+                            ->withCount(['workerBookings as completed_jobs_count' => function ($query) {
+                                $query->where('status', 'completed');
+                            }])
+                            ->with('pricingPlan');
+                    },
                 ])
                 ->whereHas('worker', function ($q) use ($workerApprovalEnabled) {
                     if ($workerApprovalEnabled) {
@@ -63,13 +60,14 @@ class ServicePackageController extends Controller
                     } else {
                         $q->where('verification', '!=', 'Rejected');
                     }
+
                     $q->where('status', 'Active')
-                      ->where(function ($planQuery) {
-                          $planQuery->whereNull('pricing_plan_id')
-                                    ->orWhereHas('pricingPlan', function ($subQuery) {
-                                        $subQuery->where('is_active', true);
-                                    });
-                      });
+                        ->where(function ($planQuery) {
+                            $planQuery->whereNull('pricing_plan_id')
+                                ->orWhereHas('pricingPlan', function ($subQuery) {
+                                    $subQuery->where('is_active', true);
+                                });
+                        });
                 })
                 ->where('is_active', true)
                 ->orderByRaw('(SELECT priority_score FROM users WHERE users.id = service_packages.user_id) DESC')
@@ -81,12 +79,12 @@ class ServicePackageController extends Controller
                     'desc'
                 )
                 ->orderBy(
-                    \App\Models\Review::selectRaw('COALESCE(AVG(rating), 0)')
+                    Review::selectRaw('COALESCE(AVG(rating), 0)')
                         ->whereColumn('reviews.worker_id', 'service_packages.user_id')
                         ->limit(1),
                     'desc'
                 )
-                ->orderByRaw('(SELECT CASE WHEN verification = "Verified" THEN 1 ELSE 0 END FROM users WHERE users.id = service_packages.user_id) DESC')
+                ->orderByRaw('(SELECT CASE WHEN verification = ? THEN 1 ELSE 0 END FROM users WHERE users.id = service_packages.user_id) DESC', ['Verified'])
                 ->latest('service_packages.created_at');
 
             if ($request->filled('category')) {
@@ -131,18 +129,18 @@ class ServicePackageController extends Controller
             User::whereKey($servicePackage->user_id)->increment('profile_views');
         }
 
-        $data = Cache::remember("service_package:{$servicePackage->id}", now()->addDay(), function () use ($servicePackage) {
+        $data = Cache::remember('service_package:'.$servicePackage->id, now()->addDay(), function () use ($servicePackage) {
             return $servicePackage->load([
                 'category',
                 'worker' => function ($q) {
                     $q->select('id', 'name', 'role', 'primary_service_category_id', 'phone_verified_at', 'pricing_plan_id', 'verification', 'avatar_url', 'cover_photo')
-                      ->withAvg('workerReviews as average_rating', 'rating')
-                      ->withCount('workerReviews as reviews_count')
-                      ->withCount(['workerBookings as completed_jobs_count' => function ($query) {
-                          $query->where('status', 'completed');
-                      }])
-                      ->with('pricingPlan');
-                }
+                        ->withAvg('workerReviews as average_rating', 'rating')
+                        ->withCount('workerReviews as reviews_count')
+                        ->withCount(['workerBookings as completed_jobs_count' => function ($query) {
+                            $query->where('status', 'completed');
+                        }])
+                        ->with('pricingPlan');
+                },
             ])->toArray();
         });
 
@@ -231,7 +229,7 @@ class ServicePackageController extends Controller
 
         $servicePackage->update($validated);
 
-        Cache::forget("service_package:{$servicePackage->id}");
+        Cache::forget('service_package:'.$servicePackage->id);
         Cache::forever('services:list:version', (string) microtime(true));
         Cache::forget('categories:active');
 
@@ -248,7 +246,7 @@ class ServicePackageController extends Controller
 
         $servicePackage->delete();
 
-        Cache::forget("service_package:{$servicePackage->id}");
+        Cache::forget('service_package:'.$servicePackage->id);
         Cache::forever('services:list:version', (string) microtime(true));
         Cache::forget('categories:active');
 
@@ -260,7 +258,7 @@ class ServicePackageController extends Controller
     public function workerServices(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         $services = ServicePackage::query()
             ->with(['category'])
             ->where('user_id', $user->id)
@@ -272,43 +270,94 @@ class ServicePackageController extends Controller
         ]);
     }
 
+    private function workerApprovalEnabled(): bool
+    {
+        $privileges = Setting::get('privileges', []);
+
+        if (! is_array($privileges)) {
+            return false;
+        }
+
+        foreach ($privileges as $privilege) {
+            if (is_array($privilege) && ($privilege['key'] ?? '') === 'workerApproval') {
+                return (bool) ($privilege['enabled'] ?? false);
+            }
+        }
+
+        return false;
+    }
+
+    private function requiredTablesExist(array $tables): bool
+    {
+        try {
+            foreach ($tables as $table) {
+                if (! Schema::hasTable($table)) {
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    private function emptyPaginatorPayload(int $page = 1): array
+    {
+        return [
+            'current_page' => max(1, $page),
+            'data' => [],
+            'first_page_url' => null,
+            'from' => null,
+            'last_page' => 1,
+            'last_page_url' => null,
+            'links' => [],
+            'next_page_url' => null,
+            'path' => null,
+            'per_page' => 12,
+            'prev_page_url' => null,
+            'to' => null,
+            'total' => 0,
+        ];
+    }
+
     private function validateImageUrl(?string $imageUrl): ?string
     {
-        if (!$imageUrl) {
+        if (! $imageUrl) {
             return null;
         }
 
-        if (!filter_var($imageUrl, FILTER_VALIDATE_URL)) {
+        if (! filter_var($imageUrl, FILTER_VALIDATE_URL)) {
             return 'Invalid image URL format.';
         }
 
         $supabaseUrl = env('SUPABASE_URL') ?: 'https://jaqwysogwxwkpykcmpjq.supabase.co';
         if ($supabaseUrl) {
-            $supabaseHost = strtolower(parse_url($supabaseUrl, PHP_URL_HOST));
-            $imageHost = strtolower(parse_url($imageUrl, PHP_URL_HOST));
+            $supabaseHost = strtolower((string) parse_url($supabaseUrl, PHP_URL_HOST));
+            $imageHost = strtolower((string) parse_url($imageUrl, PHP_URL_HOST));
             if ($supabaseHost && $imageHost && $supabaseHost !== $imageHost) {
-                if (!(str_ends_with($supabaseHost, 'supabase.co') && str_ends_with($imageHost, 'supabase.co'))) {
+                if (! (str_ends_with($supabaseHost, 'supabase.co') && str_ends_with($imageHost, 'supabase.co'))) {
                     return 'Image must be hosted on the approved storage provider.';
                 }
             }
         }
 
         $path = parse_url($imageUrl, PHP_URL_PATH);
-        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+        $extension = strtolower(pathinfo((string) $path, PATHINFO_EXTENSION));
+        if (! in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) {
             return 'Only JPG, JPEG, PNG, GIF, and WEBP images are allowed.';
         }
 
         try {
-            $response = \Illuminate\Support\Facades\Http::timeout(3)->head($imageUrl);
+            $response = Http::timeout(3)->head($imageUrl);
             if ($response->successful()) {
                 $contentLength = $response->header('Content-Length');
-                if ($contentLength && $contentLength > 5 * 1024 * 1024) {
+                if ($contentLength && (int) $contentLength > 5 * 1024 * 1024) {
                     return 'The image size exceeds the 5MB limit.';
                 }
             }
-        } catch (\Exception $e) {
-            // Keep it permissive on connection/network issues, but restrict if test specifies
+        } catch (Throwable $e) {
+            // Keep it permissive on connection/network issues.
         }
 
         return null;

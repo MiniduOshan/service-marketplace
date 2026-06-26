@@ -7,20 +7,23 @@ export default function ForgotPassword({ onBack }) {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('idle'); // idle, submitting, success
   const [error, setError] = useState('');
+  const [resetLink, setResetLink] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email) return;
 
     setError('');
+    setResetLink('');
     setStatus('submitting');
 
     try {
-      await apiRequest('/auth/forgot-password', {
+      const response = await apiRequest('/auth/forgot-password', {
         method: 'POST',
         body: JSON.stringify({ email }),
       });
 
+      setResetLink(response?.reset_link || '');
       setStatus('success');
     } catch (requestError) {
       setError(requestError.message || 'Unable to process request.');
@@ -42,6 +45,21 @@ export default function ForgotPassword({ onBack }) {
             <p className="mt-2 text-[13px] text-slate-500 2xl:text-[15px]">
               If an account exists with {email}, we've sent instructions to reset your password.
             </p>
+
+            {resetLink ? (
+              <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-left">
+                <p className="text-[12px] font-semibold text-emerald-700 2xl:text-[13px]">
+                  Local testing reset link
+                </p>
+                <a
+                  href={resetLink}
+                  className="mt-1 block break-all text-[12px] font-medium text-[#08785d] underline 2xl:text-[13px]"
+                >
+                  {resetLink}
+                </a>
+              </div>
+            ) : null}
+
             <button
               type="button"
               onClick={onBack}

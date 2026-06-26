@@ -15,30 +15,83 @@ class CheckSystemMode
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $mode = \App\Models\Setting::get('system_mode', 'live');
-        
+        // These routes must work even before the database is migrated/seeded.
+        if ($this->isAlwaysAllowed($request)) {
+            return $next($request);
+        }
+
+        $mode = 'live';
+
+        try {
+            $mode = \App\Models\Setting::get('system_mode', 'live');
+        } catch (\Throwable $e) {
+            // If database/settings table is not ready, do not block the API.
+            $mode = 'live';
+        }
+
         if ($mode === 'maintenance') {
-            // Allow admin routes
-            if ($request->is('api/v1/admin/*') || $request->is('api/v1/platform-config')) {
+            if ($this->isAllowedDuringMaintenance($request)) {
                 return $next($request);
             }
-            
-            // Allow authenticated admin users
+
             if ($request->user() && $request->user()->role === 'admin') {
                 return $next($request);
             }
 
-            // Exclude auth routes for admin to login
-            if ($request->is('api/v1/login') || $request->is('api/v1/auth/me')) {
-                return $next($request);
-            }
-            
             return response()->json([
                 'message' => 'System is currently under maintenance.',
-                'code' => 'MAINTENANCE_MODE'
+                'code' => 'MAINTENANCE_MODE',
             ], 503);
         }
 
         return $next($request);
+    }
+
+    private function isAlwaysAllowed(Request $request): bool
+    {
+        $patterns = [
+            'api/health',
+            'api/v1/health',
+            'api/platform-config',
+            'api/v1/platform-config',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if ($request->is($pattern)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isAllowedDuringMaintenance(Request $request): bool
+    {
+        $allowedPatterns = [
+            'api/health',
+            'api/v1/health',
+            'api/platform-config',
+            'api/v1/platform-config',
+            'api/auth/login',
+            'api/v1/auth/login',
+            'api/auth/me',
+            'api/v1/auth/me',
+            'api/auth/logout',
+            'api/v1/auth/logout',
+            'api/auth/forgot-password',
+            'api/v1/auth/forgot-password',
+            'api/auth/reset-password',
+            'api/v1/auth/reset-password',
+            'api/admin/*',
+            'api/v1/admin/*',
+        ];
+
+        foreach ($allowedPatterns as $pattern) {
+            if ($request->is($pattern)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
