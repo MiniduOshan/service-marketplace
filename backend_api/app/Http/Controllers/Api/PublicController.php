@@ -74,7 +74,7 @@ class PublicController extends Controller
         ]);
     }
 
-    public function workerProfile($id): JsonResponse
+    public function workerProfile(int $id): JsonResponse
     {
         if (! $this->requiredTablesExist(['users'])) {
             return response()->json([
