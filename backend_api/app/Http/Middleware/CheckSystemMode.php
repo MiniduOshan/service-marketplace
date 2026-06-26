@@ -15,14 +15,25 @@ class CheckSystemMode
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $mode = \App\Models\Setting::get('system_mode', 'live');
+        // These routes must work even before the database is migrated/seeded.
+        if ($this->isAlwaysAllowed($request)) {
+            return $next($request);
+        }
+
+        $mode = 'live';
+
+        try {
+            $mode = \App\Models\Setting::get('system_mode', 'live');
+        } catch (\Throwable $e) {
+            // If database/settings table is not ready, do not block the API.
+            $mode = 'live';
+        }
 
         if ($mode === 'maintenance') {
             if ($this->isAllowedDuringMaintenance($request)) {
                 return $next($request);
             }
 
-            // This is kept as a fallback for any guard-authenticated admin requests.
             if ($request->user() && $request->user()->role === 'admin') {
                 return $next($request);
             }
@@ -34,6 +45,24 @@ class CheckSystemMode
         }
 
         return $next($request);
+    }
+
+    private function isAlwaysAllowed(Request $request): bool
+    {
+        $patterns = [
+            'api/health',
+            'api/v1/health',
+            'api/platform-config',
+            'api/v1/platform-config',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if ($request->is($pattern)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function isAllowedDuringMaintenance(Request $request): bool
