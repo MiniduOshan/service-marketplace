@@ -6,13 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\PricingPlan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use Throwable;
 
 class PricingPlanController extends Controller
 {
     public function publicIndex(): JsonResponse
     {
+        if (! $this->pricingPlansTableExists()) {
+            return response()->json(['data' => []]);
+        }
+
         return response()->json([
             'data' => PricingPlan::query()->where('is_active', true)->orderBy('price')->get(),
         ]);
@@ -20,6 +26,10 @@ class PricingPlanController extends Controller
 
     public function index(): JsonResponse
     {
+        if (! $this->pricingPlansTableExists()) {
+            return response()->json(['data' => []]);
+        }
+
         return response()->json([
             'data' => PricingPlan::query()->latest()->get(),
         ]);
@@ -97,5 +107,14 @@ class PricingPlanController extends Controller
         return response()->json([
             'message' => 'Pricing plan deleted successfully.',
         ]);
+    }
+
+    private function pricingPlansTableExists(): bool
+    {
+        try {
+            return Schema::hasTable('pricing_plans');
+        } catch (Throwable $e) {
+            return false;
+        }
     }
 }
