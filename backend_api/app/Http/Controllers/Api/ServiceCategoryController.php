@@ -7,12 +7,18 @@ use App\Models\ServiceCategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Throwable;
 
 class ServiceCategoryController extends Controller
 {
     public function index(): JsonResponse
     {
+        if (! $this->serviceCategoriesTableExists()) {
+            return response()->json(['data' => []]);
+        }
+
         $categories = Cache::remember('categories:active', now()->addDay(), function () {
             return ServiceCategory::query()
                 ->where('is_active', true)
@@ -28,6 +34,10 @@ class ServiceCategoryController extends Controller
 
     public function adminIndex(): JsonResponse
     {
+        if (! $this->serviceCategoriesTableExists()) {
+            return response()->json(['data' => []]);
+        }
+
         $categories = ServiceCategory::query()
             ->withCount('servicePackages')
             ->orderBy('name')
@@ -97,7 +107,6 @@ class ServiceCategoryController extends Controller
 
     public function destroy(ServiceCategory $serviceCategory): JsonResponse
     {
-        // Check if there are service packages associated with this category
         if ($serviceCategory->servicePackages()->count() > 0) {
             return response()->json([
                 'message' => 'Cannot delete category that has service packages.',
@@ -112,4 +121,13 @@ class ServiceCategoryController extends Controller
             'message' => 'Category deleted successfully.',
         ]);
     }
-}
+
+    private function serviceCategoriesTableExists(): bool
+    {
+        try {
+            return Schema::hasTable('service_categories');
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+}
