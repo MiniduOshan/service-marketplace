@@ -30,20 +30,15 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->ip());
         });
 
-        \Illuminate\Support\Facades\Event::listen(
-            \Illuminate\Database\Events\ConnectionEstablished::class,
-            function ($event) {
-                try {
-                    if ($event->connection->getDriverName() === 'mysql') {
-                        $maxPacket = $event->connection->select("SHOW VARIABLES LIKE 'max_allowed_packet'");
-                        if (!empty($maxPacket) && intval($maxPacket[0]->Value) < 67108864) {
-                            $event->connection->statement("SET GLOBAL max_allowed_packet = 67108864");
-                        }
-                    }
-                } catch (\Exception $e) {
-                    // Fail silently if lacks privileges or if table isn't fully set up yet
-                }
-            }
-        );
+        /*
+         * IMPORTANT FIX:
+         * The old code listened for ConnectionEstablished and then executed
+         * another database query inside that listener. On this project it caused
+         * repeated reconnection/ConnectionEstablished events and exhausted PHP
+         * memory during migrate, seed, and even /api/v1/health.
+         *
+         * max_allowed_packet should be configured in MySQL/MariaDB, not inside
+         * Laravel's connection-established event.
+         */
     }
 }
