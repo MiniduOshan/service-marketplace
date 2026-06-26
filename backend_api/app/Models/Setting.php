@@ -38,7 +38,7 @@ class Setting extends Model
         }
     }
 
-    public static function set(string $key, $value): void
+    public static function set(string $key, mixed $value): void
     {
         $encodedValue = json_encode($value);
         if ($key === 'credentials') {
