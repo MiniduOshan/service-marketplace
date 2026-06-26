@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Support\Str;
-use Pdo\Mysql;
-
 return [
 
     /*
@@ -59,10 +57,12 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            // Local XAMPP/MariaDB does not use SSL by default.
+            // Do not force a CA certificate here, otherwise PDO can fail with
+            // SQLSTATE[HY000] [2006] MySQL server has gone away.
             'options' => extension_loaded('pdo_mysql') ? array_filter([
-                (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA', base_path('certs/ca.pem')),
-                PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
-            ], function($val) { return $val !== null; }) : [],
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
         ],
 
         'mariadb' => [
@@ -80,8 +80,9 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            // Local XAMPP/MariaDB does not use SSL by default.
             'options' => extension_loaded('pdo_mysql') ? array_filter([
-                (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA', base_path('certs/ca.pem')),
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
 
